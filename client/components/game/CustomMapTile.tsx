@@ -29,27 +29,33 @@ interface CustomMapTileProps {
 
 export default React.memo(function CustomMapTile(props: CustomMapTileProps) {
   const {
-    zoom = 1,
+    zoom,
     size,
     x,
     y,
     tile,
-    imageZoom = 0.8,
-    fontSize = 16,
+    imageZoom,
+    fontSize,
     handleClick,
   } = props;
+  const resolvedZoom = zoom ?? 1;
+  const resolvedImageZoom = imageZoom ?? 0.8;
+  const resolvedFontSize = fontSize ?? 16;
 
   const [tileType, color, unitsCount, isAlwaysRevealed, priority] = tile;
   const image = TileType2Image[tileType];
 
-  const zoomedSize = useMemo(() => size * zoom, [size, zoom]);
-  const zoomedFontSize = useMemo(() => fontSize * zoom, [fontSize, zoom]);
+  const zoomedSize = useMemo(() => size * resolvedZoom, [size, resolvedZoom]);
+  const zoomedFontSize = useMemo(
+    () => resolvedFontSize * resolvedZoom,
+    [resolvedFontSize, resolvedZoom]
+  );
   const tileX = useMemo(() => zoomedSize * y, [zoomedSize, y]);
   const tileY = useMemo(() => zoomedSize * x, [zoomedSize, x]);
 
   const zoomedImageSize = useMemo(
-    () => zoomedSize * imageZoom,
-    [zoomedSize, imageZoom]
+    () => zoomedSize * resolvedImageZoom,
+    [zoomedSize, resolvedImageZoom]
   );
 
   const imageXY = useMemo(

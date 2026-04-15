@@ -31,6 +31,9 @@ type ReplayRow = {
 };
 
 type StarAction = 'increase' | 'decrease';
+type StarResult =
+  | { ok: true; status: 200 }
+  | { ok: false; status: 400 | 404; error: string };
 
 const REPLAY_MAX_BYTES = 150 * 1024;
 const textEncoder = new TextEncoder();
@@ -365,9 +368,14 @@ export class AppDurableObject extends DurableObject<Env> {
     ).map(mapRowToInfo);
   }
 
-  async toggleStar(userId: string, mapId: string, action: StarAction) {
+  async toggleStar(userId: string, mapId: string, action: StarAction): Promise<StarResult> {
     await this.ensureInitialized();
     const session = this.createSession();
+    const map = await this.getMapRow(mapId, session);
+    if (!map) {
+      return { ok: false, status: 404, error: 'Map not found' };
+    }
+
     const existing = await session
       .prepare('SELECT user_id FROM stars WHERE user_id = ? AND map_id = ?')
       .bind(userId, mapId)

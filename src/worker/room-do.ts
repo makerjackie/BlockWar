@@ -33,6 +33,22 @@ type SocketAttachment = {
   playerId?: string;
 };
 
+const configurableRoomSettings = new Set([
+  'roomName',
+  'mapId',
+  'maxPlayers',
+  'gameSpeed',
+  'mapWidth',
+  'mapHeight',
+  'mountain',
+  'city',
+  'swamp',
+  'fogOfWar',
+  'revealKing',
+  'warringStatesMode',
+  'deathSpectator',
+]);
+
 function serializeError(error: unknown) {
   if (error instanceof Error) {
     return {
@@ -56,6 +72,27 @@ function buildPacket(type: string, data: unknown[]): string {
 
 function randomPlayerId() {
   return crypto.randomUUID().replace(/-/g, '').slice(0, 10);
+}
+
+function isConfigurableRoomSetting(property: string) {
+  return configurableRoomSettings.has(property);
+}
+
+function pointFromPayload(value: unknown): Point | null {
+  if (!value || typeof value !== 'object') {
+    return null;
+  }
+
+  const { x, y } = value as { x?: unknown; y?: unknown };
+  if (!Number.isSafeInteger(x) || !Number.isSafeInteger(y)) {
+    return null;
+  }
+
+  return new Point(Number(x), Number(y));
+}
+
+function isCardinalNeighbor(from: Point, to: Point) {
+  return Math.abs(from.x - to.x) + Math.abs(from.y - to.y) === 1;
 }
 
 export class RoomDurableObject extends DurableObject<Env> {
@@ -123,6 +160,7 @@ export class RoomDurableObject extends DurableObject<Env> {
         return;
       }
 
+      await this.ensureRoom(attachment.roomId);
       await this.handlePacket(attachment.connectionId, packet);
     } catch (error) {
       console.error('webSocketMessage failed', serializeError(error));
@@ -136,6 +174,7 @@ export class RoomDurableObject extends DurableObject<Env> {
     }
 
     this.sockets.delete(attachment.connectionId);
+    await this.ensureRoom(attachment.roomId);
     await this.handleDisconnect(attachment.connectionId);
   }
 
@@ -181,6 +220,18 @@ export class RoomDurableObject extends DurableObject<Env> {
     }
 
     await this.app.upsertRoom(cloneRoomSummary(this.room));
+  }
+
+  private persistSocketAttachment(
+    connectionId: string,
+    roomId: string,
+    playerId: string
+  ) {
+    this.sockets.get(connectionId)?.serializeAttachment({
+      connectionId,
+      roomId,
+      playerId,
+    });
   }
 
   private computeLeaderBoard() {
@@ -332,6 +383,8 @@ export class RoomDurableObject extends DurableObject<Env> {
     } else {
       joinMessage = 're-joined the lobby.';
     }
+
+    this.persistSocketAttachment(connectionId, roomId, player.id);
 
     if (room.gameStarted) {
       this.send(connectionId, 'game_started', this.createInitGameInfo(player));
@@ -550,31 +603,42 @@ export class RoomDurableObject extends DurableObject<Env> {
     }, []);
 
     if (aliveTeams.length <= 1) {
-      if (aliveTeams.length === 0) {
-        return;
-      }
-
-      const replayId = await this.app.saveReplay(
-        JSON.parse(JSON.stringify(this.room.gameRecord))
-      );
-      this.broadcast(
-        'game_ended',
-        this.room.players
-          .filter((player) => player.team === aliveTeams[0])
-          .map((player) => player.minify(true)),
-        replayId
-      );
-
-      this.room.gameStarted = false;
-      this.room.forceStartNum = 0;
-      this.broadcast('update_room', this.room);
-      this.room.players.forEach((player) => {
-        player.reset();
-      });
-      this.room.players = this.room.players.filter((player) => !player.disconnected);
-      this.clearGameLoop();
-      await this.syncRoomSummary();
+      await this.finishGame(aliveTeams[0] ?? null);
     }
+  }
+
+  private async finishGame(winningTeam: number | null) {
+    if (!this.room?.gameRecord) {
+      return;
+    }
+
+    const replayId = await this.app.saveReplay(
+      JSON.parse(JSON.stringify(this.room.gameRecord))
+    );
+    const winners =
+      winningTeam === null
+        ? []
+        : this.room.players
+          .filter((player) => player.team === winningTeam)
+          .map((player) => player.minify(true));
+
+    this.broadcast('game_ended', winners, replayId);
+
+    this.room.gameStarted = false;
+    this.room.forceStartNum = 0;
+    this.broadcast('update_room', this.room);
+    this.room.players.forEach((player) => {
+      player.reset();
+    });
+    this.room.players = this.room.players.filter((player) => !player.disconnected);
+    if (
+      this.room.players.length > 0 &&
+      !this.room.players.some((player) => player.isRoomHost)
+    ) {
+      this.room.players[0].setRoomHost(true);
+    }
+    this.clearGameLoop();
+    await this.syncRoomSummary();
   }
 
   private async handlePacket(connectionId: string, packet: SocketPacket) {
@@ -596,8 +660,18 @@ export class RoomDurableObject extends DurableObject<Env> {
         break;
       case 'set_team': {
         if (!player) return;
+        if (room.gameStarted) {
+          this.send(
+            connectionId,
+            'error',
+            'Unable to change team',
+            'Team changes are locked after the game starts.'
+          );
+          return;
+        }
+
         const team = Number(arg1);
-        if (team <= 0 || team > MaxTeamNum + 1) {
+        if (!Number.isInteger(team) || team <= 0 || team > MaxTeamNum + 1) {
           this.send(
             connectionId,
             'error',
@@ -624,7 +698,21 @@ export class RoomDurableObject extends DurableObject<Env> {
         break;
       }
       case 'surrender': {
+        if (!player) return;
         const playerId = String(arg1 ?? '');
+        if (!room.gameStarted) {
+          this.send(connectionId, 'error', 'Surrender failed', 'Game has not started.');
+          return;
+        }
+        if (player.id !== playerId) {
+          this.send(
+            connectionId,
+            'error',
+            'Surrender failed',
+            'You can only surrender yourself.'
+          );
+          return;
+        }
         const playerIndex = getPlayerIndex(room, playerId);
         if (playerIndex === -1) {
           this.send(connectionId, 'error', 'Surrender failed', 'Player not found.');
@@ -634,8 +722,14 @@ export class RoomDurableObject extends DurableObject<Env> {
           this.send(connectionId, 'error', 'Surrender failed', 'Map not found.');
           return;
         }
+        if (player.spectating() || player.isDead) {
+          this.send(connectionId, 'error', 'Surrender failed', 'Player is not active.');
+          return;
+        }
+
         this.handleNeutralized(room, room.players[playerIndex]);
         this.broadcast('room_message', room.players[playerIndex].minify(), 'surrendered');
+        await this.syncRoomSummary();
         break;
       }
       case 'change_host': {
@@ -687,7 +781,17 @@ export class RoomDurableObject extends DurableObject<Env> {
           return;
         }
 
-        if (!(property in room) || value === undefined) {
+        if (room.gameStarted) {
+          this.send(
+            connectionId,
+            'error',
+            'Modification was failed',
+            'Room settings are locked after the game starts.'
+          );
+          return;
+        }
+
+        if (!isConfigurableRoomSetting(property) || value === undefined) {
           this.send(
             connectionId,
             'error',
@@ -817,6 +921,16 @@ export class RoomDurableObject extends DurableObject<Env> {
       }
       case 'force_start': {
         if (!player || player.spectating()) return;
+        if (room.gameStarted) {
+          this.send(
+            connectionId,
+            'error',
+            'Unable to force start',
+            'The game has already started.'
+          );
+          return;
+        }
+
         player.forceStart = !player.forceStart;
         room.forceStartNum += player.forceStart ? 1 : -1;
         this.broadcast('update_room', room);
@@ -825,13 +939,13 @@ export class RoomDurableObject extends DurableObject<Env> {
         break;
       }
       case 'attack': {
-        if (!player || !room.map) return;
-        const from = arg1 as Point;
-        const to = arg2 as Point;
-        const isHalf = Boolean(arg3);
+        if (!player || !room.map || !room.gameStarted) return;
+        const from = pointFromPayload(arg1);
+        const to = pointFromPayload(arg2);
+        const isHalf = arg3;
 
-        if (typeof isHalf !== 'boolean') {
-          this.send(connectionId, 'attack_failure', from, to, 'Invalid parameter type');
+        if (!from || !to || typeof isHalf !== 'boolean') {
+          this.send(connectionId, 'attack_failure', arg1 ?? null, arg2 ?? null, 'Invalid parameter type');
           return;
         }
         if (from.x < 0 || from.x >= room.map.width || from.y < 0 || from.y >= room.map.height) {
@@ -842,7 +956,7 @@ export class RoomDurableObject extends DurableObject<Env> {
           this.send(connectionId, 'attack_failure', from, to, 'Invalid ending point, out of map');
           return;
         }
-        if (Math.abs(from.x - to.x) > 1 || Math.abs(from.y - to.y) > 1) {
+        if (!isCardinalNeighbor(from, to)) {
           this.send(connectionId, 'attack_failure', from, to, 'Invalid ending point, not adjacent');
           return;
         }

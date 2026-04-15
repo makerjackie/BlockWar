@@ -86,16 +86,19 @@ api.post('/toggleStar', async (c) => {
   const { userId, mapId, action } = await c.req.json<{
     userId?: string;
     mapId?: string;
-    action?: 'increase' | 'decrease';
+    action?: string;
   }>();
 
   if (!userId || !mapId || !action) {
     return c.json({ error: 'Invalid request payload' }, 400);
   }
+  if (action !== 'increase' && action !== 'decrease') {
+    return c.json({ error: 'Invalid star action' }, 400);
+  }
 
   const result = await c.env.APP.getByName('global').toggleStar(userId, mapId, action);
   if (!result.ok) {
-    return c.json({ error: result.error }, result.status as 400);
+    return c.json({ error: result.error }, result.status);
   }
   return c.json({ success: true });
 });

@@ -32,10 +32,10 @@ interface MapTileProps {
 
 export default React.memo(function MapTile(props: MapTileProps) {
   const {
-    zoom = 1,
-    imageZoom = 0.8,
+    zoom,
+    imageZoom,
     size,
-    fontSize = 16,
+    fontSize,
     x,
     y,
     tile,
@@ -46,6 +46,9 @@ export default React.memo(function MapTile(props: MapTileProps) {
     isNextPossibleMove,
     warringStatesMode = false,
   } = props;
+  const resolvedZoom = zoom ?? 1;
+  const resolvedImageZoom = imageZoom ?? 0.8;
+  const resolvedFontSize = fontSize ?? 16;
 
   const [tileType, color, unitsCount] = tile;
   const image = TileType2Image[tileType];
@@ -68,14 +71,17 @@ export default React.memo(function MapTile(props: MapTileProps) {
     return isOwned || isNextPossibleMove;
   }, [isOwned, isNextPossibleMove]);
 
-  const zoomedSize = useMemo(() => size * zoom, [size, zoom]);
-  const zoomedFontSize = useMemo(() => fontSize * zoom, [fontSize, zoom]);
+  const zoomedSize = useMemo(() => size * resolvedZoom, [size, resolvedZoom]);
+  const zoomedFontSize = useMemo(
+    () => resolvedFontSize * resolvedZoom,
+    [resolvedFontSize, resolvedZoom]
+  );
   const tileX = useMemo(() => zoomedSize * y, [zoomedSize, y]);
   const tileY = useMemo(() => zoomedSize * x, [zoomedSize, x]);
 
   const zoomedImageSize = useMemo(
-    () => zoomedSize * imageZoom,
-    [zoomedSize, imageZoom]
+    () => zoomedSize * resolvedImageZoom,
+    [zoomedSize, resolvedImageZoom]
   );
 
   const imageXY = useMemo(

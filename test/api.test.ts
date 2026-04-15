@@ -94,4 +94,39 @@ describe('BlockWar API', () => {
     const starredMaps = (await starredMapsResponse.json()) as string[];
     expect(starredMaps).toContain(mapId);
   });
+
+  it('rejects invalid star actions and missing maps', async () => {
+    const missingMapId = `missing-${crypto.randomUUID().slice(0, 8)}`;
+
+    const invalidActionResponse = await SELF.fetch('http://example.com/api/toggleStar', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        userId: 'player-invalid-action',
+        mapId: missingMapId,
+        action: 'toggle',
+      }),
+    });
+    expect(invalidActionResponse.status).toBe(400);
+
+    const missingMapResponse = await SELF.fetch('http://example.com/api/toggleStar', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        userId: 'player-missing-map',
+        mapId: missingMapId,
+        action: 'increase',
+      }),
+    });
+    expect(missingMapResponse.status).toBe(404);
+
+    const starredMapsResponse = await SELF.fetch(
+      'http://example.com/api/starredMaps?userId=player-missing-map'
+    );
+    expect(await starredMapsResponse.json()).not.toContain(missingMapId);
+  });
 });

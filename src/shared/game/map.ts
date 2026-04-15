@@ -390,10 +390,13 @@ class GameMap {
   }
 
   commendable(player: any, focus: Point, newFocus: Point): boolean {
+    if (!this.withinMap(focus) || !this.withinMap(newFocus)) {
+      return false;
+    }
+
     const isOwner = this.ownBlock(player, focus);
-    const possibleMove = this.withinMap(focus) && this.withinMap(newFocus);
     const notMountain = this.getBlock(newFocus).type !== TileType.Mountain;
-    return isOwner && possibleMove && notMountain;
+    return isOwner && notMountain;
   }
 
   moveAllMovableUnit(player: any, focus: Point, newFocus: Point): void {

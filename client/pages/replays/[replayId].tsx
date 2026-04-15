@@ -1,17 +1,15 @@
-import { ThemeProvider } from '@mui/material/styles';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
-import theme from '@/components/theme';
 import GameReplay from '@/components/game/GameReplay';
 import Head from 'next/head';
 
 function ReplayPage() {
   return (
-    <ThemeProvider theme={theme}>
+    <>
       <Head>
         <title>Replay | BlockWar / 方块战争</title>
       </Head>
       <GameReplay />
-    </ThemeProvider>
+    </>
   );
 }
 

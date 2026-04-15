@@ -1,6 +1,10 @@
 {
   "about-us": "About Us",
   "home": "Home",
+  "theme-light": "Day",
+  "theme-dark": "Night",
+  "switch-to-light": "Switch to day mode",
+  "switch-to-dark": "Switch to night mode",
   "wiki": "Wiki",
   "bot-api": "Bot API",
   "feedback": "FeedBack",

@@ -5,11 +5,14 @@ import {
   House,
   Menu,
   MessageSquareWarning,
+  Moon,
+  Sun,
   Users,
 } from 'lucide-react';
 
 import { useTranslation } from 'next-i18next';
 import { useRouter } from 'next/router';
+import { useThemeMode } from '@/context/ThemeModeContext';
 import HowToPlay from './HowToPlay';
 
 import Link from 'next/link';
@@ -41,6 +44,7 @@ const navItems = [
 function Navbar() {
   const [isNavOpen, setIsNavOpen] = useState(false);
   const [show, setShow] = useState(false);
+  const { mode, toggleMode } = useThemeMode();
 
   const toggleShow = () => {
     setShow(!show);
@@ -53,6 +57,9 @@ function Navbar() {
   };
 
   const { t } = useTranslation();
+  const themeToggleLabel =
+    mode === 'dark' ? t('switch-to-light') : t('switch-to-dark');
+  const themeToggleText = mode === 'dark' ? t('theme-light') : t('theme-dark');
 
   return (
     <header className='navbar'>
@@ -94,6 +101,20 @@ function Navbar() {
         </nav>
 
         <div className='hidden items-center gap-3 md:flex'>
+          <button
+            type='button'
+            className='bw-button bw-button-secondary h-10 min-h-10 px-3 text-xs'
+            onClick={toggleMode}
+            aria-label={themeToggleLabel}
+            title={themeToggleLabel}
+          >
+            {mode === 'dark' ? (
+              <Sun size={15} strokeWidth={2.4} />
+            ) : (
+              <Moon size={15} strokeWidth={2.4} />
+            )}
+            {themeToggleText}
+          </button>
           <button
             type='button'
             className='bw-button bw-button-primary h-10 min-h-10 px-3 text-xs'
@@ -144,14 +165,29 @@ function Navbar() {
               </Link>
             ))}
           </nav>
-          <div className='mt-2 grid grid-cols-[1fr_auto] gap-2 border-t border-zinc-800 pt-2'>
-            <button
-              type='button'
-              className='bw-button bw-button-primary text-xs'
-              onClick={toggleShow}
-            >
-              {t('how-to-play')}
-            </button>
+          <div className='mt-2 grid gap-2 border-t border-zinc-800 pt-2'>
+            <div className='grid grid-cols-2 gap-2'>
+              <button
+                type='button'
+                className='bw-button bw-button-primary text-xs'
+                onClick={toggleShow}
+              >
+                {t('how-to-play')}
+              </button>
+              <button
+                type='button'
+                className='bw-button bw-button-secondary text-xs'
+                onClick={toggleMode}
+                aria-label={themeToggleLabel}
+              >
+                {mode === 'dark' ? (
+                  <Sun size={15} strokeWidth={2.4} />
+                ) : (
+                  <Moon size={15} strokeWidth={2.4} />
+                )}
+                {themeToggleText}
+              </button>
+            </div>
             <select
               className='navbar-language-switch px-3 text-sm font-black uppercase'
               value={router.locale ?? 'en'}

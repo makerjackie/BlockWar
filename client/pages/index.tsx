@@ -1,14 +1,11 @@
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
-import { useTranslation } from 'next-i18next';
 import { useState, useEffect, StrictMode } from 'react';
-import { ThemeProvider } from '@mui/material/styles';
 
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import Login from '../components/Login';
 
 import Lobby from '../components/Lobby';
-import theme from '../components/theme';
 import Head from 'next/head';
 
 export default function Home() {
@@ -31,17 +28,15 @@ export default function Home() {
 
   return (
     <StrictMode>
-      <ThemeProvider theme={theme}>
-        <Head>
-          <title>Home | BlockWar / 方块战争</title>
-        </Head>
-        <Navbar />
-        {!username && (
-          <Login username={username} handlePlayClick={handlePlayClick} />
-        )}
-        {username && <Lobby />}
-        <Footer />
-      </ThemeProvider>
+      <Head>
+        <title>Home | BlockWar / 方块战争</title>
+      </Head>
+      <Navbar />
+      {!username && (
+        <Login username={username} handlePlayClick={handlePlayClick} />
+      )}
+      {username && <Lobby />}
+      <Footer />
     </StrictMode>
   );
 }

@@ -1,6 +1,10 @@
 {
   "about-us": "关于我们",
   "home": "首页",
+  "theme-light": "白天",
+  "theme-dark": "黑夜",
+  "switch-to-light": "切换到白天模式",
+  "switch-to-dark": "切换到黑夜模式",
   "wiki": "文档",
   "bot-api": "开发机器人",
   "feedback": "反馈",

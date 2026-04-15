@@ -1,19 +1,17 @@
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
-import { ThemeProvider } from '@mui/material/styles';
 import Navbar from '../components/Navbar';
-import theme from '../components/theme';
 import MapEditor from '@/components/game/MapEditor';
 import Head from 'next/head';
 
 export default function Home() {
   return (
-    <ThemeProvider theme={theme}>
+    <>
       <Head>
         <title>Map Creator | BlockWar / 方块战争</title>
       </Head>
       <Navbar />
       <MapEditor editMode={true} />
-    </ThemeProvider>
+    </>
   );
 }
 

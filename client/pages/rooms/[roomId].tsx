@@ -1,20 +1,18 @@
-import { ThemeProvider } from '@mui/material/styles';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
-import theme from '@/components/theme';
 import GameRoom from '@/components/GameRoom';
 import { GameProvider } from '@/context/GameContext';
 import Head from 'next/head';
 
 function RoomPage() {
   return (
-    <ThemeProvider theme={theme}>
+    <>
       <Head>
         <title>Gaming Room | BlockWar / 方块战争</title>
       </Head>
       <GameProvider>
         <GameRoom />
       </GameProvider>
-    </ThemeProvider>
+    </>
   );
 }
 

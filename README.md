@@ -1,7 +1,7 @@
 # BlockWar
 
 <h1 align="center">
-  <img src="client/public/img/blockwar-logo.png" height="90" alt="BlockWar">
+  <img src="client/public/img/blockwar-logo.svg" height="90" alt="BlockWar">
   <br>
   <strong>BlockWar / 方块战争</strong>
 </h1>

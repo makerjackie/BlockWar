@@ -1,6 +1,5 @@
 import { useState, useRef, useMemo, useEffect } from 'react';
-import { useRouter } from 'next/router';
-import useMediaQuery from '@mui/material/useMediaQuery';
+import useMediaQuery from './useMediaQuery';
 import useMapDrag from './useMapDrag';
 
 interface Position {

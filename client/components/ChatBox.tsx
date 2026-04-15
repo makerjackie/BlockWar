@@ -3,7 +3,7 @@ import { useTranslation } from 'next-i18next';
 import { Socket } from 'socket.io-client';
 import { Message } from '@/lib/types';
 import { ColorArr } from '@/lib/constants';
-import useMediaQuery from '@mui/material/useMediaQuery';
+import useMediaQuery from '@/hooks/useMediaQuery';
 
 const ChatBoxMessage = ({ message }: { message: Message }) => {
   return (

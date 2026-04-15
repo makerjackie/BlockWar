@@ -1,31 +1,15 @@
 // cSpell:ignore uuidv
 import {
   useCallback,
+  type ChangeEvent,
+  type ReactNode,
   useMemo,
   useState,
   useEffect,
-  useRef,
   useReducer,
 } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/router';
-import {
-  Box,
-  ButtonGroup,
-  Card,
-  CardHeader,
-  CardContent,
-  TextField,
-  Button,
-  Typography,
-  Snackbar,
-  Alert,
-  AlertTitle,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-} from '@mui/material';
 import {
   Position,
   TileType,
@@ -42,12 +26,18 @@ import Loading from '@/components/Loading';
 import PublishMapDialog from '@/components/PublishMapDialog';
 import ReactMarkdown from 'react-markdown';
 import { v4 as uuidv4 } from 'uuid';
-import styled from '@emotion/styled';
+import Toast from '@/components/ui/Toast';
+import ModalShell from '@/components/ui/ModalShell';
 import {
+  Download,
   Eraser,
+  FolderOpen,
   Info,
   Lightbulb,
+  Save,
   Scaling,
+  Send,
+  Upload,
 } from 'lucide-react';
 
 const name2TileType: Record<string, TileType> = {
@@ -58,16 +48,65 @@ const name2TileType: Record<string, TileType> = {
   swamp: TileType.Swamp,
 };
 
-const IconBox = styled.div(
-  (props: any) => `
-  cursor: pointer;
-  background-color: ${props.bgcolor};
-  &:hover {
-    background-color: ${props.bgcolor ? props.bgcolor : 'rgba(255, 85, 85, 0.1)'
-    }
-  }
-`
-);
+function EditorCard({
+  icon,
+  title,
+  children,
+}: {
+  icon: ReactNode;
+  title: string;
+  children: ReactNode;
+}) {
+  return (
+    <section className='bw-panel-hard w-full p-4'>
+      <div className='mb-3 flex items-center gap-2 border-b border-zinc-800 pb-3 text-xs font-black uppercase tracking-[0.18em] text-zinc-400'>
+        {icon}
+        {title}
+      </div>
+      <div className='space-y-3'>{children}</div>
+    </section>
+  );
+}
+
+function EditorField({
+  id,
+  label,
+  type = 'text',
+  value,
+  onChange,
+  multiline = false,
+}: {
+  id: string;
+  label: string;
+  type?: 'text' | 'number';
+  value: string | number;
+  onChange: (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
+  multiline?: boolean;
+}) {
+  return (
+    <label className='block w-full' htmlFor={id}>
+      <span className='mb-1 block text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500'>
+        {label}
+      </span>
+      {multiline ? (
+        <textarea
+          id={id}
+          className='bw-input min-h-24 resize-y py-3 text-left'
+          value={value}
+          onChange={onChange}
+        />
+      ) : (
+        <input
+          id={id}
+          className='bw-input text-left'
+          type={type}
+          value={value}
+          onChange={onChange}
+        />
+      )}
+    </label>
+  );
+}
 
 function getNewMapData(): CustomMapTileData[][] {
   return Array.from({ length: 10 }, () =>
@@ -116,7 +155,6 @@ function MapEditor({ editMode }: { editMode: boolean }) {
     mapPixelWidth,
     mapPixelHeight,
     zoom,
-    setZoom,
   } = useMap({
     mapWidth,
     mapHeight,
@@ -533,63 +571,33 @@ function MapEditor({ editMode }: { editMode: boolean }) {
       className='app-container'
       style={{ position: 'relative', overflow: 'hidden' }}
     >
-      <Snackbar
+      <Toast
         open={snackState.open}
-        autoHideDuration={snackState.duration}
+        duration={snackState.duration}
+        status={snackState.status}
+        title={snackState.title}
+        message={snackState.message}
         onClose={() => {
-          console.log(snackState);
           snackStateDispatch({ type: 'toggle', duration: null });
         }}
-      >
-        <Alert severity={snackState.status} sx={{ width: '100%' }}>
-          <AlertTitle>{snackState.title}</AlertTitle>
-          {snackState.message}
-        </Alert>
-      </Snackbar>
+      />
       {!editMode && <Loading open={loading} title={t('loading-map')} />}
       {!editMode && (
         <>
-          <Box
-            className='menu-container'
-            sx={{
-              position: 'absolute',
-              bottom: '0',
-              left: '50%',
-              width: {
-                xs: '90vw',
-                md: '55vw',
-                lg: '45vw',
-              },
-              transform: `translate(-50%, 0)`,
-              minHeight: '10%',
-              maxHeight: '30%',
-              overflowY: 'auto',
-              borderRadius: '24px 24px 0px 0px !important',
-              zIndex: 101,
-              padding: '13px !important',
-            }}
-          >
-            <Typography variant='h5' color='white'>{mapName}</Typography>
-            <Box className='react_markdown'>
+          <section className='menu-container absolute bottom-0 left-1/2 z-[101] max-h-[30%] min-h-[10%] w-[90vw] -translate-x-1/2 overflow-y-auto border-b-0 p-4 md:w-[55vw] lg:w-[45vw]'>
+            <h2 className='bw-title text-2xl'>{mapName}</h2>
+            <div className='react_markdown mt-2'>
               <ReactMarkdown>{mapDescription}</ReactMarkdown>
-            </Box>
-          </Box>
-          <Button
-            size='large'
-            sx={{
-              zIndex: 1001,
-              position: 'absolute',
-              bottom: '5px',
-              left: '50%',
-              transform: `translate(-50%, 0)`,
-              boxShadow: 3,
-            }}
-            variant='contained'
-            color='primary'
+            </div>
+          </section>
+          <button
+            type='button'
+            className='bw-button bw-button-primary absolute bottom-2 left-1/2 z-[1001] -translate-x-1/2'
             onClick={handleDownloadMap}
           >
+            <Download size={16} strokeWidth={2.5} />
             {t('download')}
-          </Button>
+          </button>
         </>
       )}
       <PublishMapDialog
@@ -598,188 +606,131 @@ function MapEditor({ editMode }: { editMode: boolean }) {
         mapId={publishMapId}
       ></PublishMapDialog>
 
-      <Dialog open={openMapExplorer} onClose={handleCloseMapExplorer}>
-        <DialogTitle>{t('choose-map')}</DialogTitle>
-        <DialogContent>
-          <MapExplorer userId={username} onSelect={handleMapSelect} />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseMapExplorer}>{t('close')}</Button>
-        </DialogActions>
-      </Dialog>
+      <ModalShell
+        open={openMapExplorer}
+        onClose={handleCloseMapExplorer}
+        title={
+          <div>
+            <p className='bw-page-copy'>Map Library</p>
+            <h2 className='bw-title text-4xl'>{t('choose-map')}</h2>
+          </div>
+        }
+        widthClassName='max-w-5xl'
+        actions={
+          <button
+            type='button'
+            className='bw-button bw-button-secondary'
+            onClick={handleCloseMapExplorer}
+          >
+            {t('close')}
+          </button>
+        }
+      >
+        <MapExplorer userId={username} onSelect={handleMapSelect} />
+      </ModalShell>
 
       {editMode && (
-        <Box
-          className='menu-container'
-          sx={{
-            borderRadius: '24px 0 0 24px !important',
-            padding: '10px !important',
-            position: 'absolute',
-            top: '70px',
-            bottom: '70px',
-            right: 0,
-            height: 'calc(100dvh - 60px - 60px)',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            overflow: 'auto',
-            boxShadow: 3,
-            bgcolor: '#394150 !important',
-          }}
-        >
-          <Button
-            sx={{ width: '100%' }}
-            variant='contained'
+        <aside className='menu-container absolute bottom-[70px] right-0 top-[70px] z-[102] flex h-[calc(100dvh-140px)] w-[min(360px,88vw)] flex-col gap-4 overflow-auto p-4'>
+          <button
+            type='button'
+            className='bw-button bw-button-primary w-full'
             onClick={handleOpenMapExplorer}
           >
+            <FolderOpen size={16} strokeWidth={2.5} />
             {t('select-a-custom-map')}
-          </Button>
+          </button>
 
-          <Card
-            variant='outlined'
-            className='menu-container'
-            sx={{
-              width: '100%',
-            }}
+          <EditorCard
+            icon={<Info size={18} strokeWidth={2.25} />}
+            title={t('basic-info')}
           >
-            <CardHeader
-              avatar={<Info size={18} strokeWidth={2.25} />}
-              title={t('basic-info')}
-              sx={{ paddingBottom: 0 }}
-            />
-            <CardContent
-              sx={{
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                paddingTop: 0,
-              }}
-            >
-              <TextField
+              <EditorField
                 id='map-name'
                 label='Map Name'
-                size='small'
-                type='text'
                 value={mapName}
                 onChange={(e) => setMapName(e.target.value)}
-                sx={{ marginY: '10px' }}
               />
-              <TextField
+              <EditorField
                 id='map-desc'
                 label='Map Description'
-                size='small'
-                type='text'
                 value={mapDescription}
                 onChange={(e) => setMapDescription(e.target.value)}
                 multiline
-                minRows={3}
-                maxRows={8}
               />
-            </CardContent>
-          </Card>
-          <Card
-            variant='outlined'
-            className='menu-container'
-            sx={{
-              width: '100%',
-            }}
+          </EditorCard>
+          <EditorCard
+            icon={<Scaling size={18} strokeWidth={2.25} />}
+            title={t('map-size')}
           >
-            <CardHeader
-              avatar={<Scaling size={18} strokeWidth={2.25} />}
-              title={t('map-size')}
-            />
-            <CardContent
-              sx={{
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-              }}
-            >
-              <TextField
+              <EditorField
                 id='map-width'
                 label='Map Width'
-                size='small'
                 type='number'
                 value={mapWidth}
                 onChange={handleMapWidthChange}
-                sx={{ marginBottom: '10px' }}
               />
-              <TextField
+              <EditorField
                 id='map-height'
                 label='Map Height'
-                size='small'
                 type='number'
                 value={mapHeight}
                 onChange={handleMapHeightChange}
               />
-            </CardContent>
-          </Card>
-          <ButtonGroup size='large' sx={{ width: '100%' }}>
-            <Button
-              sx={{ width: '100%' }}
-              variant='outlined'
+          </EditorCard>
+          <div className='grid w-full grid-cols-2 gap-2'>
+            <button
+              type='button'
+              className='bw-button bw-button-secondary w-full text-xs'
               onClick={handleDownloadMap}
             >
+              <Download size={15} strokeWidth={2.5} />
               {t('download')}
-            </Button>
-            <Button
-              sx={{ width: '100%' }}
-              variant='outlined'
+            </button>
+            <button
+              type='button'
+              className='bw-button bw-button-secondary w-full text-xs'
               onClick={handleUploadMap}
             >
+              <Upload size={15} strokeWidth={2.5} />
               {t('upload')}
-            </Button>
-          </ButtonGroup>
-          <ButtonGroup size='large' sx={{ width: '100%' }}>
-            <Button
-              sx={{ width: '100%' }}
-              variant='outlined'
+            </button>
+          </div>
+          <div className='grid w-full grid-cols-2 gap-2'>
+            <button
+              type='button'
+              className='bw-button bw-button-secondary w-full text-xs'
               onClick={handleSaveDraft}
             >
+              <Save size={15} strokeWidth={2.5} />
               {t('save-draft')}
-            </Button>
-            <Button
-              sx={{ width: '100%' }}
-              variant='contained'
+            </button>
+            <button
+              type='button'
+              className='bw-button bw-button-primary w-full text-xs'
               onClick={handlePublish}
             >
+              <Send size={15} strokeWidth={2.5} />
               {t('publish')}
-            </Button>
-          </ButtonGroup>
-        </Box>
+            </button>
+          </div>
+        </aside>
       )}
 
       {editMode && (
-        <Box
-          className='menu-container'
-          sx={{
-            position: 'absolute',
-            top: '70px',
-            bottom: '70px',
-            left: 0,
-            width: '90px',
-            height: 'calc(100dvh - 60px - 60px)',
-            borderRadius: '0 24px 24px 0 !important',
-            boxShadow: 3,
-            bgcolor: '#394150 !important',
-          }}
-        >
-          <Box sx={{ width: '100%', overflowY: 'auto', height: '100%' }}>
+        <aside className='menu-container absolute bottom-[70px] left-0 top-[70px] z-[102] h-[calc(100dvh-140px)] w-[96px] overflow-y-auto p-2'>
+          <div className='grid gap-2'>
             {Object.keys(name2TileType).map((tileName) => (
-              <IconBox
+              <div
                 key={tileName}
-                className='icon-box'
-                bgcolor={
-                  selectedTileType === name2TileType[tileName] ? '#4e80f0' : '#394150'
-                }
+                className={`icon-box w-full ${
+                  selectedTileType === name2TileType[tileName]
+                    ? 'border-yellow-300 bg-yellow-300/15 text-yellow-200'
+                    : ''
+                }`}
                 onClick={() => {
                   setSelectedTileType(name2TileType[tileName]);
                   setSelectedProperty(null);
                 }}
-                sx={{ cursor: 'pointer' }}
               >
                 {tileName === 'plain' ? (
                   <div
@@ -799,17 +750,20 @@ function MapEditor({ editMode }: { editMode: boolean }) {
                     draggable={false}
                   />
                 )}
-                <Typography align='center' color='white' fontSize='8rm'>
+                <span className='mt-1 text-center text-[10px] font-black uppercase tracking-[0.08em]'>
                   {t(tileName)}
-                </Typography>
-              </IconBox>
+                </span>
+              </div>
             ))}
 
             {Object.keys(property2var).map((property) => (
-              <IconBox
+              <div
                 key={property}
-                className='icon-box'
-                bgcolor={selectedProperty === property ? '#4e80f0' : '#394150'}
+                className={`icon-box w-full ${
+                  selectedProperty === property
+                    ? 'border-yellow-300 bg-yellow-300/15 text-yellow-200'
+                    : ''
+                }`}
                 onClick={() => {
                   setSelectedProperty(property);
                   setSelectedTileType(null);
@@ -818,42 +772,38 @@ function MapEditor({ editMode }: { editMode: boolean }) {
                 {property === 'revealed' ? (
                   <Lightbulb size={28} strokeWidth={2.25} className='text-white' />
                 ) : (
-                  <TextField
+                  <input
                     id={property}
                     type='number'
-                    variant='standard'
-                    hiddenLabel
-                    inputProps={{
-                      min: property2min[property],
-                      max: property2max[property],
-                      style: { textAlign: 'center' },
-                    }}
+                    className='w-full border border-zinc-700 bg-zinc-950/90 px-1 py-1 text-center text-xs font-black text-zinc-100'
+                    min={property2min[property]}
+                    max={property2max[property]}
                     value={property2var[property]}
                     onChange={(event) =>
                       property2setVar[property](+event.target.value)
                     }
                   />
                 )}
-                <Typography align='center' color='white' fontSize='8rm'>
+                <span className='mt-1 text-center text-[10px] font-black uppercase tracking-[0.08em]'>
                   {t(property)}
-                </Typography>
-              </IconBox>
+                </span>
+              </div>
             ))}
 
-            <IconBox
+            <div
               key='clear-all'
-              className='icon-box'
+              className='icon-box w-full border-red-400/70 text-red-200 hover:border-red-300'
               onClick={() => {
                 setMapData(getNewMapData());
               }}
             >
               <Eraser size={28} strokeWidth={2.25} className='text-red-400' />
-              <Typography align='center' color='white' fontSize='8rm'>
+              <span className='mt-1 text-center text-[10px] font-black uppercase tracking-[0.08em]'>
                 {t('clear-all')}
-              </Typography>
-            </IconBox>
-          </Box>
-        </Box>
+              </span>
+            </div>
+          </div>
+        </aside>
       )
       }
 

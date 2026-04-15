@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import { Snackbar, Alert } from '@mui/material';
 import { Room, RoomPool } from '@/lib/types';
 import { useTranslation } from 'next-i18next';
 import { HardDrive, Plus, Map as MapIcon } from 'lucide-react';
+import Toast from '@/components/ui/Toast';
 
 function Lobby() {
   const [rooms, setRooms] = useState<RoomPool>({});
@@ -79,17 +79,15 @@ function Lobby() {
 
   return (
     <>
-      <Snackbar
+      <Toast
         open={snackOpen}
-        autoHideDuration={1000}
+        duration={1000}
+        status='error'
+        message={snackMessage}
         onClose={() => {
-          setSnackOpen(!snackOpen);
+          setSnackOpen(false);
         }}
-      >
-        <Alert severity='error' sx={{ width: '100%' }}>
-          {snackMessage}
-        </Alert>
-      </Snackbar>
+      />
       <main className='app-container'>
         <div className='center-layout'>
           <section className='w-full max-w-4xl'>

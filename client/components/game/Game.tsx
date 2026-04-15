@@ -4,7 +4,6 @@ import GameMap from './GameMap';
 import LeaderBoard from './LeaderBoard';
 import TurnsCount from './TurnsCount';
 import OverDialog from './OverDialog';
-import { Box } from '@mui/material';
 import { useGame, useGameDispatch } from '@/context/GameContext';
 
 export default function Game() {
@@ -27,7 +26,7 @@ export default function Game() {
   };
 
   return (
-    <Box className='Game'>
+    <div className='Game'>
       <TurnsCount count={turnsCount} handleReturnClick={handleReturnClick} />
       <LeaderBoard
         leaderBoardTable={leaderBoardData}
@@ -41,6 +40,6 @@ export default function Game() {
         handleSurrender={handleSurrender}
       />
       <OverDialog />
-    </Box>
+    </div>
   );
 }

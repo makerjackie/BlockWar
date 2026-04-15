@@ -53,8 +53,19 @@ pnpm dev
 ```bash
 pnpm build
 pnpm test
+pnpm check
+pnpm types
 pnpm deploy:dry-run
 ```
+
+## 开发与贡献约定
+
+- 推荐使用 Node 20 与 `pnpm` 10，尽量与 GitHub Actions 保持一致。
+- 日常本地开发使用 `pnpm dev`；提交前至少执行一次 `pnpm check`。
+- 修改 `wrangler.jsonc`、Durable Object 绑定或其他 Cloudflare 资源后，请运行 `pnpm types` 更新 `worker-configuration.d.ts`。
+- 测试位于 `test/*.test.ts`，API 建议通过 `SELF.fetch(...)` 验证，Durable Object 建议通过 `runInDurableObject(...)` 验证。
+- TypeScript 保持严格模式，沿用现有风格：2 空格缩进、单引号、分号；React 组件使用 `PascalCase`，hooks 使用 `useXxx` 命名。
+- 提交信息建议使用 `feat:`、`fix:`、`chore:` 这类 Conventional Commit 前缀；涉及 UI 变更时，PR 最好附截图。
 
 ## 已验证内容
 

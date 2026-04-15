@@ -3,10 +3,9 @@ import useMap from '@/hooks/useMap';
 import { Position, SelectedMapTileInfo, TileProp, TileType } from '@/lib/types';
 import usePossibleNextMapPositions from '@/lib/use-possible-next-map-positions';
 import { getPlayerIndex } from '@/lib/utils';
-import { Box, IconButton, Tooltip, Typography } from '@mui/material';
-import useMediaQuery from '@mui/material/useMediaQuery';
+import useMediaQuery from '@/hooks/useMediaQuery';
 import { useTranslation } from 'next-i18next';
-import { MutableRefObject, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { MutableRefObject, ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowDown,
   ArrowLeft,
@@ -21,6 +20,31 @@ import {
   ZoomOut,
 } from 'lucide-react';
 import MapTile from './MapTile';
+
+function MapControlButton({
+  title,
+  onClick,
+  children,
+  className = '',
+}: {
+  title: string;
+  onClick: () => void;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <button
+      type='button'
+      className={`attack-button grid size-10 place-items-center ${className}`}
+      onClick={onClick}
+      title={title}
+      aria-label={title}
+    >
+      {children}
+    </button>
+  );
+}
+
 function GameMap() {
   const {
     attackQueueRef,
@@ -399,115 +423,63 @@ function GameMap() {
         })}
       </div>
       {isSmallScreen && (
-        <Box
-          className='menu-container'
-          sx={{
-            margin: 0,
-            padding: '1px !important',
-            position: 'absolute',
-            left: '5px',
-            bottom: { xs: '65px', md: '80px' },
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignContent: 'space-between',
-            alignItems: 'center',
-            flexDirection: 'column',
-            zIndex: 1000,
-            boxShadow: '2',
-          }}
-        >
-          <Tooltip title={t('howToPlay.centerGeneral')} placement='top'>
-            <IconButton onClick={centerGeneral}>
-              <Home size={18} strokeWidth={2.5} />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title={t('howToPlay.undoMove')} placement='top'>
-            <IconButton onClick={popQueue}>
-              <RotateCcw size={18} strokeWidth={2.5} />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title={t('howToPlay.clearQueuedMoves')} placement='top'>
-            <IconButton onClick={clearQueue}>
-              <Trash2 size={18} strokeWidth={2.5} />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title={t('howToPlay.toggle50')} placement='top'>
-            <IconButton onClick={() => halfArmy(touchHalf)}>
-              <Typography variant='body2'>50%</Typography>
-            </IconButton>
-          </Tooltip>
-          <IconButton
+        <div className='menu-container absolute left-[5px] bottom-[65px] z-[1000] flex flex-col items-center justify-between gap-1 p-1 md:bottom-20'>
+          <MapControlButton title={t('howToPlay.centerGeneral')} onClick={centerGeneral}>
+            <Home size={18} strokeWidth={2.5} />
+          </MapControlButton>
+          <MapControlButton title={t('howToPlay.undoMove')} onClick={popQueue}>
+            <RotateCcw size={18} strokeWidth={2.5} />
+          </MapControlButton>
+          <MapControlButton title={t('howToPlay.clearQueuedMoves')} onClick={clearQueue}>
+            <Trash2 size={18} strokeWidth={2.5} />
+          </MapControlButton>
+          <MapControlButton title={t('howToPlay.toggle50')} onClick={() => halfArmy(touchHalf)}>
+            <span className='text-xs font-black'>50%</span>
+          </MapControlButton>
+          <MapControlButton
+            title='Zoom in'
             onClick={() => {
               setZoom((z) => z - 0.2);
             }}
           >
             <ZoomIn size={18} strokeWidth={2.5} />
-          </IconButton>
-          <IconButton
+          </MapControlButton>
+          <MapControlButton
+            title='Zoom out'
             onClick={() => {
               setZoom((z) => z + 0.2);
             }}
           >
             <ZoomOut size={18} strokeWidth={2.5} />
-          </IconButton>
-          <Tooltip title={t('expandWSAD')} placement='top'>
-            <IconButton onClick={toggleDirections}>
-              {showDirections ? (
-                <ChevronLeft size={18} strokeWidth={2.5} />
-              ) : (
-                <ChevronRight size={18} strokeWidth={2.5} />
-              )}
-            </IconButton>
-          </Tooltip>
-        </Box>
+          </MapControlButton>
+          <MapControlButton title={t('expandWSAD')} onClick={toggleDirections}>
+            {showDirections ? (
+              <ChevronLeft size={18} strokeWidth={2.5} />
+            ) : (
+              <ChevronRight size={18} strokeWidth={2.5} />
+            )}
+          </MapControlButton>
+        </div>
       )}
       {showDirections && (
-        <Box
-          sx={{
-            display: 'flex',
-            flexDirection: 'column',
-            padding: '5px',
-            position: 'absolute',
-            right: '10px',
-            bottom: { xs: '65px', md: '80px' },
-            zIndex: 1000,
-          }}
-        >
-          <Box
-            sx={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-            }}
-          >
-            <IconButton onClick={() => attackUp(selectedMapTileInfo)} className='attack-button'>
+        <div className='absolute right-2.5 bottom-[65px] z-[1000] flex flex-col p-1 md:bottom-20'>
+          <div className='flex flex-col items-center'>
+            <MapControlButton title='Attack up' onClick={() => attackUp(selectedMapTileInfo)}>
               <ArrowUp size={18} strokeWidth={2.5} />
-            </IconButton>
-            <Box
-              sx={{
-                display: 'flex',
-                flexDirection: 'row',
-                alignItems: 'center',
-                width: {
-                  xs: '40vw',
-                  md: '20vw',
-                  lg: '20vw',
-                },
-                justifyContent: 'space-between',
-              }}
-              >
-                <IconButton onClick={() => attackLeft(selectedMapTileInfo)} className='attack-button'>
+            </MapControlButton>
+            <div className='flex w-[40vw] flex-row items-center justify-between md:w-[20vw]'>
+              <MapControlButton title='Attack left' onClick={() => attackLeft(selectedMapTileInfo)}>
                 <ArrowLeft size={18} strokeWidth={2.5} />
-              </IconButton>
-              <IconButton onClick={() => attackRight(selectedMapTileInfo)} className='attack-button'>
+              </MapControlButton>
+              <MapControlButton title='Attack right' onClick={() => attackRight(selectedMapTileInfo)}>
                 <ArrowRight size={18} strokeWidth={2.5} />
-              </IconButton>
-            </Box>
-            <IconButton onClick={() => attackDown(selectedMapTileInfo)} className='attack-button'>
+              </MapControlButton>
+            </div>
+            <MapControlButton title='Attack down' onClick={() => attackDown(selectedMapTileInfo)}>
               <ArrowDown size={18} strokeWidth={2.5} />
-            </IconButton>
-          </Box>
-        </Box>
+            </MapControlButton>
+          </div>
+        </div>
       )}
     </div>
   );

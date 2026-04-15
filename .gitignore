@@ -10,3 +10,4 @@ server/custom_map/*
 .env
 .env.local
 temp.md
+.playwright-cli/

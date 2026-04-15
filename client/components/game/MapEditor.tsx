@@ -59,12 +59,12 @@ function EditorCard({
   children: ReactNode;
 }) {
   return (
-    <section className='bw-panel-hard w-full p-4'>
-      <div className='mb-3 flex items-center gap-2 border-b border-zinc-800 pb-3 text-xs font-black uppercase tracking-[0.18em] text-zinc-400'>
+    <section className='bw-panel-hard w-full p-3 md:p-4'>
+      <div className='mb-2 flex items-center gap-2 border-b border-zinc-800 pb-2 text-[11px] font-black uppercase tracking-[0.18em] text-zinc-400 md:mb-3 md:pb-3 md:text-xs'>
         {icon}
         {title}
       </div>
-      <div className='space-y-3'>{children}</div>
+      <div className='space-y-2 md:space-y-3'>{children}</div>
     </section>
   );
 }
@@ -92,14 +92,14 @@ function EditorField({
       {multiline ? (
         <textarea
           id={id}
-          className='bw-input min-h-24 resize-y py-3 text-left'
+          className='bw-input h-auto min-h-20 resize-y py-3 text-left md:min-h-24'
           value={value}
           onChange={onChange}
         />
       ) : (
         <input
           id={id}
-          className='bw-input text-left'
+          className='bw-input h-11 text-left md:h-12'
           type={type}
           value={value}
           onChange={onChange}
@@ -596,6 +596,15 @@ function MapEditor({ editMode }: { editMode: boolean }) {
     return () => { };
   }, [mapRef, editMode, handleKeyDown]);
 
+  const settingsDockClassName =
+    'menu-container absolute inset-x-2 top-[76px] z-[102] flex max-h-[30dvh] flex-col gap-3 overflow-y-auto p-3 pb-4 sm:max-h-[34dvh] md:left-auto md:right-0 md:top-[70px] md:h-[calc(100dvh-140px)] md:max-h-none md:w-[min(360px,88vw)] md:gap-4 md:p-4';
+  const paletteDockClassName =
+    'menu-container absolute inset-x-2 bottom-2 z-[102] overflow-x-auto overflow-y-hidden p-2 md:bottom-[70px] md:left-0 md:right-auto md:top-[70px] md:h-[calc(100dvh-140px)] md:w-[96px] md:overflow-x-hidden md:overflow-y-auto';
+  const paletteGridClassName =
+    'grid min-w-max grid-flow-col auto-cols-[minmax(76px,1fr)] gap-2 md:min-w-0 md:grid-flow-row md:auto-cols-auto';
+  const paletteItemClassName =
+    'icon-box my-0 min-h-[92px] min-w-[76px] px-2 py-2 md:min-h-0 md:min-w-0 md:px-1 md:py-1';
+
   return (
     <div
       className='app-container'
@@ -660,10 +669,10 @@ function MapEditor({ editMode }: { editMode: boolean }) {
       </ModalShell>
 
       {editMode && (
-        <aside className='menu-container absolute bottom-[70px] right-0 top-[70px] z-[102] flex h-[calc(100dvh-140px)] w-[min(360px,88vw)] flex-col gap-4 overflow-auto p-4'>
+        <aside className={settingsDockClassName}>
           <button
             type='button'
-            className='bw-button bw-button-primary w-full'
+            className='bw-button bw-button-primary w-full text-xs leading-tight whitespace-normal'
             onClick={handleOpenMapExplorer}
           >
             <FolderOpen size={16} strokeWidth={2.5} />
@@ -674,24 +683,25 @@ function MapEditor({ editMode }: { editMode: boolean }) {
             icon={<Info size={18} strokeWidth={2.25} />}
             title={t('basic-info')}
           >
-              <EditorField
-                id='map-name'
-                label='Map Name'
-                value={mapName}
-                onChange={(e) => setMapName(e.target.value)}
-              />
-              <EditorField
-                id='map-desc'
-                label='Map Description'
-                value={mapDescription}
-                onChange={(e) => setMapDescription(e.target.value)}
-                multiline
-              />
+            <EditorField
+              id='map-name'
+              label='Map Name'
+              value={mapName}
+              onChange={(e) => setMapName(e.target.value)}
+            />
+            <EditorField
+              id='map-desc'
+              label='Map Description'
+              value={mapDescription}
+              onChange={(e) => setMapDescription(e.target.value)}
+              multiline
+            />
           </EditorCard>
           <EditorCard
             icon={<Scaling size={18} strokeWidth={2.25} />}
             title={t('map-size')}
           >
+            <div className='grid gap-3 sm:grid-cols-2 md:grid-cols-1'>
               <EditorField
                 id='map-width'
                 label='Map Width'
@@ -706,11 +716,12 @@ function MapEditor({ editMode }: { editMode: boolean }) {
                 value={mapHeight}
                 onChange={handleMapHeightChange}
               />
+            </div>
           </EditorCard>
           <div className='grid w-full grid-cols-2 gap-2'>
             <button
               type='button'
-              className='bw-button bw-button-secondary w-full text-xs'
+              className='bw-button bw-button-secondary w-full text-xs leading-tight whitespace-normal'
               onClick={handleDownloadMap}
             >
               <Download size={15} strokeWidth={2.5} />
@@ -718,7 +729,7 @@ function MapEditor({ editMode }: { editMode: boolean }) {
             </button>
             <button
               type='button'
-              className='bw-button bw-button-secondary w-full text-xs'
+              className='bw-button bw-button-secondary w-full text-xs leading-tight whitespace-normal'
               onClick={handleUploadMap}
             >
               <Upload size={15} strokeWidth={2.5} />
@@ -728,7 +739,7 @@ function MapEditor({ editMode }: { editMode: boolean }) {
           <div className='grid w-full grid-cols-2 gap-2'>
             <button
               type='button'
-              className='bw-button bw-button-secondary w-full text-xs'
+              className='bw-button bw-button-secondary w-full text-xs leading-tight whitespace-normal'
               onClick={handleSaveDraft}
             >
               <Save size={15} strokeWidth={2.5} />
@@ -736,7 +747,7 @@ function MapEditor({ editMode }: { editMode: boolean }) {
             </button>
             <button
               type='button'
-              className='bw-button bw-button-primary w-full text-xs'
+              className='bw-button bw-button-primary w-full text-xs leading-tight whitespace-normal'
               onClick={handlePublish}
             >
               <Send size={15} strokeWidth={2.5} />
@@ -747,12 +758,12 @@ function MapEditor({ editMode }: { editMode: boolean }) {
       )}
 
       {editMode && (
-        <aside className='menu-container absolute bottom-[70px] left-0 top-[70px] z-[102] h-[calc(100dvh-140px)] w-[96px] overflow-y-auto p-2'>
-          <div className='grid gap-2'>
+        <aside className={paletteDockClassName}>
+          <div className={paletteGridClassName}>
             {Object.keys(name2TileType).map((tileName) => (
               <div
                 key={tileName}
-                className={`icon-box w-full ${
+                className={`${paletteItemClassName} w-full ${
                   selectedTileType === name2TileType[tileName]
                     ? 'border-yellow-300 bg-yellow-300/15 text-yellow-200'
                     : ''
@@ -789,7 +800,7 @@ function MapEditor({ editMode }: { editMode: boolean }) {
             {Object.keys(property2var).map((property) => (
               <div
                 key={property}
-                className={`icon-box w-full ${
+                className={`${paletteItemClassName} w-full ${
                   selectedProperty === property
                     ? 'border-yellow-300 bg-yellow-300/15 text-yellow-200'
                     : ''
@@ -805,7 +816,7 @@ function MapEditor({ editMode }: { editMode: boolean }) {
                   <input
                     id={property}
                     type='number'
-                    className='w-full border border-zinc-700 bg-zinc-950/90 px-1 py-1 text-center text-xs font-black text-zinc-100'
+                    className='h-10 w-full border border-zinc-700 bg-zinc-950/90 px-1 py-1 text-center text-xs font-black text-zinc-100'
                     min={property2min[property]}
                     max={property2max[property]}
                     value={property2var[property]}
@@ -822,7 +833,7 @@ function MapEditor({ editMode }: { editMode: boolean }) {
 
             <div
               key='clear-all'
-              className='icon-box w-full border-red-400/70 text-red-200 hover:border-red-300'
+              className={`${paletteItemClassName} w-full border-red-400/70 text-red-200 hover:border-red-300`}
               onClick={() => {
                 setMapData(getNewMapData());
               }}
@@ -834,8 +845,7 @@ function MapEditor({ editMode }: { editMode: boolean }) {
             </div>
           </div>
         </aside>
-      )
-      }
+      )}
 
       <div
         style={{
@@ -878,7 +888,7 @@ function MapEditor({ editMode }: { editMode: boolean }) {
           })}
         </div>
       </div>
-    </div >
+    </div>
   );
 }
 

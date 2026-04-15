@@ -167,7 +167,6 @@ export class RoomDurableObject extends DurableObject<Env> {
 
     const summary = (await this.app.getRoom(roomId)) as PlainRoom | null;
     this.room = hydrateRoomSummary(roomId, summary);
-    await this.ctx.storage.put('roomId', roomId);
     return this.room;
   }
 

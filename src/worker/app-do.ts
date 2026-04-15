@@ -1,16 +1,15 @@
 import { DurableObject } from 'cloudflare:workers';
 import { createDefaultRoom, seedRoomIds } from '@shared/game/room-defaults';
-import type {
-  CustomMapData,
-  CustomMapInfo,
-} from '@shared/game/types';
+import type { CustomMapData, CustomMapInfo } from '@shared/game/types';
 import { cloneRoomSummary, type PlainRoom } from './lib/room-summary';
 
 type Env = Cloudflare.Env;
+type D1Executor = Pick<D1Database, 'prepare'>;
 
 type RoomRow = {
   id: string;
   room_json: string;
+  updated_at: number;
 };
 
 type MapRow = {
@@ -28,9 +27,26 @@ type MapRow = {
 
 type ReplayRow = {
   replay_json: string;
+  size_bytes: number;
 };
 
 type StarAction = 'increase' | 'decrease';
+
+const REPLAY_MAX_BYTES = 150 * 1024;
+const textEncoder = new TextEncoder();
+
+const APP_SCHEMA_STATEMENTS = [
+  'CREATE TABLE IF NOT EXISTS rooms (id TEXT PRIMARY KEY, room_json TEXT NOT NULL, updated_at INTEGER NOT NULL)',
+  'CREATE TABLE IF NOT EXISTS maps (id TEXT PRIMARY KEY, name TEXT NOT NULL, width INTEGER NOT NULL, height INTEGER NOT NULL, creator TEXT NOT NULL, description TEXT NOT NULL, map_tiles_data TEXT NOT NULL, created_at TEXT NOT NULL, views INTEGER NOT NULL DEFAULT 0, star_count INTEGER NOT NULL DEFAULT 0)',
+  'CREATE TABLE IF NOT EXISTS stars (user_id TEXT NOT NULL, map_id TEXT NOT NULL, PRIMARY KEY(user_id, map_id))',
+  `CREATE TABLE IF NOT EXISTS replays (id TEXT PRIMARY KEY, replay_json TEXT NOT NULL, size_bytes INTEGER NOT NULL CHECK(size_bytes < ${REPLAY_MAX_BYTES}), created_at TEXT NOT NULL)`,
+  'CREATE INDEX IF NOT EXISTS idx_rooms_updated_at ON rooms(updated_at)',
+  'CREATE INDEX IF NOT EXISTS idx_maps_created_at ON maps(created_at)',
+  'CREATE INDEX IF NOT EXISTS idx_maps_views ON maps(views)',
+  'CREATE INDEX IF NOT EXISTS idx_maps_star_count ON maps(star_count)',
+  'CREATE INDEX IF NOT EXISTS idx_stars_map_id ON stars(map_id)',
+  'CREATE INDEX IF NOT EXISTS idx_stars_user_id ON stars(user_id)',
+];
 
 function randomId(length = 8) {
   return crypto.randomUUID().replace(/-/g, '').slice(0, length);
@@ -50,65 +66,107 @@ function mapRowToInfo(map: MapRow): CustomMapInfo {
   };
 }
 
+function byteLength(value: string) {
+  return textEncoder.encode(value).byteLength;
+}
+
 export class AppDurableObject extends DurableObject<Env> {
+  private initialization: Promise<void> | null = null;
+
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
-    ctx.blockConcurrencyWhile(async () => {
-      this.ctx.storage.sql.exec(`
-        CREATE TABLE IF NOT EXISTS rooms (
-          id TEXT PRIMARY KEY,
-          room_json TEXT NOT NULL,
-          updated_at INTEGER NOT NULL
-        );
-      `);
-      this.ctx.storage.sql.exec(`
-        CREATE TABLE IF NOT EXISTS maps (
-          id TEXT PRIMARY KEY,
-          name TEXT NOT NULL,
-          width INTEGER NOT NULL,
-          height INTEGER NOT NULL,
-          creator TEXT NOT NULL,
-          description TEXT NOT NULL,
-          map_tiles_data TEXT NOT NULL,
-          created_at TEXT NOT NULL,
-          views INTEGER NOT NULL DEFAULT 0,
-          star_count INTEGER NOT NULL DEFAULT 0
-        );
-      `);
-      this.ctx.storage.sql.exec(`
-        CREATE TABLE IF NOT EXISTS stars (
-          user_id TEXT NOT NULL,
-          map_id TEXT NOT NULL,
-          PRIMARY KEY(user_id, map_id)
-        );
-      `);
-      this.ctx.storage.sql.exec(`
-        CREATE TABLE IF NOT EXISTS replays (
-          id TEXT PRIMARY KEY,
-          replay_json TEXT NOT NULL,
-          created_at TEXT NOT NULL
-        );
-      `);
-      for (const roomId of seedRoomIds) {
-        const room = createDefaultRoom(roomId);
-        this.ctx.storage.sql.exec(
+  }
+
+  private async initialize() {
+    for (const statement of APP_SCHEMA_STATEMENTS) {
+      await this.env.DB.prepare(statement).run();
+    }
+    await this.seedRooms();
+  }
+
+  private async ensureInitialized() {
+    if (!this.initialization) {
+      this.initialization = this.initialize().catch((error) => {
+        console.error('AppDurableObject initialization failed', error);
+        this.initialization = null;
+        throw error;
+      });
+    }
+
+    await this.initialization;
+  }
+
+  private async queryAll<T>(query: string, ...values: unknown[]) {
+    const statement = this.env.DB.prepare(query);
+    const result =
+      values.length > 0
+        ? await statement.bind(...values).all<T>()
+        : await statement.all<T>();
+    return result.results;
+  }
+
+  private async queryFirst<T>(query: string, ...values: unknown[]) {
+    const statement = this.env.DB.prepare(query);
+    return values.length > 0
+      ? await statement.bind(...values).first<T>()
+      : await statement.first<T>();
+  }
+
+  private async execute(query: string, ...values: unknown[]) {
+    const statement = this.env.DB.prepare(query);
+    if (values.length > 0) {
+      await statement.bind(...values).run();
+      return;
+    }
+
+    await statement.run();
+  }
+
+  private async executeBatch(statements: D1PreparedStatement[]) {
+    if (statements.length === 0) {
+      return;
+    }
+
+    await this.env.DB.batch(statements);
+  }
+
+  private createSession() {
+    return this.env.DB.withSession('first-primary');
+  }
+
+  private async seedRooms() {
+    const statements = seedRoomIds.map((roomId) => {
+      const room = createDefaultRoom(roomId);
+      return this.env.DB
+        .prepare(
           `
-            INSERT INTO rooms (id, room_json, updated_at)
+            INSERT OR IGNORE INTO rooms (id, room_json, updated_at)
             VALUES (?, ?, ?)
-            ON CONFLICT(id) DO NOTHING
-          `,
+          `
+        )
+        .bind(
           room.id,
-          JSON.stringify(room),
+          JSON.stringify(cloneRoomSummary(room)),
           Date.now()
         );
-      }
     });
+
+    await this.executeBatch(statements);
+  }
+
+  private async getMapRow(
+    mapId: string,
+    executor: D1Executor = this.env.DB
+  ): Promise<MapRow | null> {
+    return await executor
+      .prepare('SELECT * FROM maps WHERE id = ?')
+      .bind(mapId)
+      .first<MapRow>();
   }
 
   async listRooms(): Promise<Record<string, PlainRoom>> {
-    const rows = this.ctx.storage.sql
-      .exec<RoomRow>('SELECT id, room_json FROM rooms')
-      .toArray();
+    await this.ensureInitialized();
+    const rows = await this.queryAll<RoomRow>('SELECT id, room_json FROM rooms');
 
     return rows.reduce<Record<string, PlainRoom>>((acc, row) => {
       acc[row.id] = JSON.parse(row.room_json) as PlainRoom;
@@ -117,9 +175,11 @@ export class AppDurableObject extends DurableObject<Env> {
   }
 
   async getRoom(roomId: string): Promise<PlainRoom | null> {
-    const row = this.ctx.storage.sql
-      .exec<RoomRow>('SELECT id, room_json FROM rooms WHERE id = ?', roomId)
-      .toArray()[0];
+    await this.ensureInitialized();
+    const row = await this.queryFirst<RoomRow>(
+      'SELECT id, room_json FROM rooms WHERE id = ?',
+      roomId
+    );
 
     if (!row) {
       return null;
@@ -129,7 +189,8 @@ export class AppDurableObject extends DurableObject<Env> {
   }
 
   async upsertRoom(room: PlainRoom): Promise<void> {
-    this.ctx.storage.sql.exec(
+    await this.ensureInitialized();
+    await this.execute(
       `
         INSERT INTO rooms (id, room_json, updated_at)
         VALUES (?, ?, ?)
@@ -144,9 +205,10 @@ export class AppDurableObject extends DurableObject<Env> {
   }
 
   async deleteRoom(roomId: string): Promise<void> {
+    await this.ensureInitialized();
     if (seedRoomIds.includes(roomId)) {
       const room = createDefaultRoom(roomId);
-      this.ctx.storage.sql.exec(
+      await this.execute(
         'UPDATE rooms SET room_json = ?, updated_at = ? WHERE id = ?',
         JSON.stringify(cloneRoomSummary(room)),
         Date.now(),
@@ -155,10 +217,11 @@ export class AppDurableObject extends DurableObject<Env> {
       return;
     }
 
-    this.ctx.storage.sql.exec('DELETE FROM rooms WHERE id = ?', roomId);
+    await this.execute('DELETE FROM rooms WHERE id = ?', roomId);
   }
 
   async createRoom(roomName = 'Untitled') {
+    await this.ensureInitialized();
     const roomId = randomId();
     const room = createDefaultRoom(roomId, roomName);
     await this.upsertRoom(cloneRoomSummary(room));
@@ -170,14 +233,15 @@ export class AppDurableObject extends DurableObject<Env> {
   }
 
   async listMaps(): Promise<CustomMapInfo[]> {
-    return this.ctx.storage.sql
-      .exec<MapRow>('SELECT * FROM maps ORDER BY created_at DESC')
-      .toArray()
-      .map(mapRowToInfo);
+    await this.ensureInitialized();
+    return (await this.queryAll<MapRow>('SELECT * FROM maps ORDER BY created_at DESC')).map(
+      mapRowToInfo
+    );
   }
 
   async createMap(map: CustomMapData) {
-    this.ctx.storage.sql.exec(
+    await this.ensureInitialized();
+    await this.execute(
       `
         INSERT INTO maps (
           id, name, width, height, creator, description, map_tiles_data, created_at, views, star_count
@@ -197,19 +261,19 @@ export class AppDurableObject extends DurableObject<Env> {
   }
 
   async getMap(mapId: string, incrementViews = true): Promise<CustomMapData | null> {
-    const row = this.ctx.storage.sql
-      .exec<MapRow>('SELECT * FROM maps WHERE id = ?', mapId)
-      .toArray()[0];
+    await this.ensureInitialized();
+    const session = this.createSession();
+    const row = await this.getMapRow(mapId, session);
 
     if (!row) {
       return null;
     }
 
     if (incrementViews) {
-      this.ctx.storage.sql.exec(
-        'UPDATE maps SET views = views + 1 WHERE id = ?',
-        mapId
-      );
+      await session
+        .prepare('UPDATE maps SET views = views + 1 WHERE id = ?')
+        .bind(mapId)
+        .run();
     }
 
     return {
@@ -224,31 +288,55 @@ export class AppDurableObject extends DurableObject<Env> {
   }
 
   async updateMap(mapId: string, map: CustomMapData) {
-    this.ctx.storage.sql.exec(
-      `
-        UPDATE maps
-        SET name = ?, width = ?, height = ?, creator = ?, description = ?, map_tiles_data = ?
-        WHERE id = ?
-      `,
-      map.name,
-      map.width,
-      map.height,
-      map.creator,
-      map.description,
-      JSON.stringify(map.mapTilesData),
-      mapId
-    );
+    await this.ensureInitialized();
+    const session = this.createSession();
+    await session
+      .prepare(
+        `
+          UPDATE maps
+          SET name = ?, width = ?, height = ?, creator = ?, description = ?, map_tiles_data = ?
+          WHERE id = ?
+        `
+      )
+      .bind(
+        map.name,
+        map.width,
+        map.height,
+        map.creator,
+        map.description,
+        JSON.stringify(map.mapTilesData),
+        mapId
+      )
+      .run();
 
-    return await this.getMap(mapId, false);
+    const row = await this.getMapRow(mapId, session);
+    if (!row) {
+      return null;
+    }
+
+    return {
+      id: row.id,
+      name: row.name,
+      width: row.width,
+      height: row.height,
+      creator: row.creator,
+      description: row.description,
+      mapTilesData: JSON.parse(row.map_tiles_data) as CustomMapData['mapTilesData'],
+    };
   }
 
   async deleteMap(mapId: string) {
-    this.ctx.storage.sql.exec('DELETE FROM maps WHERE id = ?', mapId);
-    this.ctx.storage.sql.exec('DELETE FROM stars WHERE map_id = ?', mapId);
+    await this.ensureInitialized();
+    await this.executeBatch([
+      this.env.DB.prepare('DELETE FROM maps WHERE id = ?').bind(mapId),
+      this.env.DB.prepare('DELETE FROM stars WHERE map_id = ?').bind(mapId),
+    ]);
+
     return { success: true };
   }
 
   async listMapsByOrder(order: 'new' | 'hot' | 'best') {
+    await this.ensureInitialized();
     const orderBy =
       order === 'new'
         ? 'created_at DESC'
@@ -256,15 +344,15 @@ export class AppDurableObject extends DurableObject<Env> {
           ? 'views DESC'
           : 'star_count DESC';
 
-    return this.ctx.storage.sql
-      .exec<MapRow>(`SELECT * FROM maps ORDER BY ${orderBy} LIMIT 25`)
-      .toArray()
-      .map(mapRowToInfo);
+    return (await this.queryAll<MapRow>(`SELECT * FROM maps ORDER BY ${orderBy} LIMIT 25`)).map(
+      mapRowToInfo
+    );
   }
 
   async searchMaps(term: string) {
-    return this.ctx.storage.sql
-      .exec<MapRow>(
+    await this.ensureInitialized();
+    return (
+      await this.queryAll<MapRow>(
         `
           SELECT * FROM maps
           WHERE name LIKE '%' || ? || '%' OR id = ?
@@ -274,32 +362,30 @@ export class AppDurableObject extends DurableObject<Env> {
         term,
         term
       )
-      .toArray()
-      .map(mapRowToInfo);
+    ).map(mapRowToInfo);
   }
 
   async toggleStar(userId: string, mapId: string, action: StarAction) {
-    const existing = this.ctx.storage.sql
-      .exec<{ user_id: string }>(
-        'SELECT user_id FROM stars WHERE user_id = ? AND map_id = ?',
-        userId,
-        mapId
-      )
-      .toArray()[0];
+    await this.ensureInitialized();
+    const session = this.createSession();
+    const existing = await session
+      .prepare('SELECT user_id FROM stars WHERE user_id = ? AND map_id = ?')
+      .bind(userId, mapId)
+      .first<{ user_id: string }>();
 
     if (action === 'increase') {
       if (existing) {
         return { ok: false, status: 400, error: 'You have already starred this map' };
       }
-      this.ctx.storage.sql.exec(
-        'INSERT INTO stars (user_id, map_id) VALUES (?, ?)',
-        userId,
-        mapId
-      );
-      this.ctx.storage.sql.exec(
-        'UPDATE maps SET star_count = star_count + 1 WHERE id = ?',
-        mapId
-      );
+
+      await session
+        .prepare('INSERT INTO stars (user_id, map_id) VALUES (?, ?)')
+        .bind(userId, mapId)
+        .run();
+      await session
+        .prepare('UPDATE maps SET star_count = star_count + 1 WHERE id = ?')
+        .bind(mapId)
+        .run();
       return { ok: true, status: 200 };
     }
 
@@ -307,46 +393,60 @@ export class AppDurableObject extends DurableObject<Env> {
       return { ok: false, status: 400, error: 'You have not starred this map yet' };
     }
 
-    this.ctx.storage.sql.exec(
-      'DELETE FROM stars WHERE user_id = ? AND map_id = ?',
-      userId,
-      mapId
-    );
-    this.ctx.storage.sql.exec(
-      'UPDATE maps SET star_count = MAX(star_count - 1, 0) WHERE id = ?',
-      mapId
-    );
+    await session
+      .prepare('DELETE FROM stars WHERE user_id = ? AND map_id = ?')
+      .bind(userId, mapId)
+      .run();
+    await session
+      .prepare('UPDATE maps SET star_count = MAX(star_count - 1, 0) WHERE id = ?')
+      .bind(mapId)
+      .run();
     return { ok: true, status: 200 };
   }
 
   async getStarredMaps(userId: string) {
-    return this.ctx.storage.sql
-      .exec<{ map_id: string }>(
+    await this.ensureInitialized();
+    return (
+      await this.queryAll<{ map_id: string }>(
         'SELECT map_id FROM stars WHERE user_id = ?',
         userId
       )
-      .toArray()
-      .map((row) => row.map_id);
+    ).map((row) => row.map_id);
   }
 
-  async saveReplay(replay: unknown): Promise<string> {
+  async saveReplay(replay: unknown): Promise<string | null> {
+    await this.ensureInitialized();
+    const replayJson = JSON.stringify(replay);
+    const sizeBytes = byteLength(replayJson);
+
+    if (sizeBytes >= REPLAY_MAX_BYTES) {
+      console.warn('Skipping oversized replay', {
+        sizeBytes,
+        limitBytes: REPLAY_MAX_BYTES,
+      });
+      return null;
+    }
+
     const replayId = randomId(10);
-    this.ctx.storage.sql.exec(
+    await this.execute(
       `
-        INSERT INTO replays (id, replay_json, created_at)
-        VALUES (?, ?, ?)
+        INSERT INTO replays (id, replay_json, size_bytes, created_at)
+        VALUES (?, ?, ?, ?)
       `,
       replayId,
-      JSON.stringify(replay),
+      replayJson,
+      sizeBytes,
       new Date().toISOString()
     );
     return replayId;
   }
 
   async getReplay(replayId: string) {
-    const row = this.ctx.storage.sql
-      .exec<ReplayRow>('SELECT replay_json FROM replays WHERE id = ?', replayId)
-      .toArray()[0];
+    await this.ensureInitialized();
+    const row = await this.queryFirst<ReplayRow>(
+      'SELECT replay_json, size_bytes FROM replays WHERE id = ?',
+      replayId
+    );
 
     if (!row) {
       return null;

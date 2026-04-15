@@ -15,6 +15,13 @@
     "directory": "./dist/client",
     "binding": "ASSETS"
   },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "blockwar-db",
+      "database_id": "415d741c-c76c-4be6-b10a-a11180f50cdc"
+    }
+  ],
   "durable_objects": {
     "bindings": [
       {

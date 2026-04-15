@@ -4,8 +4,7 @@ import { io } from 'socket.io-client';
 import { useTranslation } from 'next-i18next';
 import ChatBox from '@/components/ChatBox';
 import Navbar from '@/components/Navbar';
-
-import { Snackbar, Alert, AlertTitle } from '@mui/material';
+import Toast from '@/components/ui/Toast';
 
 import {
   Room,
@@ -249,7 +248,7 @@ function GamingRoom() {
       setRoomUiStatus(RoomUiStatus.gameOverConfirm);
       setDialogContent([[capturedBy], 'game_over', null]);
     });
-    socket.on('game_ended', (winner: [UserData], replayLink: string) => {
+    socket.on('game_ended', (winner: [UserData], replayLink: string | null) => {
       console.log(`game_ended: ${winner.map((x) => x.username)} ${replayLink}`);
       setDialogContent([winner, 'game_ended', replayLink]);
       setOpenOverDialog(true);
@@ -371,18 +370,16 @@ function GamingRoom() {
 
   return (
     <div className='app-container'>
-      <Snackbar
+      <Toast
         open={snackState.open}
-        autoHideDuration={snackState.duration}
+        duration={snackState.duration}
+        status={snackState.status}
+        title={snackState.title}
+        message={snackState.message}
         onClose={() => {
           snackStateDispatch({ type: 'toggle' });
         }}
-      >
-        <Alert severity={snackState.status} sx={{ width: '100%' }}>
-          <AlertTitle>{snackState.title}</AlertTitle>
-          {snackState.message}
-        </Alert>
-      </Snackbar>
+      />
       {roomUiStatus === RoomUiStatus.gameSetting && (
         <div>
           <Navbar />

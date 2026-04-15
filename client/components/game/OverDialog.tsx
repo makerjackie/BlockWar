@@ -35,9 +35,7 @@ export default function OverDialog() {
 
   useEffect(() => {
     const [, currentStatus, currentReplayLink] = dialogContent;
-    if (currentStatus === 'game_ended' && currentReplayLink) {
-      setReplayLink(currentReplayLink);
-    }
+    setReplayLink(currentStatus === 'game_ended' ? currentReplayLink ?? '' : '');
   }, [dialogContent]);
 
   const handleExit = () => {

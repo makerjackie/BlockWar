@@ -1,7 +1,7 @@
 # BlockWar / 方块战争
 
 <h1 align="center">
-  <img src="client/public/img/favicon.png" style="height: 90px;" alt="BlockWar">
+  <img src="client/public/img/blockwar-logo.png" style="height: 90px;" alt="BlockWar">
   <br>
   <strong>BlockWar / 方块战争</strong>
 </h1>
@@ -9,11 +9,11 @@
 > 一个部署在 Cloudflare 上的实时多人策略小游戏，灵感来自 generals.io。
 
 <h5 align="center">
-<img src="gennia-pc.png" width="400" >
+<img src="blockwar-pc.png" width="400" >
 
 BlockWar desktop demo
 
-<img src="gennia-mobile.png" width="300" >
+<img src="blockwar-mobile.png" width="300" >
 
 BlockWar mobile demo
 </h5>

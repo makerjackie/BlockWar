@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'next-i18next';
-import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
 import PingTest from '@/components/PingTest';
+import { ArrowLeft } from 'lucide-react';
 
 interface TurnsCountProps {
   count: number;
@@ -31,7 +31,7 @@ function TurnsCount(props: TurnsCountProps) {
           onClick={handleReturnClick}
           aria-label='Back'
         >
-          <ArrowBackRoundedIcon fontSize='small' />
+          <ArrowLeft size={18} strokeWidth={2.5} />
         </button>
         <div className='pr-1 text-sm font-black uppercase tracking-[0.18em] text-zinc-100'>
           {t('turn')}: {displayTurnsCount}

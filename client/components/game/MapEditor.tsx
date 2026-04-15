@@ -35,9 +35,6 @@ import {
 } from '@/lib/types';
 import CustomMapTile from '@/components/game/CustomMapTile';
 import { useTranslation } from 'next-i18next';
-import LightbulbOutlinedIcon from '@mui/icons-material/LightbulbOutlined';
-import ClearIcon from '@mui/icons-material/Clear';
-import { AspectRatioRounded, InfoRounded } from '@mui/icons-material';
 import { snackStateReducer } from '@/context/GameReducer';
 import useMap from '@/hooks/useMap';
 import MapExplorer from '@/components/game/MapExplorer';
@@ -46,6 +43,12 @@ import PublishMapDialog from '@/components/PublishMapDialog';
 import ReactMarkdown from 'react-markdown';
 import { v4 as uuidv4 } from 'uuid';
 import styled from '@emotion/styled';
+import {
+  Eraser,
+  Info,
+  Lightbulb,
+  Scaling,
+} from 'lucide-react';
 
 const name2TileType: Record<string, TileType> = {
   king: TileType.King,
@@ -641,7 +644,7 @@ function MapEditor({ editMode }: { editMode: boolean }) {
             }}
           >
             <CardHeader
-              avatar={<InfoRounded />}
+              avatar={<Info size={18} strokeWidth={2.25} />}
               title={t('basic-info')}
               sx={{ paddingBottom: 0 }}
             />
@@ -683,7 +686,10 @@ function MapEditor({ editMode }: { editMode: boolean }) {
               width: '100%',
             }}
           >
-            <CardHeader avatar={<AspectRatioRounded />} title={t('map-size')} />
+            <CardHeader
+              avatar={<Scaling size={18} strokeWidth={2.25} />}
+              title={t('map-size')}
+            />
             <CardContent
               sx={{
                 display: 'flex',
@@ -810,13 +816,7 @@ function MapEditor({ editMode }: { editMode: boolean }) {
                 }}
               >
                 {property === 'revealed' ? (
-                  <LightbulbOutlinedIcon
-                    sx={{
-                      width: 30,
-                      height: 30,
-                      color: '#fff !important',
-                    }}
-                  />
+                  <Lightbulb size={28} strokeWidth={2.25} className='text-white' />
                 ) : (
                   <TextField
                     id={property}
@@ -847,14 +847,7 @@ function MapEditor({ editMode }: { editMode: boolean }) {
                 setMapData(getNewMapData());
               }}
             >
-              <ClearIcon
-                sx={{
-                  width: 30,
-                  height: 30,
-                  color: 'red !important',
-                  cursor: 'pointer',
-                }}
-              />
+              <Eraser size={28} strokeWidth={2.25} className='text-red-400' />
               <Typography align='center' color='white' fontSize='8rm'>
                 {t('clear-all')}
               </Typography>

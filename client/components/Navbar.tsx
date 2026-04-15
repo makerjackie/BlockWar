@@ -1,13 +1,12 @@
-import MenuIcon from '@mui/icons-material/Menu';
-import {
-  BookRounded,
-  FeedbackRounded,
-  Contacts,
-  GitHub,
-  HomeRounded,
-} from '@mui/icons-material';
-
 import { useState } from 'react';
+import {
+  BookOpen,
+  GitFork,
+  House,
+  Menu,
+  MessageSquareWarning,
+  Users,
+} from 'lucide-react';
 
 import { useTranslation } from 'next-i18next';
 import { useRouter } from 'next/router';
@@ -16,26 +15,26 @@ import HowToPlay from './HowToPlay';
 import Link from 'next/link';
 
 const navItems = [
-  { href: '/', label: 'home', icon: <HomeRounded fontSize='small' /> },
+  { href: '/', label: 'home', icon: <House size={16} strokeWidth={2.25} /> },
   {
     href: 'https://github.com/makerjackie/BlockWar#readme',
     label: 'wiki',
-    icon: <BookRounded fontSize='small' />,
+    icon: <BookOpen size={16} strokeWidth={2.25} />,
   },
   {
     href: 'https://github.com/makerjackie/BlockWar',
     label: 'github',
-    icon: <GitHub fontSize='small' />,
+    icon: <GitFork size={16} strokeWidth={2.25} />,
   },
   {
     href: 'https://github.com/makerjackie/BlockWar/issues',
     label: 'feedback',
-    icon: <FeedbackRounded fontSize='small' />,
+    icon: <MessageSquareWarning size={16} strokeWidth={2.25} />,
   },
   {
     href: 'http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=VAwNA8NiYUMsPHrBxLso-t09saGZCT14&authKey=fFpto%2Ff%2FhNUpcxZhSVZt6msLOZrMhW3e14mypEBlO3Ih7PdqOmXq%2FQ0OlV3D%2BuyO&noverify=0&group_code=374889821',
     label: 'qq-group',
-    icon: <Contacts fontSize='small' />,
+    icon: <Users size={16} strokeWidth={2.25} />,
   },
 ];
 
@@ -126,7 +125,7 @@ function Navbar() {
           className='grid size-11 place-items-center border border-zinc-500/50 bg-zinc-950 text-zinc-50 md:hidden'
           onClick={() => setIsNavOpen((value) => !value)}
         >
-          <MenuIcon />
+          <Menu size={18} strokeWidth={2.5} />
         </button>
       </div>
 

@@ -6,7 +6,7 @@ import {
   TileType2Image,
 } from '@/lib/types';
 import { ColorArr } from '@/lib/constants';
-import LightbulbOutlinedIcon from '@mui/icons-material/LightbulbOutlined';
+import { Lightbulb } from 'lucide-react';
 import {
   defaultBgcolor,
   notRevealedFill,
@@ -157,14 +157,16 @@ export default React.memo(function CustomMapTile(props: CustomMapTileProps) {
       )}
 
       {isAlwaysRevealed && (
-        <LightbulbOutlinedIcon
+        <Lightbulb
           style={{
             position: 'absolute',
             top: 0,
             right: 0,
             width: zoomedSize * 0.5,
             height: zoomedSize * 0.5,
+            color: '#f5c542',
           }}
+          strokeWidth={2.4}
         />
       )}
     </div>

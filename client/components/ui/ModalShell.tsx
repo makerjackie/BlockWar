@@ -1,5 +1,5 @@
 import { ReactNode, useEffect } from 'react';
-import ClearIcon from '@mui/icons-material/Clear';
+import { X } from 'lucide-react';
 
 interface ModalShellProps {
   open: boolean;
@@ -64,7 +64,7 @@ export default function ModalShell({
                 onClick={onClose}
                 aria-label='Close dialog'
               >
-                <ClearIcon fontSize='small' />
+                <X size={18} strokeWidth={2.5} />
               </button>
             )}
           </div>

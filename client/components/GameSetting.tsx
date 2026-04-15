@@ -1,14 +1,16 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/router';
-import ClearIcon from '@mui/icons-material/Clear';
-import ShareIcon from '@mui/icons-material/Share';
-import TerrainIcon from '@mui/icons-material/Terrain';
-import LocationCityIcon from '@mui/icons-material/LocationCity';
-import WaterIcon from '@mui/icons-material/Water';
-import GroupIcon from '@mui/icons-material/Group';
-import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
 import Link from 'next/link';
 import { useTranslation } from 'next-i18next';
+import {
+  ArrowLeft,
+  Castle,
+  Mountain,
+  Share2,
+  Trash2,
+  Users,
+  Waves,
+} from 'lucide-react';
 
 import SliderBox from './SliderBox';
 import PlayerTable from './PlayerTable';
@@ -183,7 +185,7 @@ const GameSetting: React.FC<GameSettingProps> = () => {
               onClick={handleLeaveRoom}
               aria-label='Leave room'
             >
-              <ArrowBackRoundedIcon fontSize='small' />
+              <ArrowLeft size={18} strokeWidth={2.5} />
             </button>
 
             <div className='min-w-0'>
@@ -229,7 +231,7 @@ const GameSetting: React.FC<GameSettingProps> = () => {
             }}
             aria-label='Copy share link'
           >
-            <ShareIcon fontSize='small' />
+            <Share2 size={18} strokeWidth={2.5} />
           </button>
         </div>
 
@@ -251,7 +253,7 @@ const GameSetting: React.FC<GameSettingProps> = () => {
                   onClick={clearRoomMap}
                   aria-label='Clear room map'
                 >
-                  <ClearIcon fontSize='small' />
+                  <Trash2 size={17} strokeWidth={2.5} />
                 </button>
               )}
             </div>
@@ -355,21 +357,21 @@ const GameSetting: React.FC<GameSettingProps> = () => {
                 value={room.mountain}
                 disabled={disabledUi}
                 handleChange={handleSettingChange('mountain')}
-                icon={<TerrainIcon fontSize='small' />}
+                icon={<Mountain size={16} strokeWidth={2.25} />}
               />
               <SliderBox
                 label={t('city')}
                 value={room.city}
                 disabled={disabledUi}
                 handleChange={handleSettingChange('city')}
-                icon={<LocationCityIcon fontSize='small' />}
+                icon={<Castle size={16} strokeWidth={2.25} />}
               />
               <SliderBox
                 label={t('swamp')}
                 value={room.swamp}
                 disabled={disabledUi}
                 handleChange={handleSettingChange('swamp')}
-                icon={<WaterIcon fontSize='small' />}
+                icon={<Waves size={16} strokeWidth={2.25} />}
               />
             </div>
           </TabPanel>
@@ -437,7 +439,7 @@ const GameSetting: React.FC<GameSettingProps> = () => {
 
       <section className='menu-container mt-4 overflow-hidden'>
         <div className='flex items-center gap-3 border-b border-zinc-800 px-4 py-4'>
-          <GroupIcon className='text-yellow-300' />
+          <Users className='text-yellow-300' size={18} strokeWidth={2.25} />
           <div>
             <p className='bw-page-copy'>Roster</p>
             <h3 className='text-lg font-black text-zinc-50'>{t('players')}</h3>

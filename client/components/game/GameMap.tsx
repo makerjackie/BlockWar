@@ -3,20 +3,23 @@ import useMap from '@/hooks/useMap';
 import { Position, SelectedMapTileInfo, TileProp, TileType } from '@/lib/types';
 import usePossibleNextMapPositions from '@/lib/use-possible-next-map-positions';
 import { getPlayerIndex } from '@/lib/utils';
-import { ZoomInMap, ZoomOutMap } from '@mui/icons-material';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
-import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
-import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
-import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
-import ChevronRightIcon from '@mui/icons-material/ChevronRight';
-import ClearIcon from '@mui/icons-material/Clear';
-import HomeIcon from '@mui/icons-material/Home';
-import UndoIcon from '@mui/icons-material/Undo';
 import { Box, IconButton, Tooltip, Typography } from '@mui/material';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import { useTranslation } from 'next-i18next';
 import { MutableRefObject, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  ArrowDown,
+  ArrowLeft,
+  ArrowRight,
+  ArrowUp,
+  ChevronLeft,
+  ChevronRight,
+  Home,
+  RotateCcw,
+  Trash2,
+  ZoomIn,
+  ZoomOut,
+} from 'lucide-react';
 import MapTile from './MapTile';
 function GameMap() {
   const {
@@ -415,17 +418,17 @@ function GameMap() {
         >
           <Tooltip title={t('howToPlay.centerGeneral')} placement='top'>
             <IconButton onClick={centerGeneral}>
-              <HomeIcon />
+              <Home size={18} strokeWidth={2.5} />
             </IconButton>
           </Tooltip>
           <Tooltip title={t('howToPlay.undoMove')} placement='top'>
             <IconButton onClick={popQueue}>
-              <UndoIcon />
+              <RotateCcw size={18} strokeWidth={2.5} />
             </IconButton>
           </Tooltip>
           <Tooltip title={t('howToPlay.clearQueuedMoves')} placement='top'>
             <IconButton onClick={clearQueue}>
-              <ClearIcon />
+              <Trash2 size={18} strokeWidth={2.5} />
             </IconButton>
           </Tooltip>
           <Tooltip title={t('howToPlay.toggle50')} placement='top'>
@@ -438,18 +441,22 @@ function GameMap() {
               setZoom((z) => z - 0.2);
             }}
           >
-            <ZoomInMap />
+            <ZoomIn size={18} strokeWidth={2.5} />
           </IconButton>
           <IconButton
             onClick={() => {
               setZoom((z) => z + 0.2);
             }}
           >
-            <ZoomOutMap />
+            <ZoomOut size={18} strokeWidth={2.5} />
           </IconButton>
           <Tooltip title={t('expandWSAD')} placement='top'>
             <IconButton onClick={toggleDirections}>
-              {showDirections ? <ChevronLeftIcon /> : <ChevronRightIcon />}
+              {showDirections ? (
+                <ChevronLeft size={18} strokeWidth={2.5} />
+              ) : (
+                <ChevronRight size={18} strokeWidth={2.5} />
+              )}
             </IconButton>
           </Tooltip>
         </Box>
@@ -474,7 +481,7 @@ function GameMap() {
             }}
           >
             <IconButton onClick={() => attackUp(selectedMapTileInfo)} className='attack-button'>
-              <ArrowUpwardIcon />
+              <ArrowUp size={18} strokeWidth={2.5} />
             </IconButton>
             <Box
               sx={{
@@ -488,16 +495,16 @@ function GameMap() {
                 },
                 justifyContent: 'space-between',
               }}
-            >
-              <IconButton onClick={() => attackLeft(selectedMapTileInfo)} className='attack-button'>
-                <ArrowBackIcon />
+              >
+                <IconButton onClick={() => attackLeft(selectedMapTileInfo)} className='attack-button'>
+                <ArrowLeft size={18} strokeWidth={2.5} />
               </IconButton>
               <IconButton onClick={() => attackRight(selectedMapTileInfo)} className='attack-button'>
-                <ArrowForwardIcon />
+                <ArrowRight size={18} strokeWidth={2.5} />
               </IconButton>
             </Box>
             <IconButton onClick={() => attackDown(selectedMapTileInfo)} className='attack-button'>
-              <ArrowDownwardIcon />
+              <ArrowDown size={18} strokeWidth={2.5} />
             </IconButton>
           </Box>
         </Box>

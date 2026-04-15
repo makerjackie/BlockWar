@@ -1,11 +1,14 @@
 import { useEffect, useCallback, useState, memo } from 'react';
 import { useRouter } from 'next/router';
 import { CustomMapInfo } from '@/lib/types';
-import StarRoundedIcon from '@mui/icons-material/StarRounded';
-import StarBorderRoundedIcon from '@mui/icons-material/StarBorderRounded';
-import VisibilityIcon from '@mui/icons-material/Visibility';
-import { AspectRatioRounded, SearchRounded } from '@mui/icons-material';
 import { useTranslation } from 'next-i18next';
+import {
+  Eye,
+  Search,
+  Star,
+  StarOff,
+  Scaling,
+} from 'lucide-react';
 
 interface ListItemProps {
   endpoint: string;
@@ -38,18 +41,22 @@ const ListItem = memo<ListItemProps>(function MemoItems(props) {
           className={`bw-button min-h-10 px-3 text-xs ${starred ? 'bw-button-primary' : 'bw-button-secondary'}`}
           onClick={() => handleStarClick(map.id)}
         >
-          {starred ? <StarRoundedIcon fontSize='small' /> : <StarBorderRoundedIcon fontSize='small' />}
+          {starred ? (
+            <Star size={16} strokeWidth={2.25} />
+          ) : (
+            <StarOff size={16} strokeWidth={2.25} />
+          )}
           {map.starCount}
         </button>
       </div>
 
       <div className='mt-4 flex items-center justify-between gap-4 text-sm text-zinc-400'>
         <div className='flex items-center gap-2'>
-          <VisibilityIcon fontSize='small' />
+          <Eye size={16} strokeWidth={2.25} />
           <span>{map.views}</span>
         </div>
         <div className='flex items-center gap-2'>
-          <AspectRatioRounded fontSize='small' />
+          <Scaling size={16} strokeWidth={2.25} />
           <span>
             {map.width} x {map.height}
           </span>
@@ -190,7 +197,11 @@ export default function MapExplorer({ userId, onSelect }: MapExplorerProps) {
 
       {tabIndex === 3 && (
         <label className='relative block'>
-          <SearchRounded className='pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500' />
+          <Search
+            className='pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500'
+            size={16}
+            strokeWidth={2.25}
+          />
           <input
             className='bw-input pl-10 text-left'
             placeholder='Search'

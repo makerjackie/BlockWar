@@ -8,11 +8,11 @@ import React, {
 import { useRouter } from 'next/router';
 
 import {
-  FastRewindRounded,
-  PlayArrowRounded,
-  PauseRounded,
-  FastForwardRounded,
-} from '@mui/icons-material';
+  Pause,
+  Play,
+  SkipBack,
+  SkipForward,
+} from 'lucide-react';
 import { mapDataReducer } from '@/context/GameReducer';
 import CustomMapTile from '@/components/game/CustomMapTile';
 import { ReplaySpeedOptions } from '@/lib/constants';
@@ -249,14 +249,18 @@ export default function GameReplay() {
               disabled={turnsCount === 1}
               onClick={() => changeTurn(turnsCount > 1 ? turnsCount - 1 : 1)}
             >
-              <FastRewindRounded />
+              <SkipBack size={18} strokeWidth={2.5} />
             </button>
             <button
               type='button'
               className='grid size-12 place-items-center border border-zinc-100 bg-zinc-100 text-zinc-950 shadow-[4px_4px_0_#000]'
               onClick={() => setIsPlay((value) => !value)}
             >
-              {isPlay ? <PauseRounded /> : <PlayArrowRounded />}
+              {isPlay ? (
+                <Pause size={18} strokeWidth={2.5} />
+              ) : (
+                <Play size={18} strokeWidth={2.5} />
+              )}
             </button>
             <button
               type='button'
@@ -266,7 +270,7 @@ export default function GameReplay() {
                 changeTurn(turnsCount < maxTurn ? turnsCount + 1 : maxTurn)
               }
             >
-              <FastForwardRounded />
+              <SkipForward size={18} strokeWidth={2.5} />
             </button>
           </div>
 

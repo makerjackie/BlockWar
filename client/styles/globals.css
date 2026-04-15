@@ -4,8 +4,8 @@
 @source "../../src/**/*.{ts,tsx}";
 
 @theme {
-  --font-sans: "Noto Sans SC", "Avenir Next", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Arial Black", "Noto Sans SC", "Avenir Next", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: Inter, "SF Pro Text", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", "Source Han Sans SC", ui-sans-serif, system-ui, sans-serif;
+  --font-display: Inter, "SF Pro Display", "SF Pro Text", -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", "Source Han Sans SC", ui-sans-serif, system-ui, sans-serif;
   --color-war-bg: #07080a;
   --color-war-panel: #101216;
   --color-war-line: #3f3f46;
@@ -21,16 +21,16 @@
   --bw-bg-soft: #101216;
   --bw-panel: rgb(12 13 16 / 88%);
   --bw-panel-strong: rgb(7 8 10 / 94%);
-  --bw-line: rgb(161 161 170 / 28%);
-  --bw-line-strong: rgb(244 244 245 / 72%);
+  --bw-line: rgb(244 244 245 / 34%);
+  --bw-line-strong: rgb(244 244 245 / 92%);
   --bw-ink: #f4f4f5;
   --bw-muted: #a1a1aa;
   --bw-ember: #f5c542;
   --bw-red: #ef4444;
   --bw-green: #68d391;
   --bw-blue: #60a5fa;
-  --bw-shadow: 8px 8px 0 rgb(0 0 0 / 78%);
-  --bw-shadow-soft: 0 18px 60px rgb(0 0 0 / 42%);
+  --bw-shadow: 10px 10px 0 rgb(0 0 0 / 86%);
+  --bw-shadow-soft: 0 22px 80px rgb(0 0 0 / 54%);
 }
 
 html,
@@ -62,6 +62,7 @@ body {
     linear-gradient(135deg, #090a0d 0%, #111318 44%, #050608 100%);
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 body::before {
@@ -128,19 +129,22 @@ select {
 
   .bw-panel,
   .menu-container {
-    @apply border border-zinc-500/30 bg-zinc-950/85 text-zinc-100 backdrop-blur-xl;
+    @apply border bg-zinc-950/88 text-zinc-100 backdrop-blur-xl;
+    border-color: var(--bw-line);
     border-radius: 2px;
     box-shadow: var(--bw-shadow-soft);
   }
 
   .bw-panel-hard {
-    @apply border border-zinc-100/80 bg-zinc-950/95 text-zinc-50;
+    @apply border bg-zinc-950/96 text-zinc-50;
+    border-color: var(--bw-line-strong);
     border-radius: 0;
     box-shadow: var(--bw-shadow);
   }
 
   .bw-card-grid {
-    @apply relative overflow-hidden border border-zinc-500/30 bg-zinc-950/85 p-5 text-zinc-100 backdrop-blur-xl;
+    @apply relative overflow-hidden border bg-zinc-950/90 p-5 text-zinc-100 backdrop-blur-xl;
+    border-color: var(--bw-line-strong);
     border-radius: 2px;
     box-shadow: var(--bw-shadow);
   }
@@ -159,8 +163,9 @@ select {
   }
 
   .bw-brand-mark {
-    @apply grid size-11 shrink-0 place-items-center border border-zinc-100 bg-zinc-950;
-    box-shadow: 4px 4px 0 #000;
+    @apply grid size-11 shrink-0 place-items-center border bg-zinc-950;
+    border-color: var(--bw-line-strong);
+    box-shadow: 5px 5px 0 #000;
   }
 
   .bw-brand-text {
@@ -174,22 +179,27 @@ select {
   }
 
   .bw-button-primary {
-    @apply border-zinc-100 bg-zinc-100 text-zinc-950 hover:-translate-y-0.5 hover:bg-yellow-300 active:translate-y-0;
-    box-shadow: 5px 5px 0 #000;
+    @apply bg-zinc-100 text-zinc-950 hover:-translate-y-0.5 hover:bg-yellow-300 active:translate-y-0;
+    border-color: var(--bw-line-strong);
+    box-shadow: 6px 6px 0 #000;
   }
 
   .bw-button-secondary {
-    @apply border-zinc-500/70 bg-zinc-950/80 text-zinc-50 hover:border-zinc-100 hover:bg-zinc-900 active:bg-zinc-800;
+    @apply bg-zinc-950/88 text-zinc-50 hover:bg-zinc-900 active:bg-zinc-800;
+    border-color: var(--bw-line);
+    box-shadow: 4px 4px 0 rgb(0 0 0 / 74%);
   }
 
   .bw-button-danger {
     @apply border-red-400 bg-red-500 text-zinc-950 hover:bg-red-300;
-    box-shadow: 5px 5px 0 #000;
+    box-shadow: 6px 6px 0 #000;
   }
 
   .bw-input {
-    @apply h-12 w-full border border-zinc-500/50 bg-zinc-950/90 px-4 text-center text-base font-bold text-zinc-50 placeholder:text-zinc-500;
+    @apply h-12 w-full border bg-zinc-950/94 px-4 text-center text-base font-bold text-zinc-50 placeholder:text-zinc-500;
+    border-color: var(--bw-line);
     border-radius: 0;
+    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 6%);
   }
 
   .bw-input:focus {
@@ -203,14 +213,17 @@ select {
   }
 
   .dock {
-    @apply mx-auto flex h-[60px] w-full max-w-6xl items-center justify-between border-x border-b border-zinc-500/40 bg-zinc-950/88 px-3 text-zinc-50 backdrop-blur-xl md:px-5;
+    @apply mx-auto flex h-[60px] w-full max-w-6xl items-center justify-between border-x border-b bg-zinc-950/92 px-3 text-zinc-50 backdrop-blur-xl md:px-5;
+    border-color: var(--bw-line);
     border-radius: 0;
-    box-shadow: 0 12px 40px rgb(0 0 0 / 42%);
+    box-shadow: 0 12px 40px rgb(0 0 0 / 52%);
   }
 
   .navbar-language-switch {
-    @apply h-10 border border-zinc-500/40 bg-zinc-950/80 text-zinc-50;
+    @apply h-10 border bg-zinc-950/92 text-zinc-50;
+    border-color: var(--bw-line);
     border-radius: 0;
+    box-shadow: 4px 4px 0 rgb(0 0 0 / 72%);
   }
 
   #navbar-link {
@@ -218,14 +231,17 @@ select {
   }
 
   .attack-button {
-    @apply m-1 border border-zinc-100 bg-zinc-950/90 text-zinc-50 backdrop-blur-md transition hover:bg-yellow-300 hover:text-zinc-950;
+    @apply m-1 border bg-zinc-950/92 text-zinc-50 backdrop-blur-md transition hover:bg-yellow-300 hover:text-zinc-950;
+    border-color: var(--bw-line-strong);
     border-radius: 0 !important;
-    box-shadow: 4px 4px 0 #000;
+    box-shadow: 5px 5px 0 #000;
   }
 
   .icon-box {
-    @apply my-1 flex cursor-pointer flex-col items-center border border-zinc-500/30 p-1 text-zinc-100 transition hover:border-yellow-300;
+    @apply my-1 flex cursor-pointer flex-col items-center border p-1 text-zinc-100 transition hover:border-yellow-300;
+    border-color: var(--bw-line);
     border-radius: 0;
+    box-shadow: 4px 4px 0 rgb(0 0 0 / 66%);
   }
 
   .queue_up::before,
@@ -331,7 +347,7 @@ select {
 .MuiButton-contained {
   color: #09090b !important;
   background: #f4f4f5 !important;
-  box-shadow: 5px 5px 0 #000 !important;
+  box-shadow: 6px 6px 0 #000 !important;
 }
 
 .MuiButton-containedPrimary:hover,
@@ -343,6 +359,7 @@ select {
   color: #f4f4f5 !important;
   border: 1px solid var(--bw-line) !important;
   background: #18181b !important;
+  box-shadow: 4px 4px 0 rgb(0 0 0 / 74%) !important;
 }
 
 .MuiButton-outlined {

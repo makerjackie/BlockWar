@@ -3,8 +3,7 @@ import { useRouter } from 'next/router';
 import { Snackbar, Alert } from '@mui/material';
 import { Room, RoomPool } from '@/lib/types';
 import { useTranslation } from 'next-i18next';
-import StorageIcon from '@mui/icons-material/Storage';
-import { AddHomeOutlined, MapOutlined } from '@mui/icons-material';
+import { HardDrive, Plus, Map as MapIcon } from 'lucide-react';
 
 function Lobby() {
   const [rooms, setRooms] = useState<RoomPool>({});
@@ -108,7 +107,7 @@ function Lobby() {
 
             <div className='menu-container relative mb-4 flex items-center justify-between gap-4 overflow-hidden p-4'>
               <div className='relative z-10 flex min-w-0 items-center gap-3'>
-                <StorageIcon className='text-yellow-300' />
+                <HardDrive className='text-yellow-300' size={18} strokeWidth={2.25} />
                 <div className='min-w-0'>
                   <div className='text-xs font-black uppercase tracking-[0.24em] text-zinc-500'>
                     {t('gserver')}
@@ -194,7 +193,7 @@ function Lobby() {
                 className='bw-button bw-button-primary w-full'
                 onClick={handleCreateRoomClick}
               >
-                <AddHomeOutlined fontSize='small' />
+                <Plus size={16} strokeWidth={2.5} />
                 {t('create-room')}
               </button>
               <button
@@ -204,7 +203,7 @@ function Lobby() {
                   router.push('/mapcreator');
                 }}
               >
-                <MapOutlined fontSize='small' />
+                <MapIcon size={16} strokeWidth={2.5} />
                 {t('create-map')}
               </button>
             </div>

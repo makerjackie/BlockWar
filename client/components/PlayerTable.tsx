@@ -1,5 +1,5 @@
-import StarsRoundedIcon from '@mui/icons-material/StarsRounded';
 import { useTranslation } from 'next-i18next';
+import { Crown } from 'lucide-react';
 
 import { Player } from '@/lib/types';
 import { ColorArr, MaxTeamNum, WarringStates } from '@/lib/constants';
@@ -69,7 +69,11 @@ function PlayerTable(props: PlayerTableProps) {
                   >
                     <span className='flex min-w-0 items-center gap-2'>
                       {player.isRoomHost ? (
-                        <StarsRoundedIcon sx={{ color: textColor, fontSize: 18 }} />
+                        <Crown
+                          size={16}
+                          strokeWidth={2.25}
+                          style={{ color: textColor }}
+                        />
                       ) : null}
                       <span
                         className='truncate text-sm font-black'

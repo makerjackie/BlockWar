@@ -17,7 +17,7 @@ import {
 } from '@/lib/constants';
 
 interface CustomMapTileProps {
-  zoom: number;
+  zoom?: number;
   size: number;
   tile: DisplayCustomMapTileData;
   x: number;
@@ -29,7 +29,7 @@ interface CustomMapTileProps {
 
 export default React.memo(function CustomMapTile(props: CustomMapTileProps) {
   const {
-    zoom,
+    zoom = 1,
     size,
     x,
     y,
@@ -98,6 +98,7 @@ export default React.memo(function CustomMapTile(props: CustomMapTileProps) {
         width: zoomedSize,
         height: zoomedSize,
         backgroundColor: defaultBgcolor,
+        cursor: handleClick ? 'pointer' : 'default',
       }}
       onClick={handleClick}
     >
@@ -145,11 +146,6 @@ export default React.memo(function CustomMapTile(props: CustomMapTileProps) {
             textShadow: '0 0 2px #000',
             userSelect: 'none',
             WebkitUserSelect: 'none',
-          }}
-          ref={(node) => {
-            if (node) {
-              node.style.setProperty("user-select", "none", "important");
-            }
           }}
         >
           {unitsCount}

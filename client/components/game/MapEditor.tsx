@@ -2,6 +2,7 @@
 import {
   useCallback,
   type ChangeEvent,
+  type MouseEvent as ReactMouseEvent,
   type ReactNode,
   useMemo,
   useState,
@@ -152,8 +153,8 @@ function MapEditor({ editMode }: { editMode: boolean }) {
     tileSize,
     position,
     mapRef,
-    mapPixelWidth,
-    mapPixelHeight,
+    mapBasePixelWidth,
+    mapBasePixelHeight,
     zoom,
   } = useMap({
     mapWidth,
@@ -328,51 +329,80 @@ function MapEditor({ editMode }: { editMode: boolean }) {
     setMapData(newMapData);
   };
 
-  const handleTileClick = (x: number, y: number) => {
-    console.log('handleTileClick', x, y, selectedTileType, selectedProperty);
-    const newMapData = [...mapData];
+  const handleTileClick = useCallback((x: number, y: number) => {
+    setMapData((currentMapData) => {
+      const currentTile = currentMapData[x]?.[y];
+      if (!currentTile) return currentMapData;
 
-    if (selectedTileType !== null) {
-      if (newMapData[x][y][0] === selectedTileType) {
-        newMapData[x][y] = [TileType.Plain, null, 0, false, 0];
-      } else {
-        switch (+selectedTileType) {
-          case TileType.King:
-            newMapData[x][y] = [selectedTileType, 1, 0, false, 0];
-            break;
-          case TileType.City:
-            newMapData[x][y] = [selectedTileType, null, 40, false, 0];
-            break;
-          case TileType.Plain:
-          case TileType.Mountain:
-          case TileType.Swamp:
-            newMapData[x][y] = [selectedTileType, null, 0, false, 0];
-            break;
-          default:
-            console.log('Error! no match TileType', selectedTileType);
+      let nextTile = [...currentTile] as CustomMapTileData;
+
+      if (selectedTileType !== null) {
+        if (currentTile[0] === selectedTileType) {
+          nextTile = [TileType.Plain, null, 0, false, 0];
+        } else {
+          switch (+selectedTileType) {
+            case TileType.King:
+              nextTile = [selectedTileType, 1, 0, false, 0];
+              break;
+            case TileType.City:
+              nextTile = [selectedTileType, null, 40, false, 0];
+              break;
+            case TileType.Plain:
+            case TileType.Mountain:
+            case TileType.Swamp:
+              nextTile = [selectedTileType, null, 0, false, 0];
+              break;
+            default:
+              return currentMapData;
+          }
         }
       }
-    }
 
-    if (selectedProperty !== null) {
-      switch (selectedProperty) {
-        case 'team':
-          newMapData[x][y][1] = property2var[selectedProperty] as number;
-          break;
-        case 'unitsCount':
-          newMapData[x][y][2] = property2var[selectedProperty] as number;
-          break;
-        case 'revealed':
-          newMapData[x][y][3] = !newMapData[x][y][3];
-          break;
-        case 'priority': // todo
-          newMapData[x][y][4] = property2var[selectedProperty] as number;
-          break;
+      if (selectedProperty !== null) {
+        switch (selectedProperty) {
+          case 'team':
+            nextTile[1] = team;
+            break;
+          case 'unitsCount':
+            nextTile[2] = unitsCount;
+            break;
+          case 'revealed':
+            nextTile[3] = !nextTile[3];
+            break;
+          case 'priority':
+            nextTile[4] = priority;
+            break;
+        }
       }
-    }
 
-    setMapData(newMapData);
-  };
+      if (
+        currentTile[0] === nextTile[0] &&
+        currentTile[1] === nextTile[1] &&
+        currentTile[2] === nextTile[2] &&
+        currentTile[3] === nextTile[3] &&
+        currentTile[4] === nextTile[4]
+      ) {
+        return currentMapData;
+      }
+
+      const nextMapData = currentMapData.map((row) => row.slice());
+      nextMapData[x][y] = nextTile;
+      return nextMapData;
+    });
+  }, [priority, selectedProperty, selectedTileType, team, unitsCount]);
+
+  const handleMapClick = useCallback((event: ReactMouseEvent<HTMLDivElement>) => {
+    if (!editMode) return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    const scaledTileSize = tileSize * zoom;
+    if (scaledTileSize <= 0) return;
+
+    const y = Math.floor((event.clientX - rect.left) / scaledTileSize);
+    const x = Math.floor((event.clientY - rect.top) / scaledTileSize);
+    if (x < 0 || x >= mapWidth || y < 0 || y >= mapHeight) return;
+
+    handleTileClick(x, y);
+  }, [editMode, handleTileClick, mapHeight, mapWidth, tileSize, zoom]);
 
   const generateCustomMapData = () => {
     // make sure mapName is not empty
@@ -808,33 +838,45 @@ function MapEditor({ editMode }: { editMode: boolean }) {
       }
 
       <div
-        ref={mapRef}
-        tabIndex={0}
         style={{
           position: 'absolute',
           top: '50%',
           left: '50%',
           transform: `translate(-50%, -50%) translate(${position.x}px, ${position.y}px)`,
-          width: mapPixelHeight, // game's width and height are swapped
-          height: mapPixelWidth,
-          backgroundColor: '#495468',
+          width: mapBasePixelHeight, // game's width and height are swapped
+          height: mapBasePixelWidth,
         }}
       >
-        {mapData.map((tiles, x) => {
-          return tiles.map((tile, y) => {
-            return (
-              <CustomMapTile
-                key={`${x}/${y}`}
-                zoom={zoom}
-                size={tileSize}
-                x={x}
-                y={y}
-                tile={tile}
-                handleClick={editMode ? () => handleTileClick(x, y) : () => { }}
-              />
-            );
-          });
-        })}
+        <div
+          ref={mapRef}
+          tabIndex={0}
+          onClick={handleMapClick}
+          style={{
+            position: 'absolute',
+            inset: 0,
+            width: '100%',
+            height: '100%',
+            backgroundColor: '#495468',
+            transform: `scale(${zoom})`,
+            transformOrigin: 'center center',
+            willChange: 'transform',
+            contain: 'layout paint style',
+          }}
+        >
+          {mapData.map((tiles, x) => {
+            return tiles.map((tile, y) => {
+              return (
+                <CustomMapTile
+                  key={`${x}/${y}`}
+                  size={tileSize}
+                  x={x}
+                  y={y}
+                  tile={tile}
+                />
+              );
+            });
+          })}
+        </div>
       </div>
     </div >
   );

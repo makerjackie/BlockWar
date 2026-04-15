@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo, useEffect } from 'react';
+import { useCallback, useState, useRef, useMemo, useEffect } from 'react';
 import useMediaQuery from './useMediaQuery';
 import useMapDrag from './useMapDrag';
 
@@ -29,23 +29,32 @@ export default function useMap({
   useEffect(() => {
     setZoom(isSmallScreen ? 0.7 : 1.0);
 
-    if (mapHeight > 40 || mapHeight > 40) {
+    if (mapWidth > 40 || mapHeight > 40) {
       setZoom(0.5);
-    } else if (mapHeight > 25 || mapHeight > 25) {
+    } else if (mapWidth > 25 || mapHeight > 25) {
       setZoom(0.75);
     }
-  }, [isSmallScreen]);
+  }, [isSmallScreen, mapWidth, mapHeight]);
+
+  const mapBasePixelWidth = useMemo(
+    () => tileSize * mapWidth,
+    [tileSize, mapWidth]
+  );
+  const mapBasePixelHeight = useMemo(
+    () => tileSize * mapHeight,
+    [tileSize, mapHeight]
+  );
 
   const mapPixelWidth = useMemo(
-    () => tileSize * mapWidth * zoom,
-    [tileSize, mapWidth, zoom]
+    () => mapBasePixelWidth * zoom,
+    [mapBasePixelWidth, zoom]
   );
   const mapPixelHeight = useMemo(
-    () => tileSize * mapHeight * zoom,
-    [tileSize, mapHeight, zoom]
+    () => mapBasePixelHeight * zoom,
+    [mapBasePixelHeight, zoom]
   );
 
-  function handleZoomOption(option: string) {
+  const handleZoomOption = useCallback((option: string) => {
     switch (option) {
       case '1':
         if (mapWidth > 20 || mapHeight > 20) {
@@ -64,12 +73,14 @@ export default function useMap({
         // handle default case
         break;
     }
-  }
+  }, [mapWidth, mapHeight]);
 
   return {
     tileSize,
     position,
     mapRef,
+    mapBasePixelWidth,
+    mapBasePixelHeight,
     mapPixelWidth,
     mapPixelHeight,
     zoom,

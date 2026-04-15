@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useCallback } from 'react';
+import React, { useMemo } from 'react';
 import Image from 'next/image';
 import { TileType, TileProp, TileType2Image } from '@/lib/types';
 import {
@@ -15,7 +15,7 @@ import {
 } from '@/lib/constants';
 
 interface MapTileProps {
-  zoom: number;
+  zoom?: number;
   imageZoom?: number;
   size: number;
   fontSize?: number;
@@ -32,7 +32,7 @@ interface MapTileProps {
 
 export default React.memo(function MapTile(props: MapTileProps) {
   const {
-    zoom,
+    zoom = 1,
     imageZoom = 0.8,
     size,
     fontSize = 16,
@@ -46,8 +46,6 @@ export default React.memo(function MapTile(props: MapTileProps) {
     isNextPossibleMove,
     warringStatesMode = false,
   } = props;
-  console.log(`${x} ${y} render`, new Date().toISOString());
-  const [cursorStyle, setCursorStyle] = useState('default');
 
   const [tileType, color, unitsCount] = tile;
   const image = TileType2Image[tileType];
@@ -69,18 +67,6 @@ export default React.memo(function MapTile(props: MapTileProps) {
   const canMove = useMemo(() => {
     return isOwned || isNextPossibleMove;
   }, [isOwned, isNextPossibleMove]);
-
-  const handleMouseEnter = useCallback(() => {
-    if (canMove) {
-      setCursorStyle('pointer');
-    }
-  }, [canMove]);
-
-  const handleMouseLeave = useCallback(() => {
-    if (canMove) {
-      setCursorStyle('default');
-    }
-  }, [canMove]);
 
   const zoomedSize = useMemo(() => size * zoom, [size, zoom]);
   const zoomedFontSize = useMemo(() => fontSize * zoom, [fontSize, zoom]);
@@ -144,11 +130,9 @@ export default React.memo(function MapTile(props: MapTileProps) {
         top: tileY,
         width: zoomedSize,
         height: zoomedSize,
-        cursor: cursorStyle,
+        cursor: canMove ? 'pointer' : 'default',
         backgroundColor: defaultBgcolor,
       }}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
     >
       <div
         style={{
@@ -197,11 +181,8 @@ export default React.memo(function MapTile(props: MapTileProps) {
             textOverflow: 'ellipsis',
             overflow: 'visible',
             textShadow: '0 0 2px #000',
-          }}
-          ref={(node) => {
-            if (node) {
-              node.style.setProperty("user-select", "none", "important");
-            }
+            userSelect: 'none',
+            WebkitUserSelect: 'none',
           }}
         >
           {/* 50% */}

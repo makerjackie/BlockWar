@@ -2,6 +2,7 @@ import React, {
   useCallback,
   useState,
   useEffect,
+  useMemo,
   useRef,
   useReducer,
 } from 'react';
@@ -17,6 +18,7 @@ import { mapDataReducer } from '@/context/GameReducer';
 import CustomMapTile from '@/components/game/CustomMapTile';
 import { ReplaySpeedOptions } from '@/lib/constants';
 import {
+  DisplayCustomMapTileData,
   LeaderBoardTable,
   Message,
   UserData,
@@ -53,8 +55,8 @@ export default function GameReplay() {
     tileSize,
     position,
     mapRef,
-    mapPixelWidth,
-    mapPixelHeight,
+    mapBasePixelWidth,
+    mapBasePixelHeight,
     zoom,
     handleZoomOption,
   } = useMap({ mapWidth, mapHeight });
@@ -220,6 +222,14 @@ export default function GameReplay() {
     }
   };
 
+  const replayTiles = useMemo(() => {
+    return limitedView.map((tiles) =>
+      tiles.map(
+        (tile) => [...tile, false, 0] as DisplayCustomMapTileData
+      )
+    );
+  }, [limitedView]);
+
   if (notFoundError) {
     return (
       <div className='center-layout'>
@@ -326,31 +336,43 @@ export default function GameReplay() {
         />
         <ChatBox socket={null} messages={messages} />
         <div
-          ref={mapRef}
-          tabIndex={0}
           style={{
             position: 'absolute',
             top: '50%',
             left: '50%',
             transform: `translate(-50%, -50%) translate(${position.x}px, ${position.y}px)`,
-            width: mapPixelHeight,
-            height: mapPixelWidth,
+            width: mapBasePixelHeight,
+            height: mapBasePixelWidth,
           }}
         >
-          {limitedView.map((tiles, x) => {
-            return tiles.map((tile, y) => {
-              return (
-                <CustomMapTile
-                  key={`${x}/${y}`}
-                  zoom={zoom}
-                  size={tileSize}
-                  x={x}
-                  y={y}
-                  tile={[...tile, false, 0]}
-                />
-              );
-            });
-          })}
+          <div
+            ref={mapRef}
+            tabIndex={0}
+            style={{
+              position: 'absolute',
+              inset: 0,
+              width: '100%',
+              height: '100%',
+              transform: `scale(${zoom})`,
+              transformOrigin: 'center center',
+              willChange: 'transform',
+              contain: 'layout paint style',
+            }}
+          >
+            {replayTiles.map((tiles: DisplayCustomMapTileData[], x: number) => {
+              return tiles.map((tile: DisplayCustomMapTileData, y: number) => {
+                return (
+                  <CustomMapTile
+                    key={`${x}/${y}`}
+                    size={tileSize}
+                    x={x}
+                    y={y}
+                    tile={tile}
+                  />
+                );
+              });
+            })}
+          </div>
         </div>
       </div>
     </div>

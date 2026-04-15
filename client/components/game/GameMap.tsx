@@ -5,7 +5,16 @@ import usePossibleNextMapPositions from '@/lib/use-possible-next-map-positions';
 import { getPlayerIndex } from '@/lib/utils';
 import useMediaQuery from '@/hooks/useMediaQuery';
 import { useTranslation } from 'next-i18next';
-import { MutableRefObject, ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  MutableRefObject,
+  type MouseEvent as ReactMouseEvent,
+  ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {
   ArrowDown,
   ArrowLeft,
@@ -86,6 +95,8 @@ function GameMap() {
     tileSize,
     position,
     mapRef,
+    mapBasePixelWidth,
+    mapBasePixelHeight,
     mapPixelWidth,
     mapPixelHeight,
     zoom,
@@ -175,40 +186,52 @@ function GameMap() {
 
   const queueEmpty = mapQueueData.length === 0;
 
-  let displayMapData = mapData.map((tiles, x) => {
-    return tiles.map((tile, y) => {
-      const [, color] = tile;
-      const isOwned = myPlayerColor !== null && color === myPlayerColor;
-      const _className = queueEmpty ? '' : mapQueueData[x][y].className;
+  const displayMapData = useMemo(() => {
+    return mapData.map((tiles, x) => {
+      return tiles.map((tile, y) => {
+        const [, color] = tile;
+        const queueItem = queueEmpty ? undefined : mapQueueData[x]?.[y];
+        const isOwned = myPlayerColor !== null && color === myPlayerColor;
+        const isSelected =
+          !!selectedMapTileInfo &&
+          x === selectedMapTileInfo.x &&
+          y === selectedMapTileInfo.y;
+        const tileHalf = isSelected
+          ? selectedMapTileInfo.half
+          : !!queueItem?.half;
 
-      let tileHalf = false;
-
-      const getIsSelected = () => {
-        if (!selectedMapTileInfo) {
-          return false;
-        }
-
-        if (selectedMapTileInfo.x === x && selectedMapTileInfo.y === y) {
-          tileHalf = selectedMapTileInfo.half;
-        } else if (mapQueueData.length !== 0 && mapQueueData[x][y].half) {
-          tileHalf = true;
-        } else {
-          tileHalf = false;
-        }
-        const isSelected = x === selectedMapTileInfo.x && y === selectedMapTileInfo.y;
-        return isSelected;
-      }
-      const isSelected = getIsSelected();
-
-      return {
-        tile,
-        isOwned,
-        _className,
-        tileHalf,
-        isSelected,
-      };
+        return {
+          tile,
+          isOwned,
+          _className: queueItem?.className ?? '',
+          tileHalf,
+          isSelected,
+          isNextPossibleMove: testIfNextPossibleMove(tile[0], x, y),
+        };
+      });
     });
-  });
+  }, [
+    mapData,
+    mapQueueData,
+    myPlayerColor,
+    queueEmpty,
+    selectedMapTileInfo,
+    testIfNextPossibleMove,
+  ]);
+
+  const handleMapClick = useCallback((event: ReactMouseEvent<HTMLDivElement>) => {
+    if (myPlayerIndex < 0) return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    const scaledTileSize = tileSize * zoom;
+    if (scaledTileSize <= 0) return;
+
+    const y = Math.floor((event.clientX - rect.left) / scaledTileSize);
+    const x = Math.floor((event.clientY - rect.top) / scaledTileSize);
+    const tile = mapData[x]?.[y];
+    if (!tile) return;
+
+    handleClick(tile, x, y, myPlayerIndex);
+  }, [handleClick, mapData, myPlayerIndex, tileSize, zoom]);
 
   const handleTouchStart = useCallback(
     (event: TouchEvent) => {
@@ -221,7 +244,9 @@ function GameMap() {
           const rect = mapRef.current.getBoundingClientRect();
           const y = Math.floor((touch.clientX - rect.left) / (tileSize * zoom));
           const x = Math.floor((touch.clientY - rect.top) / (tileSize * zoom));
-          const [tileType, color] = mapData[x][y];
+          const tile = mapData[x]?.[y];
+          if (!tile) return;
+          const [tileType, color] = tile;
           const isOwned = myPlayerColor !== null && color === myPlayerColor;
           const currentTime = new Date().getTime();
           if (!isOwned) {
@@ -297,7 +322,9 @@ function GameMap() {
           }
           if (!mapData) return;
           if (mapData.length === 0) return;
-          const [tileType, color] = mapData[x][y];
+          const tile = mapData[x]?.[y];
+          if (!tile) return;
+          const [tileType] = tile;
           // check tileType
           if (
             tileType === TileType.Mountain ||
@@ -334,8 +361,10 @@ function GameMap() {
           Math.pow(touch1.clientY - touch2.clientY, 2)
         );
         const delta = distance - initialDistance.current;
-        const newZoom = Math.min(Math.max(zoom + delta * 0.0002, 0.2), 4.0);
-        setZoom(newZoom);
+        initialDistance.current = distance;
+        setZoom((currentZoom: number) =>
+          Math.min(Math.max(currentZoom + delta * 0.0002, 0.2), 4.0)
+        );
       }
     },
     [mapRef, setPosition, tileSize, zoom, selectedMapTileInfo, mapData, handlePositionChange, setZoom]
@@ -387,8 +416,6 @@ function GameMap() {
   return (
     <div>
       <div
-        ref={mapRef}
-        tabIndex={0}
         onBlur={() => {
           // TODO: inifite re-render loop. 
           // when surrender or game over dialog is shown. onBlur will execute, it set SelectedMapTile so a re-render is triggered. in the next render, onBlur execute again
@@ -399,30 +426,40 @@ function GameMap() {
           top: '50%',
           left: '50%',
           transform: `translate(-50%, -50%) translate(${position.x}px, ${position.y}px)`,
-          width: mapPixelHeight, // game's width and height are swapped
-          height: mapPixelWidth,
+          width: mapBasePixelHeight, // game's width and height are swapped
+          height: mapBasePixelWidth,
         }}
       >
-        {/* map key (x,y) example */}
-        {/* 0,0 / 0, 1 */}
-        {/* 1,0 / 1, 1 */}
-        {displayMapData.map((tiles, x) => {
-          return tiles.map((tile, y) => {
-            return (
-              <div key={`${x}/${y}`}
-                onClick={() => handleClick(tile.tile, x, y, myPlayerIndex)}>
+        <div
+          ref={mapRef}
+          tabIndex={0}
+          onClick={handleMapClick}
+          style={{
+            position: 'absolute',
+            inset: 0,
+            width: '100%',
+            height: '100%',
+            transform: `scale(${zoom})`,
+            transformOrigin: 'center center',
+            willChange: 'transform',
+            contain: 'layout paint style',
+          }}
+        >
+          {displayMapData.map((tiles, x) => {
+            return tiles.map((tile, y) => {
+              return (
                 <MapTile
-                  isNextPossibleMove={testIfNextPossibleMove(tile.tile[0], x, y)}
-                  zoom={zoom}
+                  key={`${x}/${y}`}
                   size={tileSize}
                   x={x}
                   y={y}
                   {...tile}
-                  warringStatesMode={room.warringStatesMode} />
-              </div>
-            );
-          });
-        })}
+                  warringStatesMode={room.warringStatesMode}
+                />
+              );
+            });
+          })}
+        </div>
       </div>
       {isSmallScreen && (
         <div className='menu-container absolute left-[5px] bottom-[65px] z-[1000] flex flex-col items-center justify-between gap-1 p-1 md:bottom-20'>
@@ -441,7 +478,7 @@ function GameMap() {
           <MapControlButton
             title='Zoom in'
             onClick={() => {
-              setZoom((z) => z - 0.2);
+              setZoom((currentZoom: number) => Math.min(currentZoom + 0.2, 4));
             }}
           >
             <ZoomIn size={18} strokeWidth={2.5} />
@@ -449,7 +486,9 @@ function GameMap() {
           <MapControlButton
             title='Zoom out'
             onClick={() => {
-              setZoom((z) => z + 0.2);
+              setZoom((currentZoom: number) =>
+                Math.max(currentZoom - 0.2, 0.2)
+              );
             }}
           >
             <ZoomOut size={18} strokeWidth={2.5} />

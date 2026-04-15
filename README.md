@@ -1,139 +1,84 @@
-## GenniaServer 2
+# BlockWar / 方块战争
 
 <h1 align="center">
-  <img src="client/public/img/favicon.png" style="height: 90px;"alt="Gennia">
+  <img src="client/public/img/favicon.png" style="height: 90px;" alt="BlockWar">
   <br>
-  <img src="client/public/img/gennia-logo.png" style="height: 30px;"alt="Gennia">
+  <strong>BlockWar / 方块战争</strong>
 </h1>
 
-> [Gennia](https://gennia.online): Yet another generals.io clone server & client
+> 一个部署在 Cloudflare 上的实时多人策略小游戏，灵感来自 generals.io。
 
 <h5 align="center">
 <img src="gennia-pc.png" width="400" >
 
-Gennia PC demo
+BlockWar desktop demo
 
 <img src="gennia-mobile.png" width="300" >
 
-Gennia Mobile demo
-
+BlockWar mobile demo
 </h5>
 
-What is GenniaServer 2?
+## 当前架构
 
-- A realtime multiplayer game where the goal is to capture all of the enemy's general without losing your own
-- using react/nextjs/socket/express
-- inspired by [generals.io](https://generals.io), the game mode will be different from generals.io in the future.
+- **前端**：React + Vite + Material UI
+- **后端**：Hono on Cloudflare Workers
+- **实时房间**：Cloudflare Durable Objects + WebSocket
+- **持久化**：App Durable Object(SQLite storage) 保存大厅、地图、收藏与回放
+- **共享游戏内核**：`src/shared/game/`
 
-## How to Play
+## 主要能力
 
-Your goal is to capture other generals.
+- 房间大厅 / 创建房间
+- 房间级 WebSocket 对战
+- 战争迷雾、战国模式、观战
+- 自定义地图发布与浏览
+- 回放存储与查看
+- 单 Worker 部署前后端
 
-- Plains produce one unit every 25 turns
-- Cities and generals produce one unit every turn
-- You can move twice per turn.
-- When you capture the enemy general, all his territory belongs to you and his army strength is halved and becomes yours.
-
-| function           | keyboard     |
-| ------------------ | ------------ |
-| Move Around        | WSAD         |
-| Move On Mobile     | Touch & Drag |
-| Open Chat          | Enter        |
-| Undo Move          | e            |
-| Clear Queued Moves | q            |
-| Select on general  | g            |
-| Center on home     | h            |
-| Center Map         | c            |
-| Toggle 50%         | z            |
-| Set Zoom to Preset | 1 / 2 / 3    |
-| Zoom in / out      | mouse wheel  |
-| Surrender          | escape       |
-
-## Supported Feature
-
-### Basic
-
-- [x] Create Custom Map
-- [x] [Game Bot](https://github.com/GenniaApp/GenniaBot)
-- [x] Replays
-- [x] Mobile Support (Drag to attack)
-- [x] Lobby & Custom Game
-- [x] Room Chat
-- [ ] Team
-
-### Game Modifier
-
-- [x] Fog of War
-- [x] Spectator
-- [x] Warring States (Reveal all King)
-- [ ] Move All Armys
-- [ ] Movable King
-
-## Development
-
-### client: nextjs
-
-First, run the development server:
+## 本地开发
 
 ```bash
-cd client/
 pnpm install
-pnpm run dev
+pnpm types
+pnpm dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+默认会同时：
 
-#### database
+- 用 Vite 监听构建前端静态资源
+- 用 Wrangler 在本地启动 Worker + Durable Objects
 
-We use postgresql + prisma
-
-- see `.env.example` to config prisma env correctly
-- if you init repo or edit prisma schema, run `pnpx prisma migrate dev` to make sure update schema in database and update prisma client
-
-```
-npx prisma generate # generate prisma client code
-npx prisma migrate dev # migrate
-pnpm dlx prisma studio # open databaseUI
-```
-
-### server: express + socket.io
-
+## 构建与测试
 
 ```bash
-cd server/
-pnpm install
-pnpm dlx prisma migrate dev
-pnpm run dev
+pnpm build
+pnpm test
+pnpm deploy:dry-run
 ```
 
-#### docker
+## 已验证内容
 
-- setup postgresql and pyadmin to manage data
+- TypeScript `pnpm typecheck`
+- 前端打包 `pnpm build:client`
+- Worker 干跑构建 `pnpm deploy:dry-run`
+- Vitest 自动化测试（API / 房间 DO）
+- 本地 WebSocket 冒烟：双玩家加入、强制开局、收到 `game_started` 与持续 `game_update`
 
+## 目录说明
+
+```text
+├── client/              # 复用的 React 组件、页面、样式、文案、资源
+├── src/app/             # Vite SPA 入口
+├── src/compat/          # Next.js / socket.io 兼容层
+├── src/shared/game/     # 共享游戏规则与类型
+├── src/worker/          # Hono Worker、Durable Objects、房间/存储逻辑
+└── test/                # Vitest 自动化测试
 ```
-docker-compose up -d
+
+## 部署
+
+```bash
+pnpm deploy
 ```
 
-## Deployment
-
-- [PM2](https://pm2.keymetrics.io/docs/usage/quick-start/) is a production process manager for Node.js applications, which is very easy to use.
-- docker-compose: for setup database
-
-- see `make deploy` and `make restart` in Makefile
-- to set the application to restart on startup see: https://pm2.keymetrics.io/docs/usage/startup/
-
-## [Roadmap](https://github.com/orgs/GenniaApp/projects/1)
-
-## JoinUs
-
-- QQ Group : 374889821
-- [Discord](https://discord.gg/p9BfpwBF)
-
-## License
-
-Distributed under the GNU GENERAL PUBLIC LICENSE VERSION 3. See `LICENSE.txt` for more information.
-
-## Acknowledgments
-
-- [MadJS](https://github.com/fluffybeastgames/MadJS/)
-- [generals-io-webapp](https://github.com/dhyegocalota/generals-io-webapp)
+部署前请先确认你已经登录 Wrangler，并具备 Cloudflare Workers / Durable Objects 权限。

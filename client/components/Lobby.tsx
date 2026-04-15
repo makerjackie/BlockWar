@@ -45,7 +45,7 @@ function Lobby() {
           `${process.env.NEXT_PUBLIC_SERVER_API}/get_rooms`
         );
 
-        const rooms = await res.json();
+        const rooms = (await res.json()) as RoomPool;
         setRooms(rooms);
         setLoading(false);
         setServerStatus(true);
@@ -82,12 +82,12 @@ function Lobby() {
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_SERVER_API}/create_room`
       );
-      let data = await res.json();
+      let data = (await res.json()) as { roomId: string; message?: string };
       if (res.status === 200) {
         router.push(`/rooms/${data.roomId}`);
       } else {
         setSnackOpen(true);
-        setSnackMessage(data.message);
+        setSnackMessage(data.message ?? 'Failed to create room');
         setServerStatus(true);
       }
     } catch (err: any) {

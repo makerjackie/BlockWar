@@ -33,9 +33,9 @@ export default function Document() {
 
       <meta
         name='description'
-        content='A real-time multiplayer game built with Nextjs Socket.IO'
+        content='BlockWar / 方块战争 - a real-time multiplayer strategy game on Cloudflare'
       />
-      <meta name='keywords' content='Gennia, multiplayer-game'></meta>
+      <meta name='keywords' content='BlockWar, 方块战争, multiplayer-game'></meta>
       <body>
         <Main />
         <NextScript />

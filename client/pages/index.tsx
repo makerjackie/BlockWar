@@ -33,7 +33,7 @@ export default function Home() {
     <StrictMode>
       <ThemeProvider theme={theme}>
         <Head>
-          <title>Home | Gennia</title>
+          <title>Home | BlockWar / 方块战争</title>
         </Head>
         <Navbar />
         {!username && (

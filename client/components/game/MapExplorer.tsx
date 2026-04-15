@@ -150,7 +150,7 @@ export default function MapExplorer({ userId, onSelect }: MapExplorerProps) {
         tabIndex === 3 ? `?q=${searchTerm}` : ''
       }`;
       const response = await fetch(url);
-      const data = await response.json();
+      const data = (await response.json()) as CustomMapInfo[];
       setMaps(data);
     };
     fetchMaps();

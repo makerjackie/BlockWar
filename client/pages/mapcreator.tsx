@@ -9,7 +9,7 @@ export default function Home() {
   return (
     <ThemeProvider theme={theme}>
       <Head>
-        <title>Map Creator | Gennia</title>
+        <title>Map Creator | BlockWar / 方块战争</title>
       </Head>
       <Navbar />
       <MapEditor editMode={true} />

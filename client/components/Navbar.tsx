@@ -15,7 +15,6 @@ import { useState } from 'react';
 
 import { useTranslation } from 'next-i18next';
 import { useRouter } from 'next/router';
-import Image from 'next/image';
 import HowToPlay from './HowToPlay';
 
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
@@ -26,24 +25,18 @@ import {
   Contacts,
   GitHub,
   HomeRounded,
-  SmartToyRounded,
 } from '@mui/icons-material';
 
 const navItems = [
   { href: '/', label: 'home', icon: <HomeRounded /> },
-  { href: 'https://docs.gennia.online/', label: 'wiki', icon: <BookRounded /> },
+  { href: 'https://github.com/makerjackie/BlockWar#readme', label: 'wiki', icon: <BookRounded /> },
   {
-    href: 'https://github.com/GenniaApp/GenniaServer2',
+    href: 'https://github.com/makerjackie/BlockWar',
     label: 'github',
     icon: <GitHub />,
   },
   {
-    href: 'https://github.com/GenniaApp/GenniaBot',
-    label: 'bot-api',
-    icon: <SmartToyRounded />,
-  },
-  {
-    href: 'https://github.com/GenniaApp/GenniaServer2/issues',
+    href: 'https://github.com/makerjackie/BlockWar/issues',
     label: 'feedback',
     icon: <FeedbackRounded />,
   },
@@ -98,12 +91,13 @@ function Navbar() {
               href='/'
               style={{ display: 'flex', alignItems: 'center', flexGrow: 0 }}
             >
-              <Image
-                src='/img/gennia-logo.png'
-                width={100}
-                height={17.3}
-                alt='Gennia logo'
-              />
+              <Typography
+                variant='h6'
+                color='white'
+                sx={{ fontWeight: 700, whiteSpace: 'nowrap' }}
+              >
+                BlockWar / 方块战争
+              </Typography>
             </Link>
           </Box>
           <Menu
@@ -147,12 +141,13 @@ function Navbar() {
               href='/'
               style={{ display: 'flex', alignItems: 'center', flexGrow: 0 }}
             >
-              <Image
-                src='/img/gennia-logo.png'
-                width={100}
-                height={17.3}
-                alt='Gennia logo'
-              />
+              <Typography
+                variant='h6'
+                color='white'
+                sx={{ fontWeight: 700, whiteSpace: 'nowrap' }}
+              >
+                BlockWar / 方块战争
+              </Typography>
             </Link>
           </Box>
           <Box>

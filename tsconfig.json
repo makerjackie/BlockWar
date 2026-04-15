@@ -1,0 +1,45 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "useDefineForClassFields": true,
+    "lib": ["DOM", "DOM.Iterable", "ES2022"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+    "moduleResolution": "Bundler",
+    "allowImportingTsExtensions": false,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "strict": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["client/*"],
+      "@shared/*": ["src/shared/*"],
+      "@worker/*": ["src/worker/*"],
+      "next/router": ["src/compat/next-router.tsx"],
+      "next/link": ["src/compat/next-link.tsx"],
+      "next/image": ["src/compat/next-image.tsx"],
+      "next/head": ["src/compat/next-head.tsx"],
+      "next-i18next": ["src/compat/next-i18next.ts"],
+      "next-i18next/serverSideTranslations": [
+        "src/compat/server-side-translations.ts"
+      ],
+      "socket.io-client": ["src/compat/socket-io-client.ts"]
+    },
+    "types": ["vite/client"]
+  },
+  "include": [
+    "client/**/*",
+    "src/**/*",
+    "vite.config.ts",
+    "vitest.config.ts",
+    "worker-configuration.d.ts"
+  ],
+  "exclude": [
+    "client/pages/_app.tsx",
+    "client/pages/_document.tsx",
+    "dist",
+    "node_modules"
+  ]
+}

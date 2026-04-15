@@ -1,0 +1,874 @@
+import { DurableObject } from 'cloudflare:workers';
+import Block from '@shared/game/block';
+import { ColorArr, MaxTeamNum, forceStartOK } from '@shared/game/constants';
+import GameRecord from '@shared/game/game-record';
+import GameMap from '@shared/game/map';
+import MapDiff from '@shared/game/map-diff';
+import Player from '@shared/game/player';
+import Point from '@shared/game/point';
+import { createDefaultRoom } from '@shared/game/room-defaults';
+import type {
+  CustomMapData,
+  LeaderBoardRow,
+  LeaderBoardTable,
+  MapDiffData,
+  Message,
+  Room,
+  UserData,
+  initGameInfo,
+} from '@shared/game/types';
+import { getPlayerIndex, getPlayerIndexBySocket } from '@shared/game/utils';
+import type { SocketPacket } from '@shared/ws';
+import {
+  cloneRoomSummary,
+  hydrateRoomSummary,
+  type PlainRoom,
+} from './lib/room-summary';
+
+type Env = Cloudflare.Env;
+
+type SocketAttachment = {
+  connectionId: string;
+  roomId: string;
+  playerId?: string;
+};
+
+function serializeError(error: unknown) {
+  if (error instanceof Error) {
+    return {
+      message: error.message,
+      stack: error.stack,
+    };
+  }
+  return { message: String(error) };
+}
+
+function sanitizeUsername(value: string | null) {
+  const raw = (value ?? 'Anonymous').trim().slice(0, 20);
+  const escaped = raw.replace(/[<>&"'`]/g, '');
+  return escaped.length > 0 ? escaped : 'Anonymous';
+}
+
+function buildPacket(type: string, data: unknown[]): string {
+  const packet: SocketPacket = { type, data };
+  return JSON.stringify(packet);
+}
+
+function randomPlayerId() {
+  return crypto.randomUUID().replace(/-/g, '').slice(0, 10);
+}
+
+export class RoomDurableObject extends DurableObject<Env> {
+  private room: Room | null = null;
+  private sockets = new Map<string, WebSocket>();
+  private gameLoopTimer: number | null = null;
+
+  constructor(ctx: DurableObjectState, env: Env) {
+    super(ctx, env);
+    for (const socket of this.ctx.getWebSockets()) {
+      const attachment = socket.deserializeAttachment() as SocketAttachment | null;
+      if (attachment) {
+        this.sockets.set(attachment.connectionId, socket);
+      }
+    }
+  }
+
+  async fetch(request: Request): Promise<Response> {
+    if (request.headers.get('Upgrade') !== 'websocket') {
+      return new Response('Expected websocket', { status: 426 });
+    }
+
+    const url = new URL(request.url);
+    const roomId = url.pathname.split('/').at(-1);
+
+    if (!roomId) {
+      return new Response('Missing room id', { status: 400 });
+    }
+
+    const username = sanitizeUsername(url.searchParams.get('username'));
+    const myPlayerId = url.searchParams.get('myPlayerId') ?? '';
+    const pair = new WebSocketPair();
+    const client = pair[0];
+    const server = pair[1];
+    const connectionId = crypto.randomUUID();
+
+    this.ctx.acceptWebSocket(server);
+    server.serializeAttachment({ connectionId, roomId, playerId: myPlayerId });
+    this.sockets.set(connectionId, server);
+
+    void this.handleJoin(connectionId, roomId, username, myPlayerId).catch(
+      (error) => {
+        console.error('join failed', serializeError(error));
+        this.send(connectionId, 'reject_join', 'Unable to join the room.');
+        server.close(1011, 'Unable to join the room.');
+      }
+    );
+
+    return new Response(null, {
+      status: 101,
+      webSocket: client,
+    });
+  }
+
+  async webSocketMessage(ws: WebSocket, message: string | ArrayBuffer) {
+    try {
+      const text =
+        typeof message === 'string'
+          ? message
+          : new TextDecoder().decode(message as ArrayBuffer);
+      const packet = JSON.parse(text) as SocketPacket;
+      const attachment = ws.deserializeAttachment() as SocketAttachment | null;
+
+      if (!attachment) {
+        return;
+      }
+
+      await this.handlePacket(attachment.connectionId, packet);
+    } catch (error) {
+      console.error('webSocketMessage failed', serializeError(error));
+    }
+  }
+
+  async webSocketClose(ws: WebSocket) {
+    const attachment = ws.deserializeAttachment() as SocketAttachment | null;
+    if (!attachment) {
+      return;
+    }
+
+    this.sockets.delete(attachment.connectionId);
+    await this.handleDisconnect(attachment.connectionId);
+  }
+
+  private get app() {
+    return this.env.APP.getByName('global');
+  }
+
+  private send(connectionId: string, event: string, ...data: unknown[]) {
+    const socket = this.sockets.get(connectionId);
+    if (!socket || socket.readyState !== WebSocket.OPEN) {
+      return;
+    }
+    socket.send(buildPacket(event, data));
+  }
+
+  private broadcast(event: string, ...data: unknown[]) {
+    const payload = buildPacket(event, data);
+    for (const socket of this.sockets.values()) {
+      if (socket.readyState === WebSocket.OPEN) {
+        socket.send(payload);
+      }
+    }
+  }
+
+  private async ensureRoom(roomId: string) {
+    if (this.room) {
+      return this.room;
+    }
+
+    const summary = (await this.app.getRoom(roomId)) as PlainRoom | null;
+    this.room = hydrateRoomSummary(roomId, summary);
+    await this.ctx.storage.put('roomId', roomId);
+    return this.room;
+  }
+
+  private async syncRoomSummary() {
+    if (!this.room) {
+      return;
+    }
+
+    if (this.room.players.length === 0 && !this.room.keepAlive) {
+      await this.app.deleteRoom(this.room.id);
+      return;
+    }
+
+    await this.app.upsertRoom(cloneRoomSummary(this.room));
+  }
+
+  private computeLeaderBoard() {
+    if (!this.room?.map) {
+      return [] as LeaderBoardTable;
+    }
+
+    return this.room.players
+      .filter((player) => !player.spectating())
+      .map((player) => {
+        const data = this.room!.map!.getTotal(player);
+        return [player.color, player.team, data.army, data.land] as LeaderBoardRow;
+      });
+  }
+
+  private createInitGameInfo(player: Player): initGameInfo {
+    if (!this.room?.map) {
+      throw new Error('Map not initialized');
+    }
+
+    return {
+      king: player.king ? { x: player.king.x, y: player.king.y } : { x: 0, y: 0 },
+      mapWidth: this.room.map.width,
+      mapHeight: this.room.map.height,
+    };
+  }
+
+  private getPlayerByConnection(connectionId: string) {
+    if (!this.room) {
+      return null;
+    }
+
+    const playerIndex = getPlayerIndexBySocket(this.room, connectionId);
+    if (playerIndex === -1) {
+      return null;
+    }
+
+    return this.room.players[playerIndex];
+  }
+
+  private async sendCurrentGameState(connectionId: string) {
+    if (!this.room?.map) {
+      return;
+    }
+
+    const player = this.getPlayerByConnection(connectionId);
+    if (!player || player.disconnected) {
+      return;
+    }
+
+    if (!player.patchView) {
+      player.patchView = new MapDiff();
+    }
+
+    if (
+      (this.room.deathSpectator && player.isDead) ||
+      !this.room.fogOfWar ||
+      player.spectating()
+    ) {
+      await player.patchView.patch(this.room.map.map);
+    } else {
+      await player.patchView.patch(await this.room.map.getViewPlayer(player));
+    }
+
+    this.send(
+      connectionId,
+      'game_update',
+      player.patchView.data,
+      this.room.map.turn,
+      this.computeLeaderBoard()
+    );
+  }
+
+  private pickPlayerColor(room: Room) {
+    const allColor = Array.from({ length: ColorArr.length }, (_, index) => index);
+    const occupiedColor = room.players.map((player) => player.color);
+    occupiedColor.push(0);
+    return allColor.find((color) => !occupiedColor.includes(color)) ?? 1;
+  }
+
+  private pickPlayerTeam(room: Room) {
+    const allTeams = Array.from({ length: MaxTeamNum }, (_, index) => index + 1);
+    const occupiedTeams = room.players.map((player) => player.team);
+    return allTeams.find((team) => !occupiedTeams.includes(team)) ?? 1;
+  }
+
+  private handleNeutralized(room: Room, player: Player) {
+    if (player.king && room.map) {
+      room.map.getBlock(player.king).kingBeDominated();
+    }
+
+    player.land.forEach((block) => {
+      block.beNeutralized();
+    });
+    player.land.length = 0;
+    player.king = null;
+    player.isDead = true;
+  }
+
+  private async handleJoin(
+    connectionId: string,
+    roomId: string,
+    username: string,
+    myPlayerId: string
+  ) {
+    const room = await this.ensureRoom(roomId);
+    let player: Player | undefined;
+    let joinMessage = 'joined the room.';
+    let isReconnect = false;
+
+    if (myPlayerId) {
+      const playerIndex = getPlayerIndex(room, myPlayerId);
+      if (playerIndex !== -1) {
+        player = room.players[playerIndex];
+        player.disconnected = false;
+        player.socket_id = connectionId;
+        player.patchView = new MapDiff();
+        isReconnect = true;
+      }
+    }
+
+    if (!player) {
+      if (room.players.length >= room.maxPlayers) {
+        this.send(connectionId, 'reject_join', 'The room is full.');
+        this.sockets.get(connectionId)?.close(1008, 'The room is full.');
+        return;
+      }
+
+      player = new Player(
+        randomPlayerId(),
+        connectionId,
+        username,
+        this.pickPlayerColor(room),
+        this.pickPlayerTeam(room)
+      );
+
+      if (room.players.length === 0) {
+        player.setRoomHost(true);
+      }
+
+      if (room.gameStarted) {
+        player.setSpectate();
+        player.patchView = new MapDiff();
+        joinMessage = 'joined as spectator.';
+      }
+
+      room.players.push(player);
+      this.send(connectionId, 'set_player_id', player.id);
+    } else {
+      joinMessage = 're-joined the lobby.';
+    }
+
+    if (room.gameStarted) {
+      this.send(connectionId, 'game_started', this.createInitGameInfo(player));
+      await this.sendCurrentGameState(connectionId);
+    }
+
+    this.broadcast('room_message', player.minify(), joinMessage);
+    this.broadcast('update_room', room);
+    await this.syncRoomSummary();
+  }
+
+  private async handleDisconnect(connectionId: string) {
+    if (!this.room) {
+      return;
+    }
+
+    const player = this.getPlayerByConnection(connectionId);
+    if (!player) {
+      return;
+    }
+
+    this.broadcast('room_message', player.minify(), 'quit.');
+
+    if (this.room.gameStarted && !player.spectating()) {
+      player.disconnected = true;
+      this.handleNeutralized(this.room, player);
+    } else {
+      this.room.players = this.room.players.filter((item) => item.id !== player.id);
+    }
+
+    this.room.forceStartNum = this.room.players.reduce(
+      (count, item) => count + (item.forceStart ? 1 : 0),
+      0
+    );
+
+    if (this.room.players.length > 0) {
+      this.room.players.forEach((roomPlayer) => roomPlayer.setRoomHost(false));
+      this.room.players[0].setRoomHost(true);
+      this.broadcast('update_room', this.room);
+    }
+
+    await this.syncRoomSummary();
+    await this.checkForcedStart();
+  }
+
+  private async checkForcedStart() {
+    if (!this.room) {
+      return;
+    }
+
+    const activePlayers = this.room.players.filter((player) => !player.spectating()).length;
+    const target = forceStartOK[activePlayers] ?? activePlayers;
+
+    if (!this.room.gameStarted && this.room.forceStartNum >= target) {
+      await this.startGame();
+    }
+  }
+
+  private scheduleGameLoop() {
+    if (!this.room?.gameStarted || this.gameLoopTimer !== null) {
+      return;
+    }
+
+    const loop = async () => {
+      this.gameLoopTimer = null;
+      if (!this.room?.gameStarted) {
+        return;
+      }
+
+      await this.runGameTick();
+
+      if (this.room?.gameStarted) {
+        this.gameLoopTimer = setTimeout(
+          () => void loop(),
+          500 / this.room.gameSpeed
+        ) as unknown as number;
+      }
+    };
+
+    this.gameLoopTimer = setTimeout(
+      () => void loop(),
+      500 / this.room.gameSpeed
+    ) as unknown as number;
+  }
+
+  private clearGameLoop() {
+    if (this.gameLoopTimer !== null) {
+      clearTimeout(this.gameLoopTimer);
+      this.gameLoopTimer = null;
+    }
+  }
+
+  private async startGame() {
+    if (!this.room || this.room.gameStarted) {
+      return;
+    }
+
+    this.room.players.forEach((player) => {
+      player.reset();
+      player.disconnected = false;
+    });
+
+    if (this.room.mapId) {
+      const customMap = (await this.app.getMap(this.room.mapId, false)) as CustomMapData | null;
+      if (!customMap) {
+        throw new Error('Map not found');
+      }
+      this.room.map = GameMap.from_custom_map(
+        customMap,
+        this.room.players,
+        this.room.revealKing
+      );
+    } else {
+      const actualWidth = Math.ceil(
+        Math.sqrt(this.room.players.length) * 5 + 12 * this.room.mapWidth
+      );
+      const actualHeight = Math.ceil(
+        Math.sqrt(this.room.players.length) * 5 + 12 * this.room.mapHeight
+      );
+      this.room.map = new GameMap(
+        'random_map_id',
+        'random_map_name',
+        actualWidth,
+        actualHeight,
+        this.room.mountain,
+        this.room.city,
+        this.room.swamp,
+        this.room.players,
+        this.room.revealKing
+      );
+      this.room.map.generate();
+    }
+
+    this.room.mapGenerated = true;
+    this.room.globalMapDiff = new MapDiff();
+    this.room.gameRecord = new GameRecord(
+      this.room.players,
+      this.room.map.width,
+      this.room.map.height
+    );
+    this.room.gameStarted = true;
+
+    const introMessage = 'Chat is being recorded. 欢迎来到 BlockWar / 方块战争';
+    this.room.gameRecord.addMessage({
+      turn: this.room.map.turn,
+      player: null,
+      content: introMessage,
+    } as Message);
+
+    this.broadcast('update_room', this.room);
+    this.broadcast('room_message', null, introMessage);
+
+    for (const player of this.room.players) {
+      player.patchView = new MapDiff();
+      this.send(player.socket_id, 'game_started', this.createInitGameInfo(player));
+    }
+
+    await this.syncRoomSummary();
+    this.scheduleGameLoop();
+  }
+
+  private async runGameTick() {
+    if (!this.room?.map || !this.room.gameRecord || !this.room.globalMapDiff) {
+      return;
+    }
+
+    for (const player of this.room.players) {
+      if (!player.isDead && !player.spectating() && !player.disconnected) {
+        const block = this.room.map.getBlock(player.king!);
+        const blockPlayerIndex = getPlayerIndex(this.room, block.player?.id);
+
+        if (blockPlayerIndex !== -1) {
+          if (block.player !== player && player.isDead === false) {
+            this.broadcast(
+              'captured',
+              block.player.minify(),
+              player.minify()
+            );
+            this.send(player.socket_id, 'game_over', block.player.minify());
+            player.isDead = true;
+            player.land.forEach((landBlock) => {
+              this.room!.map!.transferBlock(
+                landBlock,
+                this.room!.players[blockPlayerIndex]
+              );
+              this.room!.players[blockPlayerIndex].winLand(landBlock);
+            });
+            this.room.map.getBlock(player.king!).kingBeDominated();
+            player.land.length = 0;
+          } else if (player.operatedTurn === 0 && player.operatedTurn + 160 <= this.room.map.turn) {
+            this.handleNeutralized(this.room, player);
+            this.broadcast('room_message', player.minify(), 'surrendered');
+          }
+        }
+      }
+    }
+
+    for (const [connectionId] of this.sockets.entries()) {
+      await this.sendCurrentGameState(connectionId);
+    }
+
+    await this.room.globalMapDiff.patch(this.room.map.map);
+    this.room.gameRecord.addGameUpdate(
+      this.room.globalMapDiff.data,
+      this.room.map.turn,
+      this.computeLeaderBoard()
+    );
+    this.room.map.updateTurn();
+    this.room.map.updateUnit();
+
+    const aliveTeams = this.room.players.reduce<number[]>((teams, player) => {
+      if (!player.isDead && !player.spectating() && !teams.includes(player.team)) {
+        teams.push(player.team);
+      }
+      return teams;
+    }, []);
+
+    if (aliveTeams.length <= 1) {
+      if (aliveTeams.length === 0) {
+        return;
+      }
+
+      const replayId = await this.app.saveReplay(
+        JSON.parse(JSON.stringify(this.room.gameRecord))
+      );
+      this.broadcast(
+        'game_ended',
+        this.room.players
+          .filter((player) => player.team === aliveTeams[0])
+          .map((player) => player.minify(true)),
+        replayId
+      );
+
+      this.room.gameStarted = false;
+      this.room.forceStartNum = 0;
+      this.broadcast('update_room', this.room);
+      this.room.players.forEach((player) => {
+        player.reset();
+      });
+      this.room.players = this.room.players.filter((player) => !player.disconnected);
+      this.clearGameLoop();
+      await this.syncRoomSummary();
+    }
+  }
+
+  private async handlePacket(connectionId: string, packet: SocketPacket) {
+    const room = this.room;
+    if (!room) {
+      return;
+    }
+
+    const player = this.getPlayerByConnection(connectionId);
+    const [arg1, arg2, arg3] = packet.data;
+
+    switch (packet.type) {
+      case 'get_room_info':
+      case 'reconnect':
+        this.send(connectionId, 'update_room', room);
+        if (room.gameStarted) {
+          await this.sendCurrentGameState(connectionId);
+        }
+        break;
+      case 'set_team': {
+        if (!player) return;
+        const team = Number(arg1);
+        if (team <= 0 || team > MaxTeamNum + 1) {
+          this.send(
+            connectionId,
+            'error',
+            'Unable to change team',
+            `Team must be between 1 and ${MaxTeamNum} or spectators`
+          );
+          return;
+        }
+
+        player.team = team;
+        if (player.spectating() && player.forceStart) {
+          player.forceStart = false;
+          room.forceStartNum -= 1;
+        }
+
+        this.broadcast('update_room', room);
+        this.broadcast(
+          'room_message',
+          player.minify(),
+          player.spectating() ? 'became a spectator.' : `change to team ${team}.`
+        );
+        await this.syncRoomSummary();
+        await this.checkForcedStart();
+        break;
+      }
+      case 'surrender': {
+        const playerId = String(arg1 ?? '');
+        const playerIndex = getPlayerIndex(room, playerId);
+        if (playerIndex === -1) {
+          this.send(connectionId, 'error', 'Surrender failed', 'Player not found.');
+          return;
+        }
+        if (!room.map) {
+          this.send(connectionId, 'error', 'Surrender failed', 'Map not found.');
+          return;
+        }
+        this.handleNeutralized(room, room.players[playerIndex]);
+        this.broadcast('room_message', room.players[playerIndex].minify(), 'surrendered');
+        break;
+      }
+      case 'change_host': {
+        if (!player) return;
+        if (!player.isRoomHost) {
+          this.send(
+            connectionId,
+            'error',
+            'Host modification failed',
+            'You are not the room host.'
+          );
+          return;
+        }
+
+        const currentHost = getPlayerIndex(room, player.id);
+        const newHost = getPlayerIndex(room, String(arg1 ?? ''));
+        if (newHost === -1) {
+          this.send(
+            connectionId,
+            'error',
+            'Host modification failed',
+            'Target player not found.'
+          );
+          return;
+        }
+
+        room.players[currentHost].setRoomHost(false);
+        room.players[newHost].setRoomHost(true);
+        this.broadcast('update_room', room);
+        this.broadcast(
+          'host_modification',
+          player.minify(),
+          room.players[newHost].minify()
+        );
+        await this.syncRoomSummary();
+        break;
+      }
+      case 'change_room_setting': {
+        if (!player) return;
+        const property = String(arg1 ?? '');
+        const value = arg2;
+        if (!player.isRoomHost) {
+          this.send(
+            connectionId,
+            'error',
+            'Modification was failed',
+            'You are not the game host.'
+          );
+          return;
+        }
+
+        if (!(property in room) || value === undefined) {
+          this.send(
+            connectionId,
+            'error',
+            'Modification was failed',
+            `Invalid property: ${property} or value: ${String(value)}.`
+          );
+          return;
+        }
+
+        switch (property) {
+          case 'roomName':
+            if (typeof value !== 'string' || value.length > 20) {
+              this.send(
+                connectionId,
+                'error',
+                'Modification was failed',
+                'Room name is too long.'
+              );
+              return;
+            }
+            break;
+          case 'mapId':
+            if (typeof value !== 'string' || value.length > 50) {
+              this.send(
+                connectionId,
+                'error',
+                'Modification was failed',
+                'invalid MapId'
+              );
+              return;
+            }
+            if (value) {
+              const map = await this.app.getMap(value, false);
+              if (!map) {
+                this.send(
+                  connectionId,
+                  'error',
+                  'Modification was failed',
+                  'invalid MapId'
+                );
+                return;
+              }
+              room.mapName = map.name;
+            } else {
+              room.mapName = '';
+            }
+            break;
+          case 'maxPlayers':
+            if (typeof value !== 'number' || value <= 1) {
+              this.send(
+                connectionId,
+                'error',
+                'Modification was failed',
+                'Max player num is invalid.'
+              );
+              return;
+            }
+            break;
+          case 'gameSpeed':
+            if (typeof value !== 'number' || ![0.5, 0.75, 1, 2, 3, 4].includes(value)) {
+              this.send(
+                connectionId,
+                'error',
+                'Modification was failed',
+                `Game speed: ${value} is invalid.`
+              );
+              return;
+            }
+            break;
+          case 'mapWidth':
+          case 'mapHeight':
+          case 'mountain':
+          case 'city':
+          case 'swamp':
+            if (typeof value !== 'number' || value < 0 || value > 1) {
+              this.send(
+                connectionId,
+                'error',
+                'Modification was failed',
+                `Map ${property} is invalid.`
+              );
+              return;
+            }
+            break;
+          case 'fogOfWar':
+          case 'revealKing':
+          case 'warringStatesMode':
+          case 'deathSpectator':
+            if (typeof value !== 'boolean') {
+              this.send(
+                connectionId,
+                'error',
+                'Modification was failed',
+                'Invalid value.'
+              );
+              return;
+            }
+            break;
+          default:
+            break;
+        }
+
+        (room as unknown as Record<string, unknown>)[property] = value;
+        this.broadcast('update_room', room);
+        this.broadcast(
+          'room_message',
+          player.minify(),
+          property === 'mapId'
+            ? `changed mapName to ${room.mapName}.`
+            : `changed ${property} to ${String(value)}.`
+        );
+        await this.syncRoomSummary();
+        break;
+      }
+      case 'player_message': {
+        if (!player) return;
+        const message = String(arg1 ?? '');
+        if (room.gameStarted && room.gameRecord && room.map) {
+          room.gameRecord.addMessage({
+            turn: room.map.turn,
+            player: player.minify(),
+            content: message,
+          } as Message);
+        }
+        this.broadcast('room_message', player.minify(), `: ${message}`);
+        break;
+      }
+      case 'force_start': {
+        if (!player || player.spectating()) return;
+        player.forceStart = !player.forceStart;
+        room.forceStartNum += player.forceStart ? 1 : -1;
+        this.broadcast('update_room', room);
+        await this.syncRoomSummary();
+        await this.checkForcedStart();
+        break;
+      }
+      case 'attack': {
+        if (!player || !room.map) return;
+        const from = arg1 as Point;
+        const to = arg2 as Point;
+        const isHalf = Boolean(arg3);
+
+        if (typeof isHalf !== 'boolean') {
+          this.send(connectionId, 'attack_failure', from, to, 'Invalid parameter type');
+          return;
+        }
+        if (from.x < 0 || from.x >= room.map.width || from.y < 0 || from.y >= room.map.height) {
+          this.send(connectionId, 'attack_failure', from, to, 'Invalid starting point');
+          return;
+        }
+        if (to.x < 0 || to.x >= room.map.width || to.y < 0 || to.y >= room.map.height) {
+          this.send(connectionId, 'attack_failure', from, to, 'Invalid ending point, out of map');
+          return;
+        }
+        if (Math.abs(from.x - to.x) > 1 || Math.abs(from.y - to.y) > 1) {
+          this.send(connectionId, 'attack_failure', from, to, 'Invalid ending point, not adjacent');
+          return;
+        }
+
+        if (player.operatedTurn < room.map.turn && room.map.commendable(player, from, to)) {
+          if (isHalf) {
+            room.map.moveHalfMovableUnit(player, from, to);
+          } else {
+            room.map.moveAllMovableUnit(player, from, to);
+          }
+          player.operatedTurn = room.map.turn;
+          this.send(connectionId, 'attack_success', from, to, room.map.turn);
+        } else {
+          this.send(
+            connectionId,
+            'attack_failure',
+            from,
+            to,
+            `Invalid operation: ${player.operatedTurn} ${room.map.turn} ${room.map.commendable(player, from, to)}`
+          );
+        }
+        break;
+      }
+      default:
+        break;
+    }
+  }
+}

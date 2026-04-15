@@ -163,7 +163,7 @@ function MapEditor({ editMode }: { editMode: boolean }) {
       })
       .then((responseData) => {
         console.log(responseData);
-        const customMapData: CustomMapData = responseData;
+        const customMapData = responseData as CustomMapData;
         setMapData(customMapData.mapTilesData);
         setMapWidth(customMapData.width);
         setMapHeight(customMapData.height);
@@ -460,7 +460,7 @@ function MapEditor({ editMode }: { editMode: boolean }) {
     // Create a URL for the blob
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
-    link.download = `gennia_custom_map_${username}_${mapName}.json`;
+    link.download = `blockwar_custom_map_${username}_${mapName}.json`;
     link.href = url;
     document.body.appendChild(link);
     link.click();
@@ -567,9 +567,9 @@ function MapEditor({ editMode }: { editMode: boolean }) {
             }}
           >
             <Typography variant='h5' color='white'>{mapName}</Typography>
-            <ReactMarkdown className='react_markdown'>
-              {mapDescription}
-            </ReactMarkdown>
+            <Box className='react_markdown'>
+              <ReactMarkdown>{mapDescription}</ReactMarkdown>
+            </Box>
           </Box>
           <Button
             size='large'

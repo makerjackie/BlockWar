@@ -9,7 +9,7 @@ function ReplayPage() {
   return (
     <ThemeProvider theme={theme}>
       <Head>
-        <title>Custom Map | Gennia</title>
+        <title>Custom Map | BlockWar / 方块战争</title>
       </Head>
       <Navbar />
       <MapEditor editMode={false} />

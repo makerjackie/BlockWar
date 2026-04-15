@@ -105,7 +105,7 @@ export default function GameReplay(props: any) {
         if (response.status === 404) {
           throw new Error('Replay not found');
         }
-        const game_record = await response.json();
+        const game_record = (await response.json()) as GameRecord;
         // init
         setGameRecord(game_record);
         setMapHeight(game_record.mapHeight);

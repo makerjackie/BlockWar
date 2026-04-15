@@ -8,7 +8,7 @@ function ReplayPage() {
   return (
     <ThemeProvider theme={theme}>
       <Head>
-        <title>Replay | Gennia</title>
+        <title>Replay | BlockWar / 方块战争</title>
       </Head>
       <GameReplay />
     </ThemeProvider>

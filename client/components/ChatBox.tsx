@@ -106,7 +106,7 @@ export default React.memo(function ChatBox({ socket, messages }: ChatBoxProp) {
 
   return (
     <section
-      className={`fixed bottom-0 right-0 z-[1003] flex ${widthClass} ${heightClass} flex-col border-l border-t border-zinc-500/30 bg-zinc-950/92 shadow-[0_0_40px_rgba(0,0,0,0.45)] backdrop-blur-xl transition-all duration-200 ${isExpand ? 'opacity-100' : 'z-[1001] opacity-65'}`}
+      className={`bw-side-dock fixed bottom-0 right-0 z-[1003] flex ${widthClass} ${heightClass} flex-col border-l border-t transition-all duration-200 ${isExpand ? 'opacity-100' : 'z-[1001] opacity-65'}`}
       onClick={() => {
         if (!isExpand) setIsExpand(true);
       }}

@@ -151,7 +151,7 @@ function Navbar() {
       </div>
 
       {isNavOpen && (
-        <div className='mx-3 mt-2 border border-zinc-500/40 bg-zinc-950/95 p-2 shadow-[6px_6px_0_#000] backdrop-blur-xl md:hidden'>
+        <div className='menu-container mx-3 mt-2 p-2 md:hidden'>
           <nav className='grid gap-1'>
             {navItems.map((item) => (
               <Link

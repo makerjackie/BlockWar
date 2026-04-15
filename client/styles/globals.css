@@ -33,12 +33,13 @@
   --bw-red: #ef4444;
   --bw-green: #68d391;
   --bw-blue: #60a5fa;
-  --bw-title-shadow: rgb(0 0 0 / 92%);
+  --bw-title-shadow: 3px 3px 0 rgb(0 0 0 / 92%);
   --bw-shadow-solid: rgb(0 0 0 / 86%);
-  --bw-shadow: 10px 10px 0 var(--bw-shadow-solid);
-  --bw-shadow-soft: 0 22px 80px rgb(0 0 0 / 54%);
-  --bw-shadow-button-primary: 6px 6px 0 rgb(0 0 0 / 92%);
-  --bw-shadow-button-secondary: 4px 4px 0 rgb(0 0 0 / 74%);
+  --bw-shadow: 8px 8px 0 var(--bw-shadow-solid);
+  --bw-shadow-soft: 0 0 0 1px rgb(244 244 245 / 8%), 5px 5px 0 rgb(0 0 0 / 56%);
+  --bw-shadow-dock: 0 5px 0 rgb(0 0 0 / 56%);
+  --bw-shadow-button-primary: 5px 5px 0 rgb(0 0 0 / 88%);
+  --bw-shadow-button-secondary: 3px 3px 0 rgb(0 0 0 / 72%);
   --bw-input-bg: rgb(7 8 10 / 94%);
   --bw-button-primary-bg: #f4f4f5;
   --bw-button-primary-hover: #f5c542;
@@ -49,39 +50,33 @@
   --bw-selection-ink: #09090b;
   --bw-grid-overlay: rgb(255 255 255 / 5%);
   --bw-grid-overlay-strong: rgb(255 255 255 / 7%);
-  --bw-body-background:
-    radial-gradient(circle at 18% 12%, rgb(245 197 66 / 16%), transparent 22rem),
-    radial-gradient(circle at 88% 18%, rgb(239 68 68 / 12%), transparent 20rem),
-    linear-gradient(135deg, #090a0d 0%, #111318 44%, #050608 100%);
-  --bw-game-background:
-    radial-gradient(circle at 50% 50%, rgb(245 197 66 / 10%), transparent 34rem),
-    linear-gradient(135deg, #09090b, #111827 52%, #050505);
 }
 
 :root[data-theme='light'] {
   color-scheme: light;
-  --bw-bg: #f3eee3;
-  --bw-bg-soft: #e4dccb;
-  --bw-panel: rgb(250 246 238 / 88%);
-  --bw-panel-strong: rgb(243 237 226 / 96%);
-  --bw-surface-soft: rgb(228 220 203 / 84%);
-  --bw-line: rgb(23 27 34 / 20%);
-  --bw-line-strong: rgb(23 27 34 / 60%);
+  --bw-bg: #f7f7f2;
+  --bw-bg-soft: #edede7;
+  --bw-panel: rgb(253 253 247 / 90%);
+  --bw-panel-strong: rgb(255 255 250 / 96%);
+  --bw-surface-soft: rgb(232 233 226 / 88%);
+  --bw-line: rgb(17 24 39 / 18%);
+  --bw-line-strong: rgb(17 24 39 / 58%);
   --bw-ink: #171b22;
   --bw-ink-soft: #2d3440;
-  --bw-muted: #676f7d;
-  --bw-muted-soft: #8b8f99;
+  --bw-muted: #667085;
+  --bw-muted-soft: #8a91a0;
   --bw-ember: #ddab28;
   --bw-red: #d16053;
   --bw-green: #4f8a67;
   --bw-blue: #456fbe;
-  --bw-title-shadow: rgb(76 63 42 / 32%);
-  --bw-shadow-solid: rgb(29 25 18 / 24%);
-  --bw-shadow: 10px 10px 0 var(--bw-shadow-solid);
-  --bw-shadow-soft: 0 22px 80px rgb(49 41 27 / 18%);
-  --bw-shadow-button-primary: 6px 6px 0 rgb(29 25 18 / 32%);
-  --bw-shadow-button-secondary: 4px 4px 0 rgb(29 25 18 / 18%);
-  --bw-input-bg: rgb(255 251 245 / 96%);
+  --bw-title-shadow: 2px 2px 0 rgb(17 24 39 / 12%);
+  --bw-shadow-solid: rgb(17 24 39 / 16%);
+  --bw-shadow: 6px 6px 0 var(--bw-shadow-solid);
+  --bw-shadow-soft: 0 0 0 1px rgb(17 24 39 / 6%), 4px 4px 0 rgb(17 24 39 / 8%);
+  --bw-shadow-dock: 0 4px 0 rgb(17 24 39 / 10%);
+  --bw-shadow-button-primary: 4px 4px 0 rgb(17 24 39 / 18%);
+  --bw-shadow-button-secondary: 3px 3px 0 rgb(17 24 39 / 12%);
+  --bw-input-bg: rgb(255 255 250 / 98%);
   --bw-button-primary-bg: #171b22;
   --bw-button-primary-hover: #ddab28;
   --bw-button-primary-text: #f7f2e9;
@@ -91,13 +86,6 @@
   --bw-selection-ink: #171b22;
   --bw-grid-overlay: rgb(23 27 34 / 6%);
   --bw-grid-overlay-strong: rgb(23 27 34 / 8%);
-  --bw-body-background:
-    radial-gradient(circle at 18% 12%, rgb(221 171 40 / 16%), transparent 22rem),
-    radial-gradient(circle at 88% 18%, rgb(209 96 83 / 10%), transparent 20rem),
-    linear-gradient(135deg, #f7f2e9 0%, #ede4d6 44%, #ddd1be 100%);
-  --bw-game-background:
-    radial-gradient(circle at 50% 50%, rgb(221 171 40 / 14%), transparent 34rem),
-    linear-gradient(135deg, #f7f1e7, #e7dccd 52%, #d9ccb6);
 }
 
 html,
@@ -123,23 +111,10 @@ body {
   overscroll-behavior-y: contain;
   color: var(--bw-ink);
   font-family: var(--font-sans);
-  background: var(--bw-body-background);
+  background: var(--bw-bg);
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-}
-
-body::before {
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  content: '';
-  background-image:
-    linear-gradient(var(--bw-grid-overlay) 1px, transparent 1px),
-    linear-gradient(90deg, var(--bw-grid-overlay) 1px, transparent 1px);
-  background-size: 32px 32px;
-  mask-image: linear-gradient(to bottom, rgb(0 0 0 / 85%), transparent 78%);
 }
 
 * {
@@ -190,7 +165,7 @@ select {
     @apply font-black uppercase tracking-[-0.06em];
     color: var(--bw-ink);
     font-family: var(--font-display);
-    text-shadow: 4px 4px 0 var(--bw-title-shadow);
+    text-shadow: var(--bw-title-shadow);
   }
 
   .bw-panel,
@@ -219,19 +194,6 @@ select {
     border-color: var(--bw-line-strong);
     border-radius: 2px;
     box-shadow: var(--bw-shadow);
-  }
-
-  .bw-card-grid::before,
-  .menu-container::before {
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    content: '';
-    background-image:
-      linear-gradient(var(--bw-grid-overlay-strong) 1px, transparent 1px),
-      linear-gradient(90deg, var(--bw-grid-overlay-strong) 1px, transparent 1px);
-    background-size: 16px 16px;
-    opacity: 0.22;
   }
 
   .bw-brand-mark {
@@ -311,7 +273,7 @@ select {
     color: var(--bw-ink);
     border-color: var(--bw-line);
     border-radius: 0;
-    box-shadow: 0 12px 40px color-mix(in srgb, var(--bw-shadow-solid) 60%, transparent);
+    box-shadow: var(--bw-shadow-dock);
   }
 
   .navbar-language-switch {
@@ -358,7 +320,15 @@ select {
     position: absolute;
     font-size: 1rem;
     color: var(--bw-ink);
-    text-shadow: 1px 1px 0 var(--bw-title-shadow);
+    text-shadow: 1px 1px 0 var(--bw-shadow-solid);
+  }
+
+  .bw-side-dock {
+    @apply backdrop-blur-xl;
+    background: var(--bw-panel);
+    color: var(--bw-ink);
+    border-color: var(--bw-line);
+    box-shadow: var(--bw-shadow-dock);
   }
 
   .queue_up::before {
@@ -400,7 +370,7 @@ select {
     height: 100vh;
     overflow: hidden;
     font-size: 16px;
-    background: var(--bw-game-background);
+    background: var(--bw-bg);
   }
 
   @supports (height: 100dvh) {

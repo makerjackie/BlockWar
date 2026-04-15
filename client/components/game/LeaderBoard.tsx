@@ -91,7 +91,7 @@ export default function LeaderBoard(props: LeaderBoardProps) {
   };
 
   return (
-    <section className='absolute right-0 top-0 z-[110] min-w-[220px] overflow-hidden border-l border-b border-zinc-700 bg-zinc-950/92 shadow-[0_0_40px_rgba(0,0,0,0.42)] backdrop-blur-xl'>
+    <section className='bw-side-dock absolute right-0 top-0 z-[110] min-w-[220px] overflow-hidden border-l border-b'>
       <button
         type='button'
         className='flex w-full items-center justify-between border-b border-zinc-800 px-4 py-3 text-left'

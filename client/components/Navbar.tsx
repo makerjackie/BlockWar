@@ -56,7 +56,13 @@ function Navbar() {
     await router.push(router.asPath, undefined, { locale: lang });
   };
 
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const locale = router.locale ?? i18n.resolvedLanguage ?? i18n.language ?? 'en';
+  const isChinese = locale.startsWith('zh');
+  const brandTitle = isChinese ? '方块战争' : 'BlockWar';
+  const brandSubtitle = isChinese ? 'BlockWar' : '方块战争';
+  const navLinkClass = `navbar-link ${isChinese ? 'navbar-link-zh' : 'navbar-link-en'}`;
+  const mobileNavLinkClass = `${navLinkClass} navbar-link-mobile`;
   const themeToggleLabel =
     mode === 'dark' ? t('switch-to-light') : t('switch-to-dark');
   const themeToggleText = mode === 'dark' ? t('theme-light') : t('theme-dark');
@@ -77,22 +83,27 @@ function Navbar() {
             />
           </span>
           <span className='min-w-0'>
-            <span className='bw-brand-text block truncate text-lg font-black uppercase tracking-[-0.05em] md:text-xl'>
-              BlockWar
+            <span
+              className={`bw-brand-title ${isChinese ? 'bw-brand-title-zh' : 'bw-brand-title-en'}`}
+            >
+              {brandTitle}
             </span>
-            <span className='block text-[10px] font-bold uppercase tracking-[0.32em] text-zinc-500 group-hover:text-yellow-300'>
-              方块战争
+            <span
+              className={`bw-brand-subtitle ${
+                isChinese ? 'bw-brand-subtitle-en' : 'bw-brand-subtitle-zh'
+              }`}
+            >
+              {brandSubtitle}
             </span>
           </span>
         </Link>
 
-        <nav className='hidden items-center gap-2 md:flex'>
+        <nav className='hidden min-w-0 flex-1 items-center justify-center gap-2 md:flex'>
           {navItems.map((item) => (
             <Link
               href={item.href}
               key={item.href}
-              id='navbar-link'
-              className='flex min-h-10 items-center gap-2 border border-transparent px-3 text-xs text-zinc-300 transition hover:border-zinc-500/60 hover:bg-zinc-900 hover:text-zinc-50'
+              className={navLinkClass}
             >
               {item.icon}
               {t(item.label)}
@@ -143,7 +154,7 @@ function Navbar() {
           type='button'
           aria-label='Open navigation menu'
           aria-expanded={isNavOpen}
-          className='grid size-11 place-items-center border border-zinc-500/50 bg-zinc-950 text-zinc-50 md:hidden'
+          className='ml-auto grid size-11 place-items-center border border-zinc-500/50 bg-zinc-950 text-zinc-50 md:hidden'
           onClick={() => setIsNavOpen((value) => !value)}
         >
           <Menu size={18} strokeWidth={2.5} />
@@ -157,7 +168,7 @@ function Navbar() {
               <Link
                 href={item.href}
                 key={item.href}
-                className='flex min-h-11 items-center gap-3 border border-transparent px-3 text-sm font-black uppercase tracking-[0.14em] text-zinc-200 hover:border-yellow-300 hover:text-yellow-300'
+                className={mobileNavLinkClass}
                 onClick={() => setIsNavOpen(false)}
               >
                 {item.icon}

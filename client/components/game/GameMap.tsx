@@ -170,13 +170,15 @@ function GameMap() {
   const myPlayerIndex = useMemo(() => {
     return getPlayerIndex(room, myPlayerId);
   }, [room, myPlayerId]);
+  const myPlayerColor =
+    myPlayerIndex >= 0 ? room.players[myPlayerIndex]?.color ?? null : null;
 
   const queueEmpty = mapQueueData.length === 0;
 
   let displayMapData = mapData.map((tiles, x) => {
     return tiles.map((tile, y) => {
       const [, color] = tile;
-      const isOwned = color === room.players[myPlayerIndex].color;
+      const isOwned = myPlayerColor !== null && color === myPlayerColor;
       const _className = queueEmpty ? '' : mapQueueData[x][y].className;
 
       let tileHalf = false;
@@ -220,7 +222,7 @@ function GameMap() {
           const y = Math.floor((touch.clientX - rect.left) / (tileSize * zoom));
           const x = Math.floor((touch.clientY - rect.top) / (tileSize * zoom));
           const [tileType, color] = mapData[x][y];
-          const isOwned = color === room.players[myPlayerIndex].color;
+          const isOwned = myPlayerColor !== null && color === myPlayerColor;
           const currentTime = new Date().getTime();
           if (!isOwned) {
             touchDragging.current = true;
@@ -259,7 +261,7 @@ function GameMap() {
         initialDistance.current = distance;
       }
     },
-    [mapRef, tileSize, zoom, mapData, room.players, myPlayerIndex, position.x, position.y, setSelectedMapTileInfo]
+    [mapRef, tileSize, zoom, mapData, myPlayerColor, position.x, position.y, setSelectedMapTileInfo]
   );
 
   const handleTouchMove = useCallback(

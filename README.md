@@ -20,10 +20,10 @@ BlockWar mobile demo
 
 ## 当前架构
 
-- **前端**：React + Vite + Material UI
+- **前端**：React + Vite + Tailwind CSS
 - **后端**：Hono on Cloudflare Workers
 - **实时房间**：Cloudflare Durable Objects + WebSocket
-- **持久化**：App Durable Object(SQLite storage) 保存大厅、地图、收藏与回放
+- **持久化**：Cloudflare D1 保存大厅、地图、收藏与回放
 - **共享游戏内核**：`src/shared/game/`
 
 ## 主要能力

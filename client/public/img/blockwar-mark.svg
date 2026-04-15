@@ -1,9 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title desc">
   <title id="title">BlockWar mark</title>
-  <desc id="desc">A minimal battlefield mark in black, white, and yellow.</desc>
-  <rect width="64" height="64" fill="#07080a"/>
-  <path d="M10 10h44v44H10z" fill="#07080a" stroke="#f4f4f5" stroke-width="4"/>
-  <path d="M22 22h8v8h-8zM34 34h8v8h-8z" fill="#f4f4f5"/>
-  <path d="M28 28h8v8h-8z" fill="#f5c542"/>
-  <path d="M18 18h28v28" fill="none" stroke="#f4f4f5" stroke-width="2"/>
+  <desc id="desc">A minimal four-cell board mark with one yellow block, two white blocks, and one black block.</desc>
+  <g shape-rendering="crispEdges">
+    <rect x="8" y="8" width="24" height="24" fill="#f5c542"/>
+    <rect x="32" y="8" width="24" height="24" fill="#fbfaf6"/>
+    <rect x="8" y="32" width="24" height="24" fill="#fbfaf6"/>
+    <rect x="32" y="32" width="24" height="24" fill="#111318"/>
+    <rect x="8" y="8" width="48" height="48" fill="none" stroke="#111318" stroke-width="2"/>
+    <path d="M32 8v48M8 32h48" fill="none" stroke="#111318" stroke-width="2"/>
+  </g>
 </svg>

@@ -203,9 +203,41 @@ select {
     box-shadow: 5px 5px 0 var(--bw-shadow-solid);
   }
 
-  .bw-brand-text {
-    @apply leading-none;
+  .bw-brand-title {
+    @apply block truncate font-black leading-none;
     font-family: var(--font-display);
+    text-shadow: var(--bw-title-shadow);
+  }
+
+  .bw-brand-title-en {
+    @apply text-lg uppercase tracking-[-0.05em] md:text-xl;
+    color: var(--bw-ink);
+  }
+
+  .bw-brand-title-zh {
+    @apply inline-block px-2 py-0.5 text-[1.45rem] tracking-[0.08em] md:text-[1.75rem];
+    color: #09090b;
+    background: var(--bw-ember);
+    box-shadow: 3px 3px 0 color-mix(in srgb, var(--bw-shadow-solid) 80%, transparent);
+    text-shadow: none;
+  }
+
+  .bw-brand-subtitle {
+    @apply block font-black transition;
+  }
+
+  .bw-brand-subtitle-en {
+    @apply text-[10px] uppercase tracking-[0.32em];
+    color: var(--bw-muted);
+  }
+
+  .bw-brand-subtitle-zh {
+    @apply text-xs tracking-[0.24em];
+    color: color-mix(in srgb, var(--bw-ember) 88%, var(--bw-ink) 12%);
+  }
+
+  .group:hover .bw-brand-subtitle {
+    color: var(--bw-ember);
   }
 
   .bw-button {
@@ -268,7 +300,7 @@ select {
   }
 
   .dock {
-    @apply mx-auto flex h-[60px] w-full max-w-6xl items-center justify-between border-x border-b px-3 backdrop-blur-xl md:px-5;
+    @apply mx-auto flex h-[60px] w-full max-w-6xl items-center gap-3 border-x border-b px-3 backdrop-blur-xl md:gap-4 md:px-5;
     background: var(--bw-panel);
     color: var(--bw-ink);
     border-color: var(--bw-line);
@@ -285,8 +317,41 @@ select {
     box-shadow: var(--bw-shadow-button-secondary);
   }
 
-  #navbar-link {
-    @apply font-black uppercase tracking-[0.12em];
+  .navbar-link {
+    @apply inline-flex min-h-10 items-center gap-2 border px-3 transition duration-200 ease-out;
+    background: var(--bw-panel-strong);
+    color: var(--bw-ink-soft);
+    border-color: var(--bw-line);
+    box-shadow: var(--bw-shadow-button-secondary);
+  }
+
+  .navbar-link:hover {
+    @apply -translate-y-0.5;
+    background: color-mix(in srgb, var(--bw-panel-strong) 72%, var(--bw-ember) 28%);
+    color: var(--bw-ink);
+    border-color: color-mix(in srgb, var(--bw-ember) 76%, var(--bw-line-strong) 24%);
+  }
+
+  .navbar-link-en {
+    @apply text-xs font-black uppercase tracking-[0.12em];
+  }
+
+  .navbar-link-zh {
+    @apply text-[13px] font-black tracking-[0.08em];
+  }
+
+  .navbar-link-mobile {
+    @apply min-h-11 justify-start gap-3 px-3;
+    background: transparent;
+    color: var(--bw-ink-soft);
+    border-color: transparent;
+    box-shadow: none;
+  }
+
+  .navbar-link-mobile:hover {
+    background: rgb(245 197 66 / 10%);
+    color: var(--bw-ember);
+    border-color: rgb(245 197 66 / 58%);
   }
 
   .attack-button {

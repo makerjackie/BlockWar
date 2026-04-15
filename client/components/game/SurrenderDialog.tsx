@@ -1,18 +1,10 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import {
-  Box,
-  Button,
-  Dialog,
-  DialogActions,
-  DialogTitle,
-  DialogContent,
-  DialogContentText,
-} from '@mui/material';
+import React, { useCallback, useEffect } from 'react';
 import { useTranslation } from 'next-i18next';
 import { useGame } from '@/context/GameContext';
 import { useRouter } from 'next/router';
 import { RoomUiStatus } from '@/lib/types';
 import { MaxTeamNum } from '@/lib/constants';
+import ModalShell from '@/components/ui/ModalShell';
 
 export default function SurrenderDialog({
   isOpen,
@@ -26,14 +18,6 @@ export default function SurrenderDialog({
   const { openOverDialog, isSurrendered, team, roomUiStatus } = useGame();
   const { t } = useTranslation();
   const router = useRouter();
-
-  const handleClose = useCallback(
-    (event: any, reason: string) => {
-      if (reason === 'backdropClick') return;
-      setOpen(false);
-    },
-    [setOpen]
-  );
 
   const handleKeydown = useCallback(
     (event: KeyboardEvent) => {
@@ -68,47 +52,42 @@ export default function SurrenderDialog({
   }, [handleKeydown]);
 
   return (
-    <Dialog
+    <ModalShell
       open={isOpen}
-      onClose={handleClose}
-      maxWidth='md'
-      aria-labelledby='Surrender Dialog'
-      aria-describedby='Ensure user wants to surrender'
-    >
-      <DialogTitle>
-        {showExitTitle
-          ? t('are-you-sure-to-exit')
-          : t('are-you-sure-to-surrender')}
-      </DialogTitle>
-      <Box
-        sx={{
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'center',
-          alignItems: 'center',
-          width: '100%',
-        }}
-      >
-        {showExitTitle ? (
-          <Button sx={{ width: '100%' }} onClick={handleExit}>
-            {t('exit')}
-          </Button>
-        ) : (
-          <>
-            <Button sx={{ width: '100%' }} onClick={handleCloseSurrender}>
+      onClose={() => setOpen(false)}
+      closeOnBackdrop={false}
+      title={showExitTitle ? t('are-you-sure-to-exit') : t('are-you-sure-to-surrender')}
+      widthClassName='max-w-lg'
+      actions={
+        <>
+          {showExitTitle ? (
+            <button type='button' className='bw-button bw-button-danger' onClick={handleExit}>
+              {t('exit')}
+            </button>
+          ) : (
+            <button
+              type='button'
+              className='bw-button bw-button-danger'
+              onClick={handleCloseSurrender}
+            >
               {t('surrender')}
-            </Button>
-          </>
-        )}
-        <Button
-          sx={{ width: '100%' }}
-          onClick={() => {
-            setOpen(false);
-          }}
-        >
-          {t('cancel')}
-        </Button>
-      </Box>
-    </Dialog>
+            </button>
+          )}
+          <button
+            type='button'
+            className='bw-button bw-button-secondary'
+            onClick={() => {
+              setOpen(false);
+            }}
+          >
+            {t('cancel')}
+          </button>
+        </>
+      }
+    >
+      <p className='text-sm text-zinc-300'>
+        {showExitTitle ? t('exit') : t('surrender')}
+      </p>
+    </ModalShell>
   );
 }

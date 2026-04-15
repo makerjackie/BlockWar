@@ -1,28 +1,5 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/router';
-import {
-  Box,
-  Card,
-  CardHeader,
-  CardContent,
-  Button,
-  IconButton,
-  Tab,
-  Tabs,
-  Typography,
-  TextField,
-  FormGroup,
-  FormControlLabel,
-  Switch,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Link,
-  ToggleButtonGroup,
-  ToggleButton,
-} from '@mui/material';
-import { styled } from '@mui/material/styles';
 import ClearIcon from '@mui/icons-material/Clear';
 import ShareIcon from '@mui/icons-material/Share';
 import TerrainIcon from '@mui/icons-material/Terrain';
@@ -30,6 +7,7 @@ import LocationCityIcon from '@mui/icons-material/LocationCity';
 import WaterIcon from '@mui/icons-material/Water';
 import GroupIcon from '@mui/icons-material/Group';
 import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
+import Link from 'next/link';
 import { useTranslation } from 'next-i18next';
 
 import SliderBox from './SliderBox';
@@ -38,26 +16,54 @@ import MapExplorer from './game/MapExplorer';
 
 import { forceStartOK, MaxTeamNum, SpeedOptions } from '@/lib/constants';
 import { useGame, useGameDispatch } from '@/context/GameContext';
+import ModalShell from '@/components/ui/ModalShell';
 
-interface GameSettingProps { }
+interface GameSettingProps {}
 
-const StyledToggleButtonGroup = styled(ToggleButtonGroup)(({ theme }) => ({
-  '& .MuiToggleButtonGroup-grouped': {
-    margin: theme.spacing(0.5),
-    border: 0,
-    '&.Mui-disabled': {
-      border: 0,
-    },
-    '&:not(:first-of-type)': {
-      borderRadius: theme.shape.borderRadius,
-    },
-    '&:first-of-type': {
-      borderRadius: theme.shape.borderRadius,
-    },
-  },
-}));
+const tabLabels = ['team', 'game', 'map', 'terrain', 'modifiers'] as const;
 
-const GameSetting: React.FC<GameSettingProps> = (props) => {
+const tabButtonClass = (active: boolean) =>
+  `bw-button min-h-10 px-3 text-xs ${active ? 'bw-button-primary' : 'bw-button-secondary'}`;
+
+function ToggleRow({
+  label,
+  checked,
+  disabled,
+  onToggle,
+}: {
+  label: string;
+  checked: boolean;
+  disabled: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      type='button'
+      disabled={disabled}
+      onClick={onToggle}
+      className='flex min-h-12 items-center justify-between gap-3 border border-zinc-800 bg-zinc-950/60 px-4 py-3 text-left disabled:cursor-not-allowed disabled:opacity-50'
+    >
+      <span className='text-sm font-black uppercase tracking-[0.12em] text-zinc-200'>
+        {label}
+      </span>
+      <span
+        className={`h-6 w-12 border transition ${
+          checked
+            ? 'border-yellow-300 bg-yellow-300'
+            : 'border-zinc-600 bg-zinc-900'
+        }`}
+      >
+        <span
+          className={`block h-full w-1/2 bg-zinc-950 transition-transform ${
+            checked ? 'translate-x-full' : 'translate-x-0'
+          }`}
+        />
+      </span>
+    </button>
+  );
+}
+
+const GameSetting: React.FC<GameSettingProps> = () => {
   const [tabIndex, setTabIndex] = useState(0);
   const [isNameFocused, setIsNamedFocused] = useState(false);
   const [shareLink, setShareLink] = useState('');
@@ -75,7 +81,7 @@ const GameSetting: React.FC<GameSettingProps> = (props) => {
     setShareLink(window.location.href);
   }, []);
 
-  const handleRoomNameBlur = (event: any) => {
+  const handleRoomNameBlur = () => {
     setIsNamedFocused(false);
     let name = room.roomName;
 
@@ -93,16 +99,8 @@ const GameSetting: React.FC<GameSettingProps> = (props) => {
     socketRef.current.emit('change_room_setting', 'roomName', name);
   };
 
-  const handleTeamChange = (_: Event, newTeam: any) => {
+  const handleTeamChange = (_: Event | null, newTeam: number) => {
     socketRef.current.emit('set_team', newTeam);
-  };
-
-  const handleOpenMapExplorer = () => {
-    setOpenMapExplorer(true);
-  };
-
-  const handleCloseMapExplorer = () => {
-    setOpenMapExplorer(false);
   };
 
   const clearRoomMap = () => {
@@ -119,8 +117,7 @@ const GameSetting: React.FC<GameSettingProps> = (props) => {
     socketRef.current.emit('force_start');
   };
 
-  const disabled_ui: boolean = useMemo(() => {
-    // when player is not host
+  const disabledUi: boolean = useMemo(() => {
     if (myPlayerId && room.players) {
       for (let i = 0; i < room.players.length; ++i) {
         if (room.players[i].id === myPlayerId) {
@@ -131,7 +128,7 @@ const GameSetting: React.FC<GameSettingProps> = (props) => {
     return true;
   }, [myPlayerId, room]);
 
-  const handleRoomNameChange = (event: any) => {
+  const handleRoomNameChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     roomDispatch({
       type: 'update_property',
       payload: {
@@ -142,18 +139,19 @@ const GameSetting: React.FC<GameSettingProps> = (props) => {
   };
 
   const handleSettingChange =
-    (property: string) => (event: Event, newValue: any) => {
+    (property: string) => (event: Event | null, newValue: any) => {
       console.log(`change_room_setting: ${property}, ${newValue}`);
       if (property === 'gameSpeed') newValue = Number.parseFloat(newValue);
       roomDispatch({
         type: 'update_property',
         payload: {
-          property: property,
+          property,
           value: newValue,
         },
       });
       socketRef.current.emit('change_room_setting', property, newValue);
     };
+
   const handleChangeHost = (playerId: string, username: string) => {
     console.log(`change host to ${username}, id ${playerId}`);
     socketRef.current.emit('change_host', playerId);
@@ -166,274 +164,222 @@ const GameSetting: React.FC<GameSettingProps> = (props) => {
   };
 
   return (
-    <Box
-      sx={{
-        width: {
-          xs: '90vw',
-          md: '55vw',
-          lg: '45vw',
-        },
-      }}
-    >
-      <Dialog open={openMapExplorer} onClose={handleCloseMapExplorer}>
-        <DialogTitle>Choose a Map</DialogTitle>
-        <DialogContent>
-          <MapExplorer userId={myUserName} onSelect={handleMapSelect} />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseMapExplorer}>Close</Button>
-        </DialogActions>
-      </Dialog>
-
-      <Card
-        className='menu-container'
-        sx={{
-          boxShadow: 'unset',
-          mb: 1,
-          '& .MuiCardHeader-root': {
-            padding: '0.6rem',
-          },
-        }}
+    <div className='mx-auto w-[90vw] md:w-[55vw] lg:w-[45vw]'>
+      <ModalShell
+        open={openMapExplorer}
+        onClose={() => setOpenMapExplorer(false)}
+        title='Choose a Map'
+        widthClassName='max-w-5xl'
       >
-        <CardHeader
-          avatar={
-            <IconButton onClick={handleLeaveRoom} color='primary'>
-              <ArrowBackRoundedIcon />
-            </IconButton>
-          }
-          title={
-            !isNameFocused || disabled_ui ? (
-              <div
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  zIndex: 100,
-                }}
-                onClick={() => {
-                  !disabled_ui && setIsNamedFocused(true);
-                }}
-              >
-                <Typography fontWeight='bold' color='primary' fontSize='20px'>
+        <MapExplorer userId={myUserName} onSelect={handleMapSelect} />
+      </ModalShell>
+
+      <section className='menu-container overflow-hidden'>
+        <div className='flex items-start justify-between gap-3 border-b border-zinc-800 px-4 py-4'>
+          <div className='flex min-w-0 items-start gap-3'>
+            <button
+              type='button'
+              className='grid size-11 shrink-0 place-items-center border border-zinc-700 bg-zinc-950 text-zinc-50 transition hover:bg-yellow-300 hover:text-zinc-950'
+              onClick={handleLeaveRoom}
+              aria-label='Leave room'
+            >
+              <ArrowBackRoundedIcon fontSize='small' />
+            </button>
+
+            <div className='min-w-0'>
+              <p className='bw-page-copy'>Room Command</p>
+              {!isNameFocused || disabledUi ? (
+                <button
+                  type='button'
+                  className='mt-1 max-w-full truncate text-left text-2xl font-black text-zinc-50'
+                  onClick={() => {
+                    if (!disabledUi) setIsNamedFocused(true);
+                  }}
+                >
                   {room.roomName}
-                </Typography>
-              </div>
-            ) : (
-              <TextField
-                autoFocus
-                variant='standard'
-                inputProps={{ style: { fontSize: '20px' } }}
-                value={room.roomName}
-                onChange={handleRoomNameChange}
-                onBlur={handleRoomNameBlur}
-                disabled={disabled_ui}
-              />
-            )
-          }
-          action={
-            <IconButton
-              color='primary'
-              onClick={() => {
-                navigator.clipboard.writeText(shareLink);
-                snackStateDispatch({
-                  type: 'update',
-                  title: '',
-                  message: t('copied'),
-                  status: 'success',
-                  duration: 3000,
-                });
-              }}
-            >
-              <ShareIcon />
-            </IconButton>
-          }
-          sx={{ padding: 'sm' }}
-        />
-        <CardContent
-          className='menu-container'
-          sx={{
-            p: 0,
-            '&:last-child': { pb: 0 },
-          }}
-        >
-          {disabled_ui && (
-            <Box
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <Typography variant='caption' align='center'>
-                {t('not-host')}
-              </Typography>
-            </Box>
-          )}
+                </button>
+              ) : (
+                <input
+                  autoFocus
+                  className='bw-input mt-1 h-11 text-left text-xl'
+                  value={room.roomName}
+                  onChange={handleRoomNameChange}
+                  onBlur={handleRoomNameBlur}
+                  disabled={disabledUi}
+                />
+              )}
+              <p className='mt-1 text-xs font-black uppercase tracking-[0.14em] text-zinc-500'>
+                {disabledUi ? t('not-host') : 'Host controls enabled'}
+              </p>
+            </div>
+          </div>
+
+          <button
+            type='button'
+            className='grid size-11 shrink-0 place-items-center border border-zinc-700 bg-zinc-950 text-zinc-50 transition hover:bg-yellow-300 hover:text-zinc-950'
+            onClick={() => {
+              navigator.clipboard.writeText(shareLink);
+              snackStateDispatch({
+                type: 'update',
+                title: '',
+                message: t('copied'),
+                status: 'success',
+                duration: 3000,
+              });
+            }}
+            aria-label='Copy share link'
+          >
+            <ShareIcon fontSize='small' />
+          </button>
+        </div>
+
+        <div className='space-y-4 px-4 py-4'>
           {room.mapName && (
-            <Box
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <Typography
-                variant='h6'
-                color='primary'
-                sx={{ mr: 2, whiteSpace: 'nowrap' }}
-                align='center'
-                component={Link}
+            <div className='flex items-center justify-between gap-3 border border-zinc-800 bg-zinc-950/60 px-4 py-3'>
+              <Link
                 href={`/maps/${room.mapId}`}
                 target='_blank'
                 rel='noopener noreferrer'
+                className='truncate text-sm font-black uppercase tracking-[0.12em] text-yellow-300'
               >
                 {t('custom-map')}: {room.mapName}
-              </Typography>
-              {!disabled_ui && (
-                <IconButton onClick={clearRoomMap}>
-                  <ClearIcon />
-                </IconButton>
+              </Link>
+              {!disabledUi && (
+                <button
+                  type='button'
+                  className='grid size-9 place-items-center border border-zinc-700 bg-zinc-950 text-zinc-50 transition hover:bg-red-500 hover:text-zinc-950'
+                  onClick={clearRoomMap}
+                  aria-label='Clear room map'
+                >
+                  <ClearIcon fontSize='small' />
+                </button>
               )}
-            </Box>
+            </div>
           )}
-          <Tabs
-            value={tabIndex}
-            onChange={(event, value) => setTabIndex(value)}
-            variant='scrollable'
-            indicatorColor='primary'
-            scrollButtons
-            allowScrollButtonsMobile
-            textColor='inherit'
-            aria-label='game settings tabs'
-          >
-            <Tab label={t('team')} />
-            <Tab label={t('game')} />
-            <Tab label={t('map')} />
-            <Tab label={t('terrain')} />
-            <Tab label={t('modifiers')} />
-          </Tabs>
+
+          <div className='flex flex-wrap gap-2'>
+            {tabLabels.map((tab, index) => (
+              <button
+                key={tab}
+                type='button'
+                className={tabButtonClass(tabIndex === index)}
+                onClick={() => setTabIndex(index)}
+              >
+                {t(tab)}
+              </button>
+            ))}
+          </div>
+
           <TabPanel value={tabIndex} index={0}>
-            <Box sx={{ display: 'flex', flexDirection: 'column', padding: 0 }}>
-              <Typography
-                sx={{
-                  mr: 2,
-                  whiteSpace: 'nowrap',
-                }}
-              >
+            <div className='space-y-3'>
+              <p className='text-xs font-black uppercase tracking-[0.18em] text-zinc-500'>
                 {t('select-your-team')}
-              </Typography>
-              <StyledToggleButtonGroup
-                color='primary'
-                value={team}
-                exclusive
-                // @ts-ignore
-                onChange={handleTeamChange}
-                aria-label='select-team'
-                sx={{ maxWidth: '100%', overflowX: 'auto' }}
-              >
-                {Array.from({ length: MaxTeamNum }, (_, i) => i + 1).map(
-                  (value) => (
-                    <ToggleButton key={value} value={value}>
-                      <Typography>{value}</Typography>
-                    </ToggleButton>
-                  )
-                )}
-                <ToggleButton key={MaxTeamNum + 1} value={MaxTeamNum + 1}>
-                  <Typography>spectators</Typography>
-                </ToggleButton>
-              </StyledToggleButtonGroup>
-            </Box>
+              </p>
+              <div className='flex flex-wrap gap-2'>
+                {Array.from({ length: MaxTeamNum }, (_, i) => i + 1).map((value) => (
+                  <button
+                    key={value}
+                    type='button'
+                    className={tabButtonClass(team === value)}
+                    onClick={() => handleTeamChange(null, value)}
+                  >
+                    {value}
+                  </button>
+                ))}
+                <button
+                  type='button'
+                  className={tabButtonClass(team === MaxTeamNum + 1)}
+                  onClick={() => handleTeamChange(null, MaxTeamNum + 1)}
+                >
+                  Spectators
+                </button>
+              </div>
+            </div>
           </TabPanel>
+
           <TabPanel value={tabIndex} index={1}>
-            <Box sx={{ display: 'flex', flexDirection: 'column', padding: 0 }}>
-              <Button
-                variant='contained'
-                disabled={disabled_ui}
-                onClick={handleOpenMapExplorer}
+            <div className='space-y-4'>
+              <button
+                type='button'
+                className='bw-button bw-button-primary w-full'
+                disabled={disabledUi}
+                onClick={() => setOpenMapExplorer(true)}
               >
                 {t('select-a-custom-map')}
-              </Button>
+              </button>
 
-              <Box
-                sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  my: 1,
-                }}
-              >
-                <Typography
-                  sx={{
-                    mr: 2,
-                    whiteSpace: 'nowrap',
-                  }}
-                >
+              <div className='space-y-3'>
+                <p className='text-xs font-black uppercase tracking-[0.18em] text-zinc-500'>
                   {t('game-speed')}
-                </Typography>
-                <ToggleButtonGroup
-                  color='primary'
-                  value={room.gameSpeed}
-                  exclusive
-                  // @ts-ignore
-                  onChange={handleSettingChange('gameSpeed')}
-                  aria-label='game-speed'
-                  disabled={disabled_ui}
-                >
+                </p>
+                <div className='flex flex-wrap gap-2'>
                   {SpeedOptions.map((value) => (
-                    <ToggleButton key={value} value={value}>
-                      <Typography>{`${value}x`}</Typography>
-                    </ToggleButton>
+                    <button
+                      key={value}
+                      type='button'
+                      className={tabButtonClass(room.gameSpeed === value)}
+                      disabled={disabledUi}
+                      onClick={(event) =>
+                        handleSettingChange('gameSpeed')(event as unknown as Event, value)
+                      }
+                    >
+                      {`${value}x`}
+                    </button>
                   ))}
-                </ToggleButtonGroup>
-              </Box>
-            </Box>
+                </div>
+              </div>
+            </div>
           </TabPanel>
+
           <TabPanel value={tabIndex} index={2}>
-            <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+            <div className='space-y-4'>
               <SliderBox
-                label={t('height')} // game's width and height is reversed
+                label={t('height')}
                 value={room.mapWidth}
-                disabled={disabled_ui}
+                disabled={disabledUi}
                 handleChange={handleSettingChange('mapWidth')}
               />
               <SliderBox
-                label={t('width')} // game's width and height is reversed
+                label={t('width')}
                 value={room.mapHeight}
-                disabled={disabled_ui}
+                disabled={disabledUi}
                 handleChange={handleSettingChange('mapHeight')}
               />
-            </Box>
+            </div>
           </TabPanel>
+
           <TabPanel value={tabIndex} index={3}>
-            <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+            <div className='space-y-4'>
               <SliderBox
                 label={t('mountain')}
                 value={room.mountain}
-                disabled={disabled_ui}
+                disabled={disabledUi}
                 handleChange={handleSettingChange('mountain')}
-                icon={<TerrainIcon />}
+                icon={<TerrainIcon fontSize='small' />}
               />
               <SliderBox
                 label={t('city')}
                 value={room.city}
-                disabled={disabled_ui}
+                disabled={disabledUi}
                 handleChange={handleSettingChange('city')}
-                icon={<LocationCityIcon />}
+                icon={<LocationCityIcon fontSize='small' />}
               />
               <SliderBox
                 label={t('swamp')}
                 value={room.swamp}
-                disabled={disabled_ui}
+                disabled={disabledUi}
                 handleChange={handleSettingChange('swamp')}
-                icon={<WaterIcon />}
+                icon={<WaterIcon fontSize='small' />}
               />
-            </Box>
+            </div>
           </TabPanel>
+
           <TabPanel value={tabIndex} index={4}>
-            <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+            <div className='space-y-4'>
               <SliderBox
                 label={t('max-player-num')}
                 value={room.maxPlayers}
-                valueLabelDisplay='auto'
-                disabled={disabled_ui}
+                disabled={disabledUi}
                 min={2}
                 max={12}
                 step={1}
@@ -443,143 +389,104 @@ const GameSetting: React.FC<GameSettingProps> = (props) => {
                 }))}
                 handleChange={handleSettingChange('maxPlayers')}
               />
-              <FormGroup sx={{ display: 'flex', flexDirection: 'row' }}>
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={room.fogOfWar}
-                      // @ts-ignore
-                      onChange={handleSettingChange('fogOfWar')}
-                      disabled={disabled_ui}
-                    />
-                  }
-                  label={t('fog-of-war')}
-                />
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={room.revealKing}
-                      // @ts-ignore
-                      onChange={handleSettingChange('revealKing')}
-                      disabled={disabled_ui}
-                    />
-                  }
-                  label={t('reveal-king')}
-                />
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={room.deathSpectator}
-                      // @ts-ignore
-                      onChange={handleSettingChange('deathSpectator')}
-                      disabled={disabled_ui}
-                    />
-                  }
-                  label={t('death-spectator')}
-                />
 
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={room.warringStatesMode}
-                      // @ts-ignore
-                      onChange={handleSettingChange('warringStatesMode')}
-                      disabled={disabled_ui}
-                    />
+              <div className='grid gap-3'>
+                <ToggleRow
+                  label={t('fog-of-war')}
+                  checked={room.fogOfWar}
+                  disabled={disabledUi}
+                  onToggle={() =>
+                    handleSettingChange('fogOfWar')(null, !room.fogOfWar)
                   }
-                  label={t('warring-states-mode')}
                 />
-              </FormGroup>
-            </Box>
+                <ToggleRow
+                  label={t('reveal-king')}
+                  checked={room.revealKing}
+                  disabled={disabledUi}
+                  onToggle={() =>
+                    handleSettingChange('revealKing')(null, !room.revealKing)
+                  }
+                />
+                <ToggleRow
+                  label={t('death-spectator')}
+                  checked={room.deathSpectator}
+                  disabled={disabledUi}
+                  onToggle={() =>
+                    handleSettingChange('deathSpectator')(
+                      null,
+                      !room.deathSpectator
+                    )
+                  }
+                />
+                <ToggleRow
+                  label={t('warring-states-mode')}
+                  checked={room.warringStatesMode}
+                  disabled={disabledUi}
+                  onToggle={() =>
+                    handleSettingChange('warringStatesMode')(
+                      null,
+                      !room.warringStatesMode
+                    )
+                  }
+                />
+              </div>
+            </div>
           </TabPanel>
-        </CardContent>
-      </Card>
-      <Card
-        className='menu-container'
-        sx={{
-          boxShadow: 'unset',
-          mb: 2,
-          '& .MuiCardHeader-root': {
-            paddingTop: '0rem',
-          },
-        }}
-      >
-        <CardHeader
-          avatar={<GroupIcon color='primary' />}
-          title={
-            <Box
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-              }}
-            >
-              <Typography color='primary' fontWeight='bold'>
-                {t('players')}
-              </Typography>
-            </Box>
-          }
-          sx={{ padding: 'sm' }}
-        />
-        <CardContent
-          sx={{
-            padding: 0,
-            '&:last-child': { pb: 0 },
-          }}
-        >
+        </div>
+      </section>
+
+      <section className='menu-container mt-4 overflow-hidden'>
+        <div className='flex items-center gap-3 border-b border-zinc-800 px-4 py-4'>
+          <GroupIcon className='text-yellow-300' />
+          <div>
+            <p className='bw-page-copy'>Roster</p>
+            <h3 className='text-lg font-black text-zinc-50'>{t('players')}</h3>
+          </div>
+        </div>
+        <div className='px-4 py-4'>
           <PlayerTable
             myPlayerId={myPlayerId}
             players={room.players}
             handleChangeHost={handleChangeHost}
-            disabled_ui={disabled_ui}
+            disabled_ui={disabledUi}
             warringStatesMode={room.warringStatesMode}
           />
-        </CardContent>
-      </Card>
-      <Button
-        variant='contained'
-        color={forceStart ? 'primary' : 'secondary'}
+        </div>
+      </section>
+
+      <button
+        type='button'
+        className={`bw-button mt-4 w-full justify-center text-base ${
+          forceStart ? 'bw-button-primary' : 'bw-button-secondary'
+        }`}
         disabled={team === MaxTeamNum + 1}
-        size='large'
-        sx={{
-          width: '100%',
-          height: '60px',
-          fontSize: '20px',
-        }}
         onClick={handleClickForceStart}
       >
-        {/* {t('force-start')}({room.forceStartNum}/ */}
         {t('ready')}({room.forceStartNum}/
         {
           forceStartOK[
-          room.players.filter((player) => !player.spectating).length
+            room.players.filter((player) => !player.spectating).length
           ]
         }
         )
-      </Button>
-      <Box
-        sx={{
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-        }}
-      ></Box>
-    </Box>
+      </button>
+    </div>
   );
 };
 
 function TabPanel(props: any) {
   const { children, value, index, ...other } = props;
 
+  if (value !== index) return null;
+
   return (
     <div
       role='tabpanel'
-      hidden={value !== index}
       id={`tabpanel-${index}`}
       aria-labelledby={`tab-${index}`}
       {...other}
     >
-      {value === index && <Box sx={{ p: '1rem' }}>{children}</Box>}
+      {children}
     </div>
   );
 }

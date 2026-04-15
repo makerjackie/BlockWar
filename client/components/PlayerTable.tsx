@@ -1,4 +1,3 @@
-import { Box, Button, Typography, Tooltip, Paper } from '@mui/material';
 import StarsRoundedIcon from '@mui/icons-material/StarsRounded';
 import { useTranslation } from 'next-i18next';
 
@@ -23,102 +22,74 @@ function PlayerTable(props: PlayerTableProps) {
   } = props;
   const { t } = useTranslation();
 
-  const teams = new Array(MaxTeamNum + 1);
-  players.forEach((x) => {
-    if (!teams[x.team]) teams[x.team] = [];
-    teams[x.team].push(x);
+  const teams: Player[][] = Array.from({ length: MaxTeamNum + 2 }, () => []);
+  players.forEach((player) => {
+    teams[player.team] ??= [];
+    teams[player.team].push(player);
   });
 
-  const getBgcolor = (player: Player) => {
-    if (player.team === MaxTeamNum + 1) return '#000';
-    return player.id === myPlayerId ? ColorArr[player.color] : 'transparent';
-  };
-
   return (
-    <Box sx={{ display: 'flex', flexWrap: 'wrap' }}>
-      {teams.map((players, index) => (
-        <Paper
-          key={index}
-          variant='outlined'
-          sx={{
-            display: 'flex',
-            flexWrap: 'wrap',
-            flexDirection: 'column',
-            margin: 1,
-            borderRadius: 0.5,
-            backgroundColor: 'transparent',
-          }}
-        >
-          <Typography
-            variant='caption'
-            display='block'
-            gutterBottom
-            sx={{ paddingX: 1 }}
+    <div className='flex flex-wrap gap-3'>
+      {teams.map((teamPlayers, index) => {
+        if (!teamPlayers || teamPlayers.length === 0) return null;
+        const isSpectator = index > MaxTeamNum;
+        return (
+          <section
+            key={index}
+            className='min-w-[170px] border border-zinc-800 bg-zinc-950/60 p-3'
           >
-            {index <= MaxTeamNum ? 'TEAM ' + index : 'SPECTATORS'}
-          </Typography>
-          {players.map((player: Player) => (
-            <Tooltip
-              key={player.id}
-              title={disabled_ui ? '' : t('transfer-host')}
-              placement='top'
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <Button
-                variant='outlined'
-                key={player.id}
-                disabled={disabled_ui}
-                onClick={() => {
-                  handleChangeHost(player.id, player.username);
-                }}
-                sx={{
-                  borderColor: ColorArr[player.color],
-                  backgroundColor: getBgcolor(player),
-                  textTransform: 'none',
-                  display: 'flex',
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  p: 1,
-                  height: '30px',
-                  borderRadius: '20px',
-                  boxShadow: 1,
-                  marginX: 1,
-                  mb: 1,
-                }}
-              >
-                {player.isRoomHost && (
-                  <StarsRoundedIcon
-                    sx={{
-                      color:
-                        player.id === myPlayerId
-                          ? '#fff'
-                          : ColorArr[player.color],
+            <div className='mb-3 text-[11px] font-black uppercase tracking-[0.18em] text-zinc-500'>
+              {isSpectator ? 'Spectators' : `Team ${index}`}
+            </div>
+            <div className='flex flex-col gap-2'>
+              {teamPlayers.map((player) => {
+                const isMine = player.id === myPlayerId;
+                const bgColor =
+                  player.team === MaxTeamNum + 1
+                    ? '#09090b'
+                    : isMine
+                      ? ColorArr[player.color]
+                      : 'transparent';
+                const textColor = isMine ? '#ffffff' : ColorArr[player.color];
+
+                return (
+                  <button
+                    type='button'
+                    key={player.id}
+                    disabled={disabled_ui}
+                    title={disabled_ui ? '' : t('transfer-host')}
+                    onClick={() => {
+                      handleChangeHost(player.id, player.username);
                     }}
-                  />
-                )}
-                <Typography
-                  variant='body2'
-                  sx={{
-                    color:
-                      player.id === myPlayerId
-                        ? '#fff'
-                        : ColorArr[player.color],
-                    textDecoration: player.forceStart ? 'underline' : 'none',
-                  }}
-                >
-                  {warringStatesMode ? WarringStates[player.color] : ''}
-                  {player.username}
-                </Typography>
-              </Button>
-            </Tooltip>
-          ))}
-        </Paper>
-      ))}
-    </Box>
+                    className='flex min-h-10 items-center justify-between gap-2 border px-3 py-2 text-left transition disabled:cursor-not-allowed disabled:opacity-60'
+                    style={{
+                      borderColor: ColorArr[player.color],
+                      backgroundColor: bgColor,
+                    }}
+                  >
+                    <span className='flex min-w-0 items-center gap-2'>
+                      {player.isRoomHost ? (
+                        <StarsRoundedIcon sx={{ color: textColor, fontSize: 18 }} />
+                      ) : null}
+                      <span
+                        className='truncate text-sm font-black'
+                        style={{
+                          color: textColor,
+                          textDecoration: player.forceStart ? 'underline' : 'none',
+                        }}
+                      >
+                        {warringStatesMode ? WarringStates[player.color] : ''}
+                        {player.username}
+                      </span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        );
+      })}
+    </div>
   );
 }
 

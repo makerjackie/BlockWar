@@ -1,9 +1,7 @@
 import { useState } from 'react';
-import { Box, IconButton } from '@mui/material';
 import { useTranslation } from 'next-i18next';
 import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
 import PingTest from '@/components/PingTest';
-import { Typography } from '@mui/material';
 
 interface TurnsCountProps {
   count: number;
@@ -22,45 +20,25 @@ function TurnsCount(props: TurnsCountProps) {
   };
 
   return (
-    <Box
-      style={{
-        position: 'absolute',
-        left: '1px',
-        top: '0px',
-        zIndex: '110',
-        display: 'flex',
-        alignItems: 'center',
-        flexDirection: 'column',
-      }}
+    <div
+      className='absolute left-px top-0 z-[110] flex flex-col items-start'
       onDoubleClick={handleDoubleClick}
     >
-      <Box
-        className='menu-container'
-        sx={{
-          display: 'flex',
-          alignItems: 'center',
-          borderRadius: '0 24px 24px 0 !important',
-          boxShadow: 1,
-          padding: { xs: '0.4rem !important', md: '0.6rem !important' },
-        }}
-      >
-        <IconButton onClick={handleReturnClick} color='primary'>
-          <ArrowBackRoundedIcon />
-        </IconButton>
-        <div
-          style={{
-            display: 'inline-block',
-            fontSize: '1em',
-            marginRight: '0.5em',
-          }}
+      <div className='menu-container flex items-center gap-2 rounded-none border-l-0 px-2 py-2 shadow-[6px_6px_0_#000]'>
+        <button
+          type='button'
+          className='grid size-10 place-items-center border border-zinc-500/40 bg-zinc-950 text-zinc-50 transition hover:bg-yellow-300 hover:text-zinc-950'
+          onClick={handleReturnClick}
+          aria-label='Back'
         >
-          <Typography color='white' >
-            {t('turn')}: {displayTurnsCount}
-          </Typography>
+          <ArrowBackRoundedIcon fontSize='small' />
+        </button>
+        <div className='pr-1 text-sm font-black uppercase tracking-[0.18em] text-zinc-100'>
+          {t('turn')}: {displayTurnsCount}
         </div>
-      </Box>
+      </div>
       {showPingTest && <PingTest />}
-    </Box>
+    </div>
   );
 }
 

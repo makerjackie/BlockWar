@@ -1,25 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  Typography,
-  Button,
-  Box,
-  List,
-  ListItem,
-  ListItemIcon,
-  ListItemText,
-  Snackbar,
-  Alert,
-  ButtonGroup,
-  CircularProgress,
-} from '@mui/material';
+import { Snackbar, Alert } from '@mui/material';
 import { Room, RoomPool } from '@/lib/types';
 import { useTranslation } from 'next-i18next';
 import StorageIcon from '@mui/icons-material/Storage';
@@ -110,179 +91,126 @@ function Lobby() {
           {snackMessage}
         </Alert>
       </Snackbar>
-      <div className='app-container'>
+      <main className='app-container'>
         <div className='center-layout'>
-          <Box
-            sx={{
-              width: {
-                xs: '90vw',
-                md: '55vw',
-                lg: '45vw',
-              },
-              display: 'flex',
-              alignItems: 'center',
-              flexDirection: 'column',
-            }}
-          >
-            <Typography
-              variant='h4'
-              component='h1'
-              color='primary'
-              fontWeight='bold'
-              gutterBottom
-              sx={{ padding: '20px' }}
-            >
-              {t('greet') + username}
-            </Typography>
-            <List className='menu-container' sx={{ width: '100%' }}>
-              <ListItem>
-                <ListItemIcon>
-                  <StorageIcon />
-                </ListItemIcon>
-                <ListItemText
-                  id='blockwar-server'
-                  primary={
-                    <Typography color='primary'>{t('gserver')}</Typography>
-                  }
-                  secondary={process.env.NEXT_PUBLIC_SERVER_API}
+          <section className='w-full max-w-4xl'>
+            <div className='mb-5 flex flex-col gap-2 md:flex-row md:items-end md:justify-between'>
+              <div>
+                <p className='bw-page-copy'>Command Center</p>
+                <h1 className='bw-title text-4xl md:text-6xl'>
+                  {t('greet') + username}
+                </h1>
+              </div>
+              <div className='border border-zinc-500/30 bg-zinc-950/80 px-3 py-2 text-xs font-black uppercase tracking-[0.18em] text-zinc-400'>
+                BlockWar / 方块战争
+              </div>
+            </div>
+
+            <div className='menu-container relative mb-4 flex items-center justify-between gap-4 overflow-hidden p-4'>
+              <div className='relative z-10 flex min-w-0 items-center gap-3'>
+                <StorageIcon className='text-yellow-300' />
+                <div className='min-w-0'>
+                  <div className='text-xs font-black uppercase tracking-[0.24em] text-zinc-500'>
+                    {t('gserver')}
+                  </div>
+                  <div className='truncate text-sm text-zinc-200'>
+                    {process.env.NEXT_PUBLIC_SERVER_API}
+                  </div>
+                </div>
+              </div>
+              <div className='relative z-10 flex items-center gap-2 text-sm font-black uppercase tracking-[0.14em]'>
+                <span
+                  className={`size-3 border border-zinc-950 ${
+                    serverStatus ? 'bg-emerald-400' : 'bg-red-500'
+                  }`}
                 />
-                <Box sx={{ position: 'relative', right: 0 }}>
-                  <Box
-                    component='span'
-                    sx={{
-                      bgcolor: serverStatus ? 'lightgreen' : 'red',
-                      width: '0.7em',
-                      height: '0.7em',
-                      borderRadius: '50%',
-                      display: 'inline-block',
-                      marginRight: 1,
-                    }}
-                  />
-                  <Typography fontSize='0.9rem' color='white' sx={{ display: 'inline' }}>
-                    {serverStatus ? t('online') : t('offline')}
-                  </Typography>
-                </Box>
-              </ListItem>
-            </List>
-            <TableContainer
-              className='menu-container'
-              component={Paper}
-              sx={{
-                maxHeight: '50vh',
-                boxShadow: 'unset',
-              }}
-            >
-              <Table
-                size='medium'
-                sx={{
-                  '& .MuiTableCell-root': {
-                    fontSize: '1rem',
-                  },
-                }}
-              >
-                <TableHead>
-                  <TableRow>
-                    {/* <TableCell></TableCell> */}
-                    {/* <TableCell>{t('room-id')}</TableCell> */}
-                    <TableCell>{t('room-name')}</TableCell>
-                    <TableCell align='center'>{t('game-speed')}</TableCell>
-                    <TableCell align='center'>{t('players')}</TableCell>
-                    <TableCell align='center'>{t('status')}</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
+                <span className={serverStatus ? 'text-emerald-300' : 'text-red-300'}>
+                  {serverStatus ? t('online') : t('offline')}
+                </span>
+              </div>
+            </div>
+
+            <div className='menu-container relative max-h-[50vh] overflow-auto p-0'>
+              <table className='relative z-10 w-full border-separate border-spacing-0 text-left'>
+                <thead className='sticky top-0 bg-zinc-950/95 text-xs font-black uppercase tracking-[0.18em] text-zinc-500 backdrop-blur'>
+                  <tr>
+                    <th className='px-4 py-3'>{t('room-name')}</th>
+                    <th className='px-4 py-3 text-center'>{t('game-speed')}</th>
+                    <th className='px-4 py-3 text-center'>{t('players')}</th>
+                    <th className='px-4 py-3 text-center'>{t('status')}</th>
+                  </tr>
+                </thead>
+                <tbody className='divide-y divide-zinc-800/80'>
                   {joinLoading && (
-                    <TableRow>
-                      <TableCell colSpan={6} align='center'>
-                        <Typography variant='h6'>
-                          {t('joining-room')}
-                        </Typography>
-                        <CircularProgress />
-                      </TableCell>
-                    </TableRow>
+                    <tr>
+                      <td className='px-4 py-8 text-center text-yellow-300' colSpan={4}>
+                        {t('joining-room')}
+                      </td>
+                    </tr>
                   )}
                   {loading ? (
-                    <TableRow>
-                      <TableCell colSpan={6} align='center'>
-                        <CircularProgress />
-                      </TableCell>
-                    </TableRow>
+                    <tr>
+                      <td className='px-4 py-8 text-center text-zinc-400' colSpan={4}>
+                        Loading rooms...
+                      </td>
+                    </tr>
                   ) : Object.keys(rooms).length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={6} align='center'>
+                    <tr>
+                      <td className='px-4 py-8 text-center text-zinc-400' colSpan={4}>
                         {t('no-rooms-available')}
-                      </TableCell>
-                    </TableRow>
+                      </td>
+                    </tr>
                   ) : (
                     Object.values(rooms).map((room: Room) => (
-                      <TableRow
-                        hover
+                      <tr
                         key={room.id}
+                        className='cursor-pointer transition hover:bg-yellow-300/10'
                         onClick={() => handleRoomClick(room.id)}
-                        sx={{
-                          cursor: 'pointer',
-                        }}
                       >
-                        <TableCell
-                          sx={{
-                            whiteSpace: 'nowrap',
-                            maxWidth: '20vw',
-                            overflowX: 'hidden',
-                          }}
-                        >
+                        <td className='max-w-[45vw] truncate px-4 py-3 font-black text-zinc-50'>
                           {room.roomName}
-                        </TableCell>
-                        <TableCell align='center'>{room.gameSpeed}</TableCell>
-                        <TableCell align='center'>{`${room.players.length}/${room.maxPlayers}`}</TableCell>
-                        <TableCell align='center'>
-                          <Typography
-                            variant='body2'
-                            color={room.gameStarted ? 'yellow' : 'lightgreen'}
-                          >
-                            {room.gameStarted ? t('started') : t('waiting')}
-                          </Typography>
-                        </TableCell>
-                      </TableRow>
+                        </td>
+                        <td className='px-4 py-3 text-center text-zinc-300'>
+                          {room.gameSpeed}
+                        </td>
+                        <td className='px-4 py-3 text-center text-zinc-300'>{`${room.players.length}/${room.maxPlayers}`}</td>
+                        <td
+                          className={`px-4 py-3 text-center text-xs font-black uppercase tracking-[0.14em] ${
+                            room.gameStarted ? 'text-yellow-300' : 'text-emerald-300'
+                          }`}
+                        >
+                          {room.gameStarted ? t('started') : t('waiting')}
+                        </td>
+                      </tr>
                     ))
                   )}
-                </TableBody>
-              </Table>
-            </TableContainer>
-            <Button
-              variant='contained'
-              color='primary'
-              startIcon={<AddHomeOutlined />}
-              sx={{
-                marginTop: 2,
-                width: '100%',
-                height: '60px',
-                fontSize: '20px',
-                whiteSpace: 'nowrap',
-              }}
-              onClick={handleCreateRoomClick}
-            >
-              {t('create-room')}
-            </Button>
-            <Button
-              variant='contained'
-              color='secondary'
-              startIcon={<MapOutlined />}
-              sx={{
-                marginTop: 2,
-                width: '100%',
-                height: '60px',
-                fontSize: '20px',
-                whiteSpace: 'nowrap',
-              }}
-              onClick={() => {
-                router.push('/mapcreator');
-              }}
-            >
-              {t('create-map')}
-            </Button>
-          </Box>
+                </tbody>
+              </table>
+            </div>
+
+            <div className='mt-4 grid gap-3 md:grid-cols-2'>
+              <button
+                type='button'
+                className='bw-button bw-button-primary w-full'
+                onClick={handleCreateRoomClick}
+              >
+                <AddHomeOutlined fontSize='small' />
+                {t('create-room')}
+              </button>
+              <button
+                type='button'
+                className='bw-button bw-button-secondary w-full'
+                onClick={() => {
+                  router.push('/mapcreator');
+                }}
+              >
+                <MapOutlined fontSize='small' />
+                {t('create-map')}
+              </button>
+            </div>
+          </section>
         </div>
-      </div>
+      </main>
     </>
   );
 }

@@ -20,16 +20,9 @@ const PingTest = () => {
   }, []);
 
   return (
-    <div
-      className='menu-container'
-      style={{
-        zIndex: '110',
-        display: 'flex',
-        alignItems: 'center',
-        marginRight: '0.5rem',
-      }}
-    >
-      {ping !== null ? `Ping: ${ping}ms` : 'null'}
+    <div className='menu-container z-[110] mr-2 mt-2 flex items-center gap-2 px-3 py-2 text-[11px] font-black uppercase tracking-[0.18em] text-zinc-300'>
+      <span className={`size-2 ${ping !== null ? 'bg-emerald-400' : 'bg-zinc-600'}`} />
+      {ping !== null ? `Ping ${ping}ms` : 'Ping null'}
     </div>
   );
 };

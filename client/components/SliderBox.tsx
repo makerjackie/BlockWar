@@ -1,4 +1,4 @@
-import { Box, Slider, Typography } from '@mui/material';
+import { useEffect, useState } from 'react';
 
 interface SliderBoxProps {
   label: string;
@@ -20,34 +20,64 @@ export default function SliderBox({
   min = 0,
   max = 1,
   step = 0.01,
-  valueLabelDisplay = 'on',
   marks,
   icon,
   handleChange,
   disabled = false,
   ...restProps
 }: SliderBoxProps) {
+  const [draftValue, setDraftValue] = useState(value);
+
+  useEffect(() => {
+    setDraftValue(value);
+  }, [value]);
+
+  const commitValue = (event: any) => {
+    handleChange(event, Number(draftValue));
+  };
+
   return (
-    <Box sx={{ display: 'flex', alignItems: 'center', my: 1.5 }}>
-      {icon}
-      <Typography id={`${label}Label`} sx={{ mr: 2, whiteSpace: 'nowrap' }}>
-        {label}
-      </Typography>
-      <Slider
+    <div className='space-y-2'>
+      <div className='flex items-center justify-between gap-3'>
+        <div className='flex items-center gap-2'>
+          {icon ? <span className='text-zinc-400'>{icon}</span> : null}
+          <label
+            htmlFor={label}
+            id={`${label}Label`}
+            className='text-xs font-black uppercase tracking-[0.18em] text-zinc-400'
+          >
+            {label}
+          </label>
+        </div>
+        <span className='min-w-10 text-right text-sm font-black text-yellow-300'>
+          {draftValue}
+        </span>
+      </div>
+      <input
         name={label}
         id={label}
         aria-labelledby={`${label}Label`}
-        valueLabelDisplay={valueLabelDisplay}
+        type='range'
         step={step}
         min={min}
         max={max}
-        defaultValue={value}
-        value={value}
-        marks={marks}
-        onChangeCommitted={handleChange}
+        value={draftValue}
         disabled={disabled}
+        onChange={(event) => setDraftValue(Number(event.target.value))}
+        onMouseUp={commitValue}
+        onTouchEnd={commitValue}
+        onKeyUp={commitValue}
+        onBlur={commitValue}
+        className='h-2 w-full cursor-pointer appearance-none bg-zinc-800 accent-yellow-300 disabled:cursor-not-allowed disabled:opacity-40'
         {...restProps}
       />
-    </Box>
+      {marks && (
+        <div className='flex justify-between gap-2 text-[10px] font-black uppercase tracking-[0.12em] text-zinc-500'>
+          {marks.map((mark) => (
+            <span key={mark.value}>{mark.label}</span>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }

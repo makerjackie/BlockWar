@@ -1,14 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import {
-  Button,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  TextField,
-  Typography,
-} from '@mui/material';
 import { useRouter } from 'next/router';
+import ModalShell from '@/components/ui/ModalShell';
 
 interface PublishMapDialogProps {
   open: boolean;
@@ -35,24 +27,41 @@ export default function PublishMapDialog({
   };
 
   return (
-    <Dialog open={open} onClose={onClose}>
-      <DialogTitle>Custom Map Published!</DialogTitle>
-      <DialogContent>
-        <Typography> {mapUrl}</Typography>
-        <Button onClick={handleCopyClick}>
-          {copySuccess ? 'Copied!' : 'Copy'}
-        </Button>
-      </DialogContent>
-      <DialogActions>
-        <Button
-          onClick={() => {
-            router.push('/maps/' + mapId);
-          }}
+    <ModalShell
+      open={open}
+      onClose={onClose}
+      title='Custom Map Published'
+      actions={
+        <>
+          <button
+            type='button'
+            className='bw-button bw-button-secondary'
+            onClick={() => {
+              router.push('/maps/' + mapId);
+            }}
+          >
+            View Map
+          </button>
+          <button type='button' className='bw-button bw-button-secondary' onClick={onClose}>
+            Close
+          </button>
+        </>
+      }
+      widthClassName='max-w-2xl'
+    >
+      <div className='space-y-4'>
+        <p className='bw-page-copy'>Deploy Result</p>
+        <div className='border border-zinc-800 bg-zinc-950/80 p-4 text-sm text-zinc-200 break-all'>
+          {mapUrl}
+        </div>
+        <button
+          type='button'
+          className='bw-button bw-button-primary'
+          onClick={handleCopyClick}
         >
-          View Map
-        </Button>
-        <Button onClick={onClose}>Close</Button>
-      </DialogActions>
-    </Dialog>
+          {copySuccess ? 'Copied!' : 'Copy Link'}
+        </button>
+      </div>
+    </ModalShell>
   );
 }

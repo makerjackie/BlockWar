@@ -3,20 +3,9 @@ import React, {
   useState,
   useEffect,
   useRef,
-  useMemo,
   useReducer,
 } from 'react';
 import { useRouter } from 'next/router';
-import {
-  Box,
-  Slider,
-  IconButton,
-  Radio,
-  RadioGroup,
-  Typography,
-  TextField,
-  FormControlLabel,
-} from '@mui/material';
 
 import {
   FastRewindRounded,
@@ -28,7 +17,6 @@ import { mapDataReducer } from '@/context/GameReducer';
 import CustomMapTile from '@/components/game/CustomMapTile';
 import { ReplaySpeedOptions } from '@/lib/constants';
 import {
-  Position,
   LeaderBoardTable,
   Message,
   UserData,
@@ -43,7 +31,7 @@ import GameRecord from '@/lib/game-record';
 import ChatBox from '@/components/ChatBox';
 import useMap from '@/hooks/useMap';
 
-export default function GameReplay(props: any) {
+export default function GameReplay() {
   const [gameRecord, setGameRecord] = useState<GameRecord | null>(null);
   const [mapWidth, setMapWidth] = useState(10);
   const [mapHeight, setMapHeight] = useState(10);
@@ -68,7 +56,6 @@ export default function GameReplay(props: any) {
     mapPixelWidth,
     mapPixelHeight,
     zoom,
-    setZoom,
     handleZoomOption,
   } = useMap({ mapWidth, mapHeight });
 
@@ -79,14 +66,14 @@ export default function GameReplay(props: any) {
     (event: KeyboardEvent) => {
       handleZoomOption(event.key);
       switch (event.key) {
-        case ' ': // black space
-          setIsPlay(!isPlay);
+        case ' ':
+          setIsPlay((value) => !value);
           break;
         default:
           break;
       }
     },
-    [isPlay, mapWidth]
+    [handleZoomOption]
   );
 
   useEffect(() => {
@@ -105,20 +92,19 @@ export default function GameReplay(props: any) {
         if (response.status === 404) {
           throw new Error('Replay not found');
         }
-        const game_record = (await response.json()) as GameRecord;
-        // init
-        setGameRecord(game_record);
-        setMapHeight(game_record.mapHeight);
-        setMapWidth(game_record.mapWidth);
-        setMaxTurn(game_record.gameRecordTurns.length);
+        const gameRecordValue = (await response.json()) as GameRecord;
+        setGameRecord(gameRecordValue);
+        setMapHeight(gameRecordValue.mapHeight);
+        setMapWidth(gameRecordValue.mapWidth);
+        setMaxTurn(gameRecordValue.gameRecordTurns.length);
 
         mapDataDispatch({
           type: 'init',
-          mapWidth: game_record.mapWidth,
-          mapHeight: game_record.mapHeight,
+          mapWidth: gameRecordValue.mapWidth,
+          mapHeight: gameRecordValue.mapHeight,
         });
 
-        const { turn, data, lead } = game_record.gameRecordTurns[0];
+        const { data, lead } = gameRecordValue.gameRecordTurns[0];
         mapDataDispatch({ type: 'update', mapDiff: data });
         setLeaderBoardData(lead);
       } catch (error) {
@@ -132,27 +118,26 @@ export default function GameReplay(props: any) {
 
   useEffect(() => {
     if (gameRecord) {
-      let tmp_turn = turnsCount;
-      if (!tmp_turn) tmp_turn = 1;
+      let tmpTurn = turnsCount || 1;
 
       const updateTurn = () => {
-        if (tmp_turn > gameRecord.gameRecordTurns.length) {
+        if (tmpTurn > gameRecord.gameRecordTurns.length) {
           clearInterval(intervalId.current);
           setIsPlay(false);
           return;
         }
-        const { turn, data, lead } = gameRecord.gameRecordTurns[tmp_turn - 1];
+        const { data, lead } = gameRecord.gameRecordTurns[tmpTurn - 1];
         mapDataDispatch({ type: 'update', mapDiff: data });
         setLeaderBoardData(lead);
-        setTurnsCount(tmp_turn);
+        setTurnsCount(tmpTurn);
         setMessages(
           gameRecord.messagesRecord.filter((message) => {
-            if (message.turn) return message.turn <= tmp_turn;
-            else return true;
+            if (message.turn) return message.turn <= tmpTurn;
+            return true;
           })
         );
 
-        tmp_turn++;
+        tmpTurn++;
       };
       if (isPlay) {
         intervalId.current = setInterval(updateTurn, 500 / playSpeed);
@@ -160,7 +145,7 @@ export default function GameReplay(props: any) {
         clearInterval(intervalId.current);
       }
     }
-  }, [gameRecord, isPlay, playSpeed]); // don't add turnsCount
+  }, [gameRecord, isPlay, playSpeed]);
 
   useEffect(() => {
     if (checkedPlayers && checkedPlayers.length > 0) {
@@ -175,8 +160,8 @@ export default function GameReplay(props: any) {
         [0, 1],
         [1, 1],
       ];
-      let colors = checkedPlayers.map((player) => player.color);
-      let tmp = Array.from(Array(mapWidth), () =>
+      const colors = checkedPlayers.map((player) => player.color);
+      const nextLimitedView = Array.from(Array(mapWidth), () =>
         Array(mapHeight).fill([TileType.Fog, null, null])
       );
       for (let i = 0; i < mapWidth; ++i) {
@@ -185,64 +170,62 @@ export default function GameReplay(props: any) {
             mapData[i][j][0] === TileType.City ||
             mapData[i][j][0] === TileType.Mountain
           ) {
-            tmp[i][j] = [TileType.Obstacle, null, null];
+            nextLimitedView[i][j] = [TileType.Obstacle, null, null];
           }
         }
       }
       for (let i = 0; i < mapWidth; ++i) {
         for (let j = 0; j < mapHeight; ++j) {
           if (mapData[i][j][1] && colors.includes(mapData[i][j][1] as number)) {
-            for (let dir of directions) {
-              let new_x = i + dir[0];
-              let new_y = j + dir[1];
-              if (new_x < 0 || new_x >= mapWidth) continue;
-              if (new_y < 0 || new_y >= mapHeight) continue;
-              tmp[i + dir[0]][j + dir[1]] = mapData[i + dir[0]][j + dir[1]];
+            for (const dir of directions) {
+              const newX = i + dir[0];
+              const newY = j + dir[1];
+              if (newX < 0 || newX >= mapWidth) continue;
+              if (newY < 0 || newY >= mapHeight) continue;
+              nextLimitedView[newX][newY] = mapData[newX][newY];
             }
           }
         }
       }
-      setLimitedView(tmp);
+      setLimitedView(nextLimitedView);
     } else {
       setLimitedView(mapData);
     }
   }, [mapData, checkedPlayers, mapWidth, mapHeight]);
 
-  const changeTurn = (current_turn: number) => {
+  const changeTurn = (currentTurn: number) => {
     if (gameRecord) {
-      if (current_turn >= maxTurn) current_turn = maxTurn;
+      if (currentTurn >= maxTurn) currentTurn = maxTurn;
 
       setIsPlay(false);
       clearInterval(intervalId.current);
 
-      setTurnsCount(current_turn);
+      setTurnsCount(currentTurn);
 
       setMessages(
         gameRecord.messagesRecord.filter((message) => {
-          if (message.turn) return message.turn <= current_turn;
-          else return true;
+          if (message.turn) return message.turn <= currentTurn;
+          return true;
         })
       );
 
       mapDataDispatch({
         type: 'jump-to-turn',
         gameRecordTurns: gameRecord.gameRecordTurns,
-        jumpToTurn: current_turn - 1,
+        jumpToTurn: currentTurn - 1,
       });
 
-      const { lead } = gameRecord.gameRecordTurns[current_turn - 1];
+      const { lead } = gameRecord.gameRecordTurns[currentTurn - 1];
       setLeaderBoardData(lead);
     }
   };
 
-  const handleChangeTurn = (event: any) => {
-    changeTurn(event.target.value as number);
-  };
-
   if (notFoundError) {
     return (
-      <div className='menu-container'>
-        <Typography variant='h4'>{t('Replay not found')}</Typography>
+      <div className='center-layout'>
+        <div className='bw-panel-hard px-6 py-5'>
+          <h1 className='bw-title text-3xl'>{t('Replay not found')}</h1>
+        </div>
       </div>
     );
   }
@@ -253,177 +236,119 @@ export default function GameReplay(props: any) {
         <GameLoading />
       </div>
     );
-  } else {
-    return (
-      <Box className='app-container'>
-        <Box className='Game'>
-          {/* Replay Control Menu */}
-          <Box
-            className='menu-container'
-            sx={{
-              margin: 0,
-              padding: '5px',
-              position: 'absolute',
-              left: '50%',
-              transform: 'translate(-50%, 0) translate(0, 0)',
-              width: 'max-content',
-              height: 'min-content',
-              bottom: { xs: '5px', md: '20px' },
-              display: 'flex',
-              justifyContent: 'center',
-              alignItems: 'center',
-              flexDirection: 'column',
-              zIndex: 1002,
-              boxShadow: '2',
-            }}
-          >
-            <Box
-              display='flex'
-              flexDirection='row'
-              justifyContent='space-between'
-              sx={{
-                marginBottom: {
-                  xs: '-8px',
-                  md: '10px',
-                },
-              }}
+  }
+
+  return (
+    <div className='app-container'>
+      <div className='Game'>
+        <div className='menu-container absolute bottom-[5px] left-1/2 z-[1002] flex w-[min(92vw,520px)] -translate-x-1/2 flex-col gap-3 px-4 py-3 md:bottom-5'>
+          <div className='flex items-center justify-between gap-2'>
+            <button
+              type='button'
+              className='grid size-11 place-items-center border border-zinc-700 bg-zinc-950 text-zinc-50 disabled:opacity-40'
+              disabled={turnsCount === 1}
+              onClick={() => changeTurn(turnsCount > 1 ? turnsCount - 1 : 1)}
             >
-              <IconButton
-                size='small'
-                disabled={turnsCount === 1}
-                onClick={() => changeTurn(turnsCount > 1 ? turnsCount - 1 : 1)}
-              >
-                <FastRewindRounded fontSize='large' />
-              </IconButton>
-              <IconButton size='small' onClick={() => setIsPlay(!isPlay)}>
-                {isPlay ? (
-                  <PauseRounded fontSize='large' />
-                ) : (
-                  <PlayArrowRounded fontSize='large' />
-                )}
-              </IconButton>
-              <IconButton
-                size='small'
-                disabled={turnsCount === maxTurn}
-                onClick={() =>
-                  changeTurn(turnsCount < maxTurn ? turnsCount + 1 : maxTurn)
-                }
-              >
-                <FastForwardRounded fontSize='large' />
-              </IconButton>
-            </Box>
-            <Slider
-              size='small'
-              value={turnsCount}
-              min={0}
+              <FastRewindRounded />
+            </button>
+            <button
+              type='button'
+              className='grid size-12 place-items-center border border-zinc-100 bg-zinc-100 text-zinc-950 shadow-[4px_4px_0_#000]'
+              onClick={() => setIsPlay((value) => !value)}
+            >
+              {isPlay ? <PauseRounded /> : <PlayArrowRounded />}
+            </button>
+            <button
+              type='button'
+              className='grid size-11 place-items-center border border-zinc-700 bg-zinc-950 text-zinc-50 disabled:opacity-40'
+              disabled={turnsCount === maxTurn}
+              onClick={() =>
+                changeTurn(turnsCount < maxTurn ? turnsCount + 1 : maxTurn)
+              }
+            >
+              <FastForwardRounded />
+            </button>
+          </div>
+
+          <div className='space-y-2'>
+            <div className='flex items-center justify-between text-[11px] font-black uppercase tracking-[0.18em] text-zinc-500'>
+              <span>Turn</span>
+              <span className='text-yellow-300'>
+                {turnsCount}/{maxTurn}
+              </span>
+            </div>
+            <input
+              type='range'
+              min={1}
               step={1}
               max={maxTurn}
-              onChange={handleChangeTurn}
-              sx={{
-                color: '#fff',
-                padding: '4px 0px',
-                height: 6,
-                '& .MuiSlider-thumb': {
-                  width: 16,
-                  height: 16,
-                  transition: '0.3s cubic-bezier(.47,1.64,.41,.8)',
-                  '&:before': {
-                    boxShadow: '0 2px 12px 0 rgba(0,0,0,0.4)',
-                  },
-                  '&:hover, &.Mui-focusVisible': {
-                    boxShadow: `0px 0px 0px 8px rgb(255 255 255 / 16%)`,
-                  },
-                  '&.Mui-active': {
-                    width: 26,
-                    height: 26,
-                  },
-                },
-                '& .MuiSlider-rail': {
-                  opacity: 0.28,
-                },
-              }}
+              value={turnsCount}
+              onChange={(event) => changeTurn(Number(event.target.value))}
+              className='h-2 w-full cursor-pointer appearance-none bg-zinc-800 accent-yellow-300'
             />
-            <RadioGroup
-              sx={{
-                width: '100%',
-                display: 'flex',
-                flexDirection: 'row',
-                justifyContent: 'center',
-                alignItems: 'center',
-                marginTop: {
-                  xs: '-8px',
-                  md: '10px',
-                },
-              }}
-              aria-label='game-speed'
-              name='game-speed'
-              value={playSpeed}
-              row
-              onChange={(event) => {
-                setIsPlay(false);
-                setPlaySpeed(Number.parseFloat(event.target.value));
-              }}
-            >
-              {ReplaySpeedOptions.map((value) => (
-                <FormControlLabel
-                  sx={{
-                    marginX: {
-                      xs: '1px',
-                      md: '3px',
-                    },
-                  }}
-                  key={value}
-                  value={value}
-                  control={<Radio size='small' />}
-                  label={<Typography color='white'>{`${value}x`}</Typography>}
-                />
-              ))}
-            </RadioGroup>
-          </Box>
-
-          <TurnsCount
-            count={turnsCount}
-            handleReturnClick={() => {
-              router.push('/');
-            }}
-          />
-
-          <LeaderBoard
-            leaderBoardTable={leaderBoardData}
-            players={gameRecord.players}
-            checkedPlayers={checkedPlayers}
-            setCheckedPlayers={setCheckedPlayers}
-          />
-          <ChatBox socket={null} messages={messages} />
-          <div
-            ref={mapRef}
-            tabIndex={0}
-            style={{
-              position: 'absolute',
-              top: '50%',
-              left: '50%',
-              transform: `translate(-50%, -50%) translate(${position.x}px, ${position.y}px)`,
-              width: mapPixelHeight, // game's width and height are swapped
-              height: mapPixelWidth,
-            }}
-          >
-            {limitedView.map((tiles, x) => {
-              return tiles.map((tile, y) => {
-                return (
-                  <CustomMapTile
-                    key={`${x}/${y}`}
-                    zoom={zoom}
-                    size={tileSize}
-                    x={x}
-                    y={y}
-                    tile={[...tile, false, 0]}
-                  />
-                );
-              });
-            })}
           </div>
-        </Box>
-      </Box>
-    );
-  }
+
+          <div className='flex flex-wrap justify-center gap-2'>
+            {ReplaySpeedOptions.map((value) => (
+              <button
+                key={value}
+                type='button'
+                className={`bw-button min-h-10 px-3 text-xs ${
+                  playSpeed === value ? 'bw-button-primary' : 'bw-button-secondary'
+                }`}
+                onClick={() => {
+                  setIsPlay(false);
+                  setPlaySpeed(value);
+                }}
+              >
+                {`${value}x`}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <TurnsCount
+          count={turnsCount}
+          handleReturnClick={() => {
+            router.push('/');
+          }}
+        />
+
+        <LeaderBoard
+          leaderBoardTable={leaderBoardData}
+          players={gameRecord.players}
+          checkedPlayers={checkedPlayers}
+          setCheckedPlayers={setCheckedPlayers}
+        />
+        <ChatBox socket={null} messages={messages} />
+        <div
+          ref={mapRef}
+          tabIndex={0}
+          style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: `translate(-50%, -50%) translate(${position.x}px, ${position.y}px)`,
+            width: mapPixelHeight,
+            height: mapPixelWidth,
+          }}
+        >
+          {limitedView.map((tiles, x) => {
+            return tiles.map((tile, y) => {
+              return (
+                <CustomMapTile
+                  key={`${x}/${y}`}
+                  zoom={zoom}
+                  size={tileSize}
+                  x={x}
+                  y={y}
+                  tile={[...tile, false, 0]}
+                />
+              );
+            });
+          })}
+        </div>
+      </div>
+    </div>
+  );
 }

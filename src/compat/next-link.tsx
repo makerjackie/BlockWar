@@ -1,9 +1,10 @@
-import type { CSSProperties, PropsWithChildren, ReactNode } from 'react';
+import type { AnchorHTMLAttributes, PropsWithChildren, ReactNode } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
 
-interface LinkProps extends PropsWithChildren {
+interface LinkProps
+  extends PropsWithChildren,
+    Omit<AnchorHTMLAttributes<HTMLAnchorElement>, 'href'> {
   href: string;
-  style?: CSSProperties;
 }
 
 function isExternal(href: string) {

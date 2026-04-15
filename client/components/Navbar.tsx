@@ -1,24 +1,4 @@
-import AppBar from '@mui/material/AppBar';
-import Box from '@mui/material/Box';
-import IconButton from '@mui/material/IconButton';
-import Typography from '@mui/material/Typography';
-import Menu from '@mui/material/Menu';
-import Chip from '@mui/material/Chip';
 import MenuIcon from '@mui/icons-material/Menu';
-import Container from '@mui/material/Container';
-import Button from '@mui/material/Button';
-import MenuItem from '@mui/material/MenuItem';
-import FormControl from '@mui/material/FormControl';
-import Select from '@mui/material/Select';
-
-import { useState } from 'react';
-
-import { useTranslation } from 'next-i18next';
-import { useRouter } from 'next/router';
-import HowToPlay from './HowToPlay';
-
-import AccountCircleIcon from '@mui/icons-material/AccountCircle';
-import Link from 'next/link';
 import {
   BookRounded,
   FeedbackRounded,
@@ -27,29 +7,40 @@ import {
   HomeRounded,
 } from '@mui/icons-material';
 
+import { useState } from 'react';
+
+import { useTranslation } from 'next-i18next';
+import { useRouter } from 'next/router';
+import HowToPlay from './HowToPlay';
+
+import Link from 'next/link';
+
 const navItems = [
-  { href: '/', label: 'home', icon: <HomeRounded /> },
-  { href: 'https://github.com/makerjackie/BlockWar#readme', label: 'wiki', icon: <BookRounded /> },
+  { href: '/', label: 'home', icon: <HomeRounded fontSize='small' /> },
+  {
+    href: 'https://github.com/makerjackie/BlockWar#readme',
+    label: 'wiki',
+    icon: <BookRounded fontSize='small' />,
+  },
   {
     href: 'https://github.com/makerjackie/BlockWar',
     label: 'github',
-    icon: <GitHub />,
+    icon: <GitHub fontSize='small' />,
   },
   {
     href: 'https://github.com/makerjackie/BlockWar/issues',
     label: 'feedback',
-    icon: <FeedbackRounded />,
+    icon: <FeedbackRounded fontSize='small' />,
   },
   {
     href: 'http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=VAwNA8NiYUMsPHrBxLso-t09saGZCT14&authKey=fFpto%2Ff%2FhNUpcxZhSVZt6msLOZrMhW3e14mypEBlO3Ih7PdqOmXq%2FQ0OlV3D%2BuyO&noverify=0&group_code=374889821',
     label: 'qq-group',
-    icon: <Contacts />,
+    icon: <Contacts fontSize='small' />,
   },
 ];
 
 function Navbar() {
-  const [anchorElNav, setAnchorElNav] = useState(null);
-
+  const [isNavOpen, setIsNavOpen] = useState(false);
   const [show, setShow] = useState(false);
 
   const toggleShow = () => {
@@ -58,172 +49,130 @@ function Navbar() {
 
   const router = useRouter();
 
-  const handleClick = (lang: string) => async () => {
-    router.push(router.asPath, undefined, { locale: lang });
-  };
-
-  const handleOpenNavMenu = (event: any) => {
-    setAnchorElNav(event.currentTarget);
-  };
-
-  const handleCloseNavMenu = () => {
-    setAnchorElNav(null);
+  const handleLanguageChange = async (lang: string) => {
+    await router.push(router.asPath, undefined, { locale: lang });
   };
 
   const { t } = useTranslation();
 
   return (
-    <AppBar position='fixed' className='navbar'>
-      <Container className='dock' sx={{ boxShadow: 3 }}>
-        <Box sx={{ flexGrow: 1, display: { xs: 'flex', md: 'none' } }}>
-          <IconButton
-            size='large'
-            aria-label='account of current user'
-            aria-controls='menu-appbar'
-            aria-haspopup='true'
-            onClick={handleOpenNavMenu}
-            color='inherit'
-          >
-            <MenuIcon />
-          </IconButton>
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            <Link
-              href='/'
-              style={{ display: 'flex', alignItems: 'center', flexGrow: 0 }}
-            >
-              <Typography
-                variant='h6'
-                color='white'
-                sx={{ fontWeight: 700, whiteSpace: 'nowrap' }}
-              >
-                BlockWar / 方块战争
-              </Typography>
-            </Link>
-          </Box>
-          <Menu
-            id='menu-appbar'
-            anchorEl={anchorElNav}
-            anchorOrigin={{
-              vertical: 'bottom',
-              horizontal: 'left',
-            }}
-            keepMounted
-            transformOrigin={{
-              vertical: 'top',
-              horizontal: 'left',
-            }}
-            open={Boolean(anchorElNav)}
-            onClose={handleCloseNavMenu}
-            sx={{
-              display: { xs: 'block', md: 'none' },
-            }}
-          >
-            {navItems.map((item) => (
-              <MenuItem key={item.href} onClick={handleCloseNavMenu}>
-                <Link href={item.href}>
-                  <Typography textAlign='center'>{t(item.label)}</Typography>
-                </Link>
-              </MenuItem>
-            ))}
-          </Menu>
-        </Box>
-
-        <Box
-          sx={{
-            flexGrow: 1,
-            justifyContent: 'space-between',
-            display: { xs: 'none', md: 'flex' },
-            alignItems: 'center',
-          }}
+    <header className='navbar'>
+      <div className='dock'>
+        <Link
+          href='/'
+          className='group flex min-w-0 items-center gap-3 text-zinc-50'
         >
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+          <span className='bw-brand-mark'>
+            <img
+              src='/img/blockwar-mark.svg'
+              alt='BlockWar'
+              className='size-8'
+              draggable={false}
+            />
+          </span>
+          <span className='min-w-0'>
+            <span className='bw-brand-text block truncate text-lg font-black uppercase tracking-[-0.05em] md:text-xl'>
+              BlockWar
+            </span>
+            <span className='block text-[10px] font-bold uppercase tracking-[0.32em] text-zinc-500 group-hover:text-yellow-300'>
+              方块战争
+            </span>
+          </span>
+        </Link>
+
+        <nav className='hidden items-center gap-2 md:flex'>
+          {navItems.map((item) => (
             <Link
-              href='/'
-              style={{ display: 'flex', alignItems: 'center', flexGrow: 0 }}
+              href={item.href}
+              key={item.href}
+              id='navbar-link'
+              className='flex min-h-10 items-center gap-2 border border-transparent px-3 text-xs text-zinc-300 transition hover:border-zinc-500/60 hover:bg-zinc-900 hover:text-zinc-50'
             >
-              <Typography
-                variant='h6'
-                color='white'
-                sx={{ fontWeight: 700, whiteSpace: 'nowrap' }}
-              >
-                BlockWar / 方块战争
-              </Typography>
+              {item.icon}
+              {t(item.label)}
             </Link>
-          </Box>
-          <Box>
+          ))}
+        </nav>
+
+        <div className='hidden items-center gap-3 md:flex'>
+          <button
+            type='button'
+            className='bw-button bw-button-primary h-10 min-h-10 px-3 text-xs'
+            onClick={toggleShow}
+          >
+            {t('how-to-play')}
+          </button>
+          <select
+            className='navbar-language-switch px-3 text-sm font-black uppercase tracking-[0.14em]'
+            value={router.locale ?? 'en'}
+            onChange={(event) => {
+              void handleLanguageChange(event.target.value);
+            }}
+            aria-label='Language'
+          >
+            {router.locales &&
+              router.locales.map((lang) => (
+                <option key={lang} value={lang}>
+                  {lang}
+                </option>
+              ))}
+          </select>
+        </div>
+
+        <button
+          type='button'
+          aria-label='Open navigation menu'
+          aria-expanded={isNavOpen}
+          className='grid size-11 place-items-center border border-zinc-500/50 bg-zinc-950 text-zinc-50 md:hidden'
+          onClick={() => setIsNavOpen((value) => !value)}
+        >
+          <MenuIcon />
+        </button>
+      </div>
+
+      {isNavOpen && (
+        <div className='mx-3 mt-2 border border-zinc-500/40 bg-zinc-950/95 p-2 shadow-[6px_6px_0_#000] backdrop-blur-xl md:hidden'>
+          <nav className='grid gap-1'>
             {navItems.map((item) => (
-              <Link href={item.href} key={item.href}>
-                <Button
-                  id='navbar-link'
-                  onClick={handleCloseNavMenu}
-                  sx={{
-                    textTransform: 'none',
-                    fontSize: '1rem',
-                    marginX: '10px',
-                  }}
-                  startIcon={item.icon}
-                >
-                  {t(item.label)}
-                </Button>
+              <Link
+                href={item.href}
+                key={item.href}
+                className='flex min-h-11 items-center gap-3 border border-transparent px-3 text-sm font-black uppercase tracking-[0.14em] text-zinc-200 hover:border-yellow-300 hover:text-yellow-300'
+                onClick={() => setIsNavOpen(false)}
+              >
+                {item.icon}
+                {t(item.label)}
               </Link>
             ))}
-          </Box>
-          <Box
-            id='lng-selector'
-            sx={{
-              display: 'flex',
-              alignItems: 'center',
-              flexDirection: 'row',
-            }}
-          >
-            <Button
-              variant='contained'
-              size='small'
+          </nav>
+          <div className='mt-2 grid grid-cols-[1fr_auto] gap-2 border-t border-zinc-800 pt-2'>
+            <button
+              type='button'
+              className='bw-button bw-button-primary text-xs'
               onClick={toggleShow}
-              sx={{ margin: 2, height: '40px', fontSize: '15px' }}
             >
-              <Typography variant='body2' sx={{ whiteSpace: 'nowrap' }}>
-                {t('how-to-play')}
-              </Typography>
-            </Button>
-            <HowToPlay show={show} toggleShow={toggleShow} />
-            <FormControl>
-              <Select
-                color='primary'
-                className='navbar-language-switch'
-                defaultValue={router.locale ?? 'en'}
-              >
-                {router.locales &&
-                  router.locales.map((lang) => (
-                    <MenuItem
-                      key={lang}
-                      value={lang}
-                      onClick={handleClick(lang)}
-                    >
-                      <Typography>{lang}</Typography>
-                    </MenuItem>
-                  ))}
-              </Select>
-            </FormControl>
-          </Box>
-        </Box>
-
-        {/* 用户界面 todo */}
-        {/* <Box sx={{ flexGrow: 0 }}>
-            <Button
-              id="navbar-link"
-              variant="text"
-              color="primary"
-              sx={{ color: "white" }}
-              onClick={handleOpen}
+              {t('how-to-play')}
+            </button>
+            <select
+              className='navbar-language-switch px-3 text-sm font-black uppercase'
+              value={router.locale ?? 'en'}
+              onChange={(event) => {
+                void handleLanguageChange(event.target.value);
+              }}
+              aria-label='Language'
             >
-              {" "}
-              {t("navbar-link-clientzone")}{" "}
-              <AccountCircleIcon sx={{ ml: 0.4 }} />
-            </Button>
-          </Box> */}
-      </Container>
-    </AppBar>
+              {router.locales &&
+                router.locales.map((lang) => (
+                  <option key={lang} value={lang}>
+                    {lang}
+                  </option>
+                ))}
+            </select>
+          </div>
+        </div>
+      )}
+      <HowToPlay show={show} toggleShow={toggleShow} />
+    </header>
   );
 }
 export default Navbar;

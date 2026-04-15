@@ -4,6 +4,13 @@
   "main": "src/worker/index.ts",
   "compatibility_date": "2025-09-06",
   "compatibility_flags": ["nodejs_compat"],
+  "routes": [
+    {
+      "pattern": "blockwar.01mvp.com",
+      "zone_name": "01mvp.com",
+      "custom_domain": true
+    }
+  ],
   "assets": {
     "directory": "./dist/client",
     "binding": "ASSETS"

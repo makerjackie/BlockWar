@@ -18,7 +18,8 @@ const FooterContainer = styled('div')`
 
 function Footer() {
   const { t } = useTranslation();
-  const chinaWebsite: boolean = process.env.NEXT_PUBLIC_SERVER_API.endsWith('cn');
+  const serverApi = process.env.NEXT_PUBLIC_SERVER_API ?? '';
+  const chinaWebsite: boolean = serverApi.endsWith('cn');
 
   return (
     <FooterContainer>

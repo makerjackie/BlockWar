@@ -30,6 +30,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Generate Wrangler types
+        run: pnpm types
+
       - name: Verify build and tests
         run: pnpm check
 

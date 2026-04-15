@@ -22,6 +22,7 @@ import type { SocketPacket } from '@shared/ws';
 import {
   cloneRoomSummary,
   hydrateRoomSummary,
+  sanitizeRoomSummary,
   type PlainRoom,
 } from './lib/room-summary';
 
@@ -204,9 +205,35 @@ export class RoomDurableObject extends DurableObject<Env> {
       return this.room;
     }
 
-    const summary = (await this.app.getRoom(roomId)) as PlainRoom | null;
+    const summary = (await this.app.getStoredRoom(roomId)) as PlainRoom | null;
     this.room = hydrateRoomSummary(roomId, summary);
+    this.pruneRoomToActiveConnections();
     return this.room;
+  }
+
+  async reconcilePersistedSummary(summary: PlainRoom): Promise<PlainRoom | null> {
+    const hadPlayers = summary.players.length > 0;
+
+    if (!this.room) {
+      this.room = hydrateRoomSummary(summary.id, summary);
+    }
+
+    const liveSummary = sanitizeRoomSummary(
+      cloneRoomSummary(this.room),
+      { activeConnectionIds: this.getActiveConnectionIds() }
+    );
+
+    if (hadPlayers && liveSummary.players.length === 0 && !liveSummary.keepAlive) {
+      this.clearGameLoop();
+      this.room = null;
+      return null;
+    }
+
+    if (!this.room.map) {
+      this.room = hydrateRoomSummary(liveSummary.id, liveSummary);
+    }
+
+    return liveSummary;
   }
 
   private async syncRoomSummary() {
@@ -214,12 +241,14 @@ export class RoomDurableObject extends DurableObject<Env> {
       return;
     }
 
-    if (this.room.players.length === 0 && !this.room.keepAlive) {
+    const summary = cloneRoomSummary(this.room);
+
+    if (summary.players.length === 0 && !summary.keepAlive) {
       await this.app.deleteRoom(this.room.id);
       return;
     }
 
-    await this.app.upsertRoom(cloneRoomSummary(this.room));
+    await this.app.upsertRoom(summary);
   }
 
   private persistSocketAttachment(
@@ -270,6 +299,34 @@ export class RoomDurableObject extends DurableObject<Env> {
     }
 
     return this.room.players[playerIndex];
+  }
+
+  private getActiveConnectionIds() {
+    const connectionIds = new Set<string>();
+
+    for (const [connectionId, socket] of this.sockets.entries()) {
+      if (socket.readyState === WebSocket.OPEN) {
+        connectionIds.add(connectionId);
+      }
+    }
+
+    return connectionIds;
+  }
+
+  private hasConnectedPlayers() {
+    return this.room?.players.some((player) => !player.disconnected) ?? false;
+  }
+
+  private pruneRoomToActiveConnections() {
+    if (!this.room || this.room.map) {
+      return;
+    }
+
+    const liveSummary = sanitizeRoomSummary(
+      cloneRoomSummary(this.room),
+      { activeConnectionIds: this.getActiveConnectionIds() }
+    );
+    this.room = hydrateRoomSummary(this.room.id, liveSummary);
   }
 
   private async sendCurrentGameState(connectionId: string) {
@@ -419,6 +476,12 @@ export class RoomDurableObject extends DurableObject<Env> {
       (count, item) => count + (item.forceStart ? 1 : 0),
       0
     );
+
+    if (this.room.gameStarted && !this.hasConnectedPlayers()) {
+      this.clearGameLoop();
+      await this.finishGame(null);
+      return;
+    }
 
     if (this.room.players.length > 0) {
       this.room.players.forEach((roomPlayer) => roomPlayer.setRoomHost(false));

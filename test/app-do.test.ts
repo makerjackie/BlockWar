@@ -1,12 +1,124 @@
 import { describe, expect, it } from 'vitest';
 import { env, runInDurableObject } from 'cloudflare:test';
+import { createDefaultRoom } from '@shared/game/room-defaults';
 import type { AppDurableObject } from '../src/worker/app-do';
+import { cloneRoomSummary } from '../src/worker/lib/room-summary';
 
 declare module 'cloudflare:test' {
   interface ProvidedEnv extends Cloudflare.Env {}
 }
 
 describe('AppDurableObject', () => {
+  it('removes stale custom rooms that have no live sockets', async () => {
+    const stub = env.APP.getByName(`app-${crypto.randomUUID().slice(0, 8)}`);
+    const roomId = `room-${crypto.randomUUID().slice(0, 8)}`;
+
+    await runInDurableObject(stub, async (instance: AppDurableObject) => {
+      const room = cloneRoomSummary(createDefaultRoom(roomId));
+      room.players = Array.from({ length: room.maxPlayers }, (_, index) => ({
+        id: `player-${index}`,
+        socket_id: `stale-socket-${index}`,
+        username: `Player ${index}`,
+        color: index + 1,
+        team: index + 1,
+        disconnected: false,
+      }));
+
+      await (instance as any).ensureInitialized();
+      await (instance as any).execute(
+        'INSERT INTO rooms (id, room_json, updated_at) VALUES (?, ?, ?)',
+        room.id,
+        JSON.stringify(room),
+        Date.now()
+      );
+
+      const rooms = await instance.listRooms();
+      expect(rooms[roomId]).toBeUndefined();
+      expect(await instance.getRoom(roomId)).toBeNull();
+    });
+  });
+
+  it('resets stale keep-alive rooms that have no live sockets', async () => {
+    const stub = env.APP.getByName(`app-${crypto.randomUUID().slice(0, 8)}`);
+    const roomId = `room-${crypto.randomUUID().slice(0, 8)}`;
+
+    await runInDurableObject(stub, async (instance: AppDurableObject) => {
+      const room = cloneRoomSummary(createDefaultRoom(roomId));
+      room.keepAlive = true;
+      room.players = [
+        {
+          id: 'player-a',
+          socket_id: 'stale-socket-a',
+          username: 'Alice',
+          color: 1,
+          team: 1,
+          disconnected: false,
+        },
+      ];
+
+      await (instance as any).ensureInitialized();
+      await (instance as any).execute(
+        'INSERT INTO rooms (id, room_json, updated_at) VALUES (?, ?, ?)',
+        room.id,
+        JSON.stringify(room),
+        Date.now()
+      );
+
+      const rooms = await instance.listRooms();
+      expect(rooms[roomId]?.players).toHaveLength(0);
+      expect(rooms[roomId]?.gameStarted).toBe(false);
+      expect(await instance.getRoom(roomId)).toMatchObject({
+        id: roomId,
+        keepAlive: true,
+        players: [],
+      });
+    });
+  });
+
+  it('removes stale custom rooms that only contain disconnected players', async () => {
+    const stub = env.APP.getByName(`app-${crypto.randomUUID().slice(0, 8)}`);
+    const roomId = `room-${crypto.randomUUID().slice(0, 8)}`;
+
+    await runInDurableObject(stub, async (instance: AppDurableObject) => {
+      const room = cloneRoomSummary(createDefaultRoom(roomId));
+      room.gameStarted = true;
+      room.mapGenerated = true;
+      room.forceStartNum = 2;
+      room.players = [
+        {
+          id: 'player-a',
+          socket_id: 'socket-a',
+          username: 'Alice',
+          color: 1,
+          team: 1,
+          forceStart: true,
+          disconnected: true,
+        },
+        {
+          id: 'player-b',
+          socket_id: 'socket-b',
+          username: 'Bob',
+          color: 2,
+          team: 2,
+          forceStart: true,
+          disconnected: true,
+        },
+      ];
+
+      await (instance as any).ensureInitialized();
+      await (instance as any).execute(
+        'INSERT INTO rooms (id, room_json, updated_at) VALUES (?, ?, ?)',
+        room.id,
+        JSON.stringify(room),
+        Date.now()
+      );
+
+      const rooms = await instance.listRooms();
+      expect(rooms[roomId]).toBeUndefined();
+      expect(await instance.getRoom(roomId)).toBeNull();
+    });
+  });
+
   it('stores small replays in D1', async () => {
     const stub = env.APP.getByName(`app-${crypto.randomUUID().slice(0, 8)}`);
 

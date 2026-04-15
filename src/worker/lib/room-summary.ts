@@ -34,7 +34,7 @@ export type PlainRoom = {
   map: null;
   gameLoop: null;
   players: PlainPlayer[];
-  generals: unknown[];
+  generals: never[];
   mapId: string;
   mapName: string;
   keepAlive: boolean;
@@ -42,8 +42,45 @@ export type PlainRoom = {
   warringStatesMode: boolean;
 };
 
-export function cloneRoomSummary(room: Room): PlainRoom {
+type SanitizeRoomSummaryOptions = {
+  activeConnectionIds?: ReadonlySet<string>;
+};
+
+export function sanitizeRoomSummary(
+  room: PlainRoom,
+  options: SanitizeRoomSummaryOptions = {}
+): PlainRoom {
+  const players = (room.players ?? []).filter((player) => {
+    if (player.disconnected) {
+      return false;
+    }
+
+    return options.activeConnectionIds
+      ? options.activeConnectionIds.has(player.socket_id)
+      : true;
+  });
+  const forceStartNum = players.reduce(
+    (count, player) => count + (player.forceStart ? 1 : 0),
+    0
+  );
+  const hasPlayers = players.length > 0;
+
   return {
+    ...room,
+    gameStarted: hasPlayers ? room.gameStarted : false,
+    forceStartNum,
+    mapGenerated: hasPlayers ? room.mapGenerated : false,
+    globalMapDiff: null,
+    gameRecord: null,
+    map: null,
+    gameLoop: null,
+    players,
+    generals: hasPlayers ? room.generals : [],
+  };
+}
+
+export function cloneRoomSummary(room: Room): PlainRoom {
+  return sanitizeRoomSummary({
     id: room.id,
     roomName: room.roomName,
     gameStarted: room.gameStarted,
@@ -79,7 +116,7 @@ export function cloneRoomSummary(room: Room): PlainRoom {
     keepAlive: room.keepAlive,
     revealKing: room.revealKing,
     warringStatesMode: room.warringStatesMode,
-  };
+  });
 }
 
 export function hydrateRoomSummary(roomId: string, summary?: PlainRoom | null) {
@@ -87,35 +124,37 @@ export function hydrateRoomSummary(roomId: string, summary?: PlainRoom | null) {
     return createDefaultRoom(roomId);
   }
 
+  const sanitizedSummary = sanitizeRoomSummary(summary);
+
   const room = Room.create({
-    id: summary.id,
-    roomName: summary.roomName,
+    id: sanitizedSummary.id,
+    roomName: sanitizedSummary.roomName,
     gameStarted: false,
     mapGenerated: false,
     forceStartNum: 0,
-    maxPlayers: summary.maxPlayers,
-    gameSpeed: summary.gameSpeed,
-    mapWidth: summary.mapWidth,
-    mapHeight: summary.mapHeight,
-    mountain: summary.mountain,
-    city: summary.city,
-    swamp: summary.swamp,
-    fogOfWar: summary.fogOfWar,
-    deathSpectator: summary.deathSpectator,
+    maxPlayers: sanitizedSummary.maxPlayers,
+    gameSpeed: sanitizedSummary.gameSpeed,
+    mapWidth: sanitizedSummary.mapWidth,
+    mapHeight: sanitizedSummary.mapHeight,
+    mountain: sanitizedSummary.mountain,
+    city: sanitizedSummary.city,
+    swamp: sanitizedSummary.swamp,
+    fogOfWar: sanitizedSummary.fogOfWar,
+    deathSpectator: sanitizedSummary.deathSpectator,
     globalMapDiff: null,
     gameRecord: null,
     map: null,
     gameLoop: null,
     generals: [],
-    mapId: summary.mapId,
-    mapName: summary.mapName,
-    keepAlive: summary.keepAlive,
-    revealKing: summary.revealKing,
-    warringStatesMode: summary.warringStatesMode,
+    mapId: sanitizedSummary.mapId,
+    mapName: sanitizedSummary.mapName,
+    keepAlive: sanitizedSummary.keepAlive,
+    revealKing: sanitizedSummary.revealKing,
+    warringStatesMode: sanitizedSummary.warringStatesMode,
     players: [],
   });
 
-  room.players = (summary.players ?? []).map(
+  room.players = (sanitizedSummary.players ?? []).map(
     (player) =>
       new Player(
         player.id,

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { env, runInDurableObject } from 'cloudflare:test';
 import Player from '@shared/game/player';
 import type { RoomDurableObject } from '../src/worker/room-do';
+import { cloneRoomSummary } from '../src/worker/lib/room-summary';
 
 declare module 'cloudflare:test' {
   interface ProvidedEnv extends Cloudflare.Env {}
@@ -87,6 +88,9 @@ describe('RoomDurableObject', () => {
         await (instance as any).syncRoomSummary();
 
         (instance as any).room = null;
+        (instance as any).sockets.set('socket-a', {
+          readyState: WebSocket.OPEN,
+        });
 
         await instance.webSocketMessage(
           {
@@ -183,6 +187,57 @@ describe('RoomDurableObject', () => {
             (item) => item.event === 'game_ended' && Array.isArray(item.data[0])
           )
         ).toBe(true);
+      }
+    );
+  });
+
+  it('cleans a started room immediately when every player disconnects', async () => {
+    const roomId = `room-${crypto.randomUUID().slice(0, 8)}`;
+    const stub = env.ROOMS.getByName(roomId);
+
+    await runInDurableObject(
+      stub,
+      async (instance: RoomDurableObject) => {
+        const { room } = await createStartedRoom(instance, roomId);
+
+        await (instance as any).handleDisconnect('socket-a');
+        await (instance as any).handleDisconnect('socket-b');
+
+        expect(room.gameStarted).toBe(false);
+        expect(room.players).toHaveLength(0);
+        expect(await (instance as any).app.getRoom(roomId)).toBeNull();
+      }
+    );
+  });
+
+  it('prunes stale full room summaries before accepting a direct join', async () => {
+    const roomId = `room-${crypto.randomUUID().slice(0, 8)}`;
+    const stub = env.ROOMS.getByName(roomId);
+
+    await runInDurableObject(
+      stub,
+      async (instance: RoomDurableObject) => {
+        const events = captureEvents(instance);
+        const staleRoom = await (instance as any).ensureRoom(roomId);
+        staleRoom.maxPlayers = 2;
+        staleRoom.players.push(
+          new Player('player-a', 'stale-socket-a', 'Alice', 1, 1),
+          new Player('player-b', 'stale-socket-b', 'Bob', 2, 2)
+        );
+        await (instance as any).app.upsertRoom(cloneRoomSummary(staleRoom));
+        (instance as any).room = null;
+
+        await (instance as any).handleJoin(
+          'socket-c',
+          roomId,
+          'Carol',
+          ''
+        );
+
+        const room = (instance as any).room;
+        expect(room.players).toHaveLength(1);
+        expect(room.players[0].username).toBe('Carol');
+        expect(events.some((item) => item.event === 'reject_join')).toBe(false);
       }
     );
   });

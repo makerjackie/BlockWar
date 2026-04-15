@@ -1,7 +1,11 @@
 import { DurableObject } from 'cloudflare:workers';
 import { createDefaultRoom, seedRoomIds } from '@shared/game/room-defaults';
 import type { CustomMapData, CustomMapInfo } from '@shared/game/types';
-import { cloneRoomSummary, type PlainRoom } from './lib/room-summary';
+import {
+  cloneRoomSummary,
+  sanitizeRoomSummary,
+  type PlainRoom,
+} from './lib/room-summary';
 
 type Env = Cloudflare.Env;
 type D1Executor = Pick<D1Database, 'prepare'>;
@@ -73,6 +77,10 @@ function byteLength(value: string) {
   return textEncoder.encode(value).byteLength;
 }
 
+function hasPlayers(room: PlainRoom) {
+  return room.players.length > 0;
+}
+
 export class AppDurableObject extends DurableObject<Env> {
   private initialization: Promise<void> | null = null;
 
@@ -137,6 +145,28 @@ export class AppDurableObject extends DurableObject<Env> {
     return this.env.DB.withSession('first-primary');
   }
 
+  private async reconcileRoomSummary(room: PlainRoom): Promise<PlainRoom | null> {
+    const liveRoom = await this.env.ROOMS
+      .getByName(room.id)
+      .reconcilePersistedSummary(room);
+
+    if (!liveRoom) {
+      await this.deleteRoom(room.id);
+      return null;
+    }
+
+    if (JSON.stringify(room) !== JSON.stringify(liveRoom)) {
+      await this.execute(
+        'UPDATE rooms SET room_json = ?, updated_at = ? WHERE id = ?',
+        JSON.stringify(liveRoom),
+        Date.now(),
+        liveRoom.id
+      );
+    }
+
+    return liveRoom;
+  }
+
   private async seedRooms() {
     const statements = seedRoomIds.map((roomId) => {
       const room = createDefaultRoom(roomId);
@@ -170,14 +200,30 @@ export class AppDurableObject extends DurableObject<Env> {
   async listRooms(): Promise<Record<string, PlainRoom>> {
     await this.ensureInitialized();
     const rows = await this.queryAll<RoomRow>('SELECT id, room_json FROM rooms');
+    const rooms: Record<string, PlainRoom> = {};
 
-    return rows.reduce<Record<string, PlainRoom>>((acc, row) => {
-      acc[row.id] = JSON.parse(row.room_json) as PlainRoom;
-      return acc;
-    }, {});
+    for (const row of rows) {
+      const room = await this.reconcileRoomSummary(
+        JSON.parse(row.room_json) as PlainRoom
+      );
+      if (room) {
+        rooms[row.id] = room;
+      }
+    }
+
+    return rooms;
   }
 
   async getRoom(roomId: string): Promise<PlainRoom | null> {
+    const room = await this.getStoredRoom(roomId);
+    if (!room) {
+      return null;
+    }
+
+    return await this.reconcileRoomSummary(room);
+  }
+
+  async getStoredRoom(roomId: string): Promise<PlainRoom | null> {
     await this.ensureInitialized();
     const row = await this.queryFirst<RoomRow>(
       'SELECT id, room_json FROM rooms WHERE id = ?',
@@ -188,11 +234,18 @@ export class AppDurableObject extends DurableObject<Env> {
       return null;
     }
 
-    return JSON.parse(row.room_json) as PlainRoom;
+    return sanitizeRoomSummary(JSON.parse(row.room_json) as PlainRoom);
   }
 
   async upsertRoom(room: PlainRoom): Promise<void> {
     await this.ensureInitialized();
+    const sanitizedRoom = sanitizeRoomSummary(room);
+
+    if (hasPlayers(room) && sanitizedRoom.players.length === 0 && !sanitizedRoom.keepAlive) {
+      await this.deleteRoom(sanitizedRoom.id);
+      return;
+    }
+
     await this.execute(
       `
         INSERT INTO rooms (id, room_json, updated_at)
@@ -201,8 +254,8 @@ export class AppDurableObject extends DurableObject<Env> {
           room_json = excluded.room_json,
           updated_at = excluded.updated_at
       `,
-      room.id,
-      JSON.stringify(room),
+      sanitizedRoom.id,
+      JSON.stringify(sanitizedRoom),
       Date.now()
     );
   }

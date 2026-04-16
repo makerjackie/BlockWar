@@ -15,9 +15,6 @@
   "welcome": "Login to BlockWar / 方块战争",
   "username-placeholder": "Enter UserName, Within 15 characters",
   "greet": "Welcome, ",
-  "gserver": "Cloudflare",
-  "online": "Online",
-  "offline": "Offline",
   "play": "Play",
   "how-to-play": "Tutorial",
   "room-id": "Room Id",
@@ -90,6 +87,16 @@
   "play-again": "Play Again",
   "exit": "Exit",
   "surrender": "surrender",
+  "chat": "Chat",
+  "open-chat": "Open chat",
+  "tactical-feed": "Tactical Feed",
+  "enter-key": "Enter",
+  "system": "system",
+  "roster": "Roster",
+  "team-number": "Team {{number}}",
+  "copy-share-link": "Copy share link",
+  "clear-room-map": "Clear room map",
+  "spectators": "Spectators",
   "death-spectator": "Allow Death Spectator",
   "spectate": "Spectate",
   "not-host": "You're not Host, can't change setting",
@@ -130,7 +137,7 @@
     "tutorialBadge": "Recommended",
     "title": "New here? Start with one tutorial match",
     "copy": "Jump straight into a practice match and learn while playing: start from your capital, expand, then capture enemy capitals.",
-    "startTutorial": "Start Beginner Tutorial",
+    "startTutorial": "Start Tutorial",
     "creatingTutorial": "Creating Tutorial...",
     "skipTutorial": "Enter Lobby"
   },
@@ -195,6 +202,6 @@
     "wsad": "WSAD / ArrowKey / MouseClick / TouchDrag on Mobile",
     "enter": "Enter",
     "surrender": "Surrender",
-    "beginnerTutorial": "If this is your first match, start Beginner Tutorial from the lobby and learn step by step in-game."
+    "beginnerTutorial": "If this is your first match, start Tutorial from the lobby and learn step by step in-game."
   }
 }

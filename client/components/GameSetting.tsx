@@ -28,7 +28,9 @@ type GameSettingProps = Record<string, never>;
 const tabLabels = ['team', 'game', 'map', 'terrain', 'modifiers'] as const;
 
 const tabButtonClass = (active: boolean) =>
-  `bw-button min-h-11 px-3 text-xs ${active ? 'bw-button-primary' : 'bw-button-secondary'}`;
+  `bw-button min-h-10 px-2.5 text-[11px] tracking-[0.14em] sm:min-h-11 sm:px-3 sm:text-xs sm:tracking-[0.18em] ${
+    active ? 'bw-button-primary' : 'bw-button-secondary'
+  }`;
 
 function getForceStartTarget(room: { players: { team: number; isBot?: boolean }[] }) {
   const activeHumans = room.players.filter(
@@ -63,9 +65,9 @@ function ToggleRow({
       type='button'
       disabled={disabled}
       onClick={onToggle}
-      className='flex min-h-12 items-center justify-between gap-3 border border-zinc-800 bg-zinc-950/60 px-4 py-3 text-left disabled:cursor-not-allowed disabled:opacity-50'
+      className='flex min-h-11 items-center justify-between gap-2.5 border border-zinc-800 bg-zinc-950/60 px-3 py-2.5 text-left disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-12 sm:gap-3 sm:px-4 sm:py-3'
     >
-      <span className='text-sm font-black uppercase tracking-[0.12em] text-zinc-200'>
+      <span className='text-[11px] font-black uppercase tracking-[0.1em] text-zinc-200 sm:text-sm sm:tracking-[0.12em]'>
         {label}
       </span>
       <span
@@ -246,20 +248,20 @@ const GameSetting: React.FC<GameSettingProps> = () => {
       <ModalShell
         open={openMapExplorer}
         onClose={() => setOpenMapExplorer(false)}
-        title='Choose a Map'
+        title={t('choose-map')}
         widthClassName='max-w-5xl'
       >
         <MapExplorer userId={myUserName} onSelect={handleMapSelect} />
       </ModalShell>
 
       <section className='menu-container overflow-hidden'>
-        <div className='flex items-start justify-between gap-3 border-b border-zinc-800 px-4 py-4 sm:px-5'>
-          <div className='flex min-w-0 items-start gap-3'>
+        <div className='flex items-start justify-between gap-2 border-b border-zinc-800 px-3 py-3 sm:gap-3 sm:px-5 sm:py-4'>
+          <div className='flex min-w-0 items-start gap-2.5 sm:gap-3'>
             <button
               type='button'
-              className='grid size-11 shrink-0 place-items-center border border-zinc-700 bg-zinc-950 text-zinc-50 transition hover:bg-yellow-300 hover:text-zinc-950'
+              className='grid size-10 shrink-0 place-items-center border border-zinc-700 bg-zinc-950 text-zinc-50 transition hover:bg-yellow-300 hover:text-zinc-950 sm:size-11'
               onClick={handleLeaveRoom}
-              aria-label='Leave room'
+              aria-label={t('leave-room')}
             >
               <ArrowLeft size={18} strokeWidth={2.5} />
             </button>
@@ -268,7 +270,7 @@ const GameSetting: React.FC<GameSettingProps> = () => {
               {!isNameFocused || disabledUi ? (
                 <button
                   type='button'
-                  className='max-w-full truncate text-left text-2xl font-black text-zinc-50'
+                  className='max-w-full truncate text-left text-xl font-black text-zinc-50 sm:text-2xl'
                   onClick={() => {
                     if (!disabledUi) setIsNamedFocused(true);
                   }}
@@ -278,16 +280,16 @@ const GameSetting: React.FC<GameSettingProps> = () => {
               ) : (
                 <input
                   ref={roomNameInputRef}
-                  className='bw-input h-11 text-left text-xl'
+                  className='bw-input h-10 text-left text-lg sm:h-11 sm:text-xl'
                   value={room.roomName}
                   onChange={handleRoomNameChange}
                   onBlur={handleRoomNameBlur}
                   disabled={disabledUi}
                 />
               )}
-              <div className='mt-2 flex flex-wrap items-center gap-2'>
+              <div className='mt-1.5 flex flex-wrap items-center gap-2 sm:mt-2'>
                 <span
-                  className={`inline-flex min-h-8 items-center gap-1.5 border px-3 text-[11px] font-black uppercase tracking-[0.16em] ${
+                  className={`inline-flex min-h-7 items-center gap-1.5 border px-2.5 text-[10px] font-black uppercase tracking-[0.14em] sm:min-h-8 sm:px-3 sm:text-[11px] sm:tracking-[0.16em] ${
                     disabledUi
                       ? 'border-zinc-700 bg-zinc-950/70 text-zinc-300'
                       : 'border-yellow-300 bg-yellow-300 text-zinc-950'
@@ -301,7 +303,7 @@ const GameSetting: React.FC<GameSettingProps> = () => {
                   {roleLabel}
                 </span>
                 {disabledUi ? (
-                  <span className='text-xs font-black uppercase tracking-[0.14em] text-zinc-500'>
+                  <span className='text-[11px] font-black uppercase tracking-[0.12em] text-zinc-500 sm:text-xs sm:tracking-[0.14em]'>
                     {t('room-settings-host-only')}
                   </span>
                 ) : null}
@@ -311,7 +313,7 @@ const GameSetting: React.FC<GameSettingProps> = () => {
 
           <button
             type='button'
-            className='grid size-11 shrink-0 place-items-center border border-zinc-700 bg-zinc-950 text-zinc-50 transition hover:bg-yellow-300 hover:text-zinc-950'
+            className='grid size-10 shrink-0 place-items-center border border-zinc-700 bg-zinc-950 text-zinc-50 transition hover:bg-yellow-300 hover:text-zinc-950 sm:size-11'
             onClick={() => {
               navigator.clipboard.writeText(shareLink);
               snackStateDispatch({
@@ -322,23 +324,23 @@ const GameSetting: React.FC<GameSettingProps> = () => {
                 duration: 3000,
               });
             }}
-            aria-label='Copy share link'
+            aria-label={t('copy-share-link')}
           >
             <Share2 size={18} strokeWidth={2.5} />
           </button>
         </div>
 
-        <div className='space-y-4 px-4 py-4 sm:px-5'>
+        <div className='space-y-3 px-3 py-3 sm:space-y-4 sm:px-5 sm:py-4'>
           {isTutorialRoom ? (
             <div
-              className='border px-4 py-5'
+              className='border px-3 py-4 sm:px-4 sm:py-5'
               style={{
                 borderColor: 'var(--bw-line-strong)',
                 backgroundColor: 'var(--bw-panel-strong)',
                 boxShadow: 'var(--bw-shadow)',
               }}
             >
-              <div className='flex items-start gap-3'>
+              <div className='flex items-start gap-2.5 sm:gap-3'>
                 <div className='bw-brand-mark text-[color:var(--bw-ember)]'>
                   <Crown size={20} strokeWidth={2.25} />
                 </div>
@@ -346,17 +348,20 @@ const GameSetting: React.FC<GameSettingProps> = () => {
                   <p className='bw-page-copy' style={{ color: 'var(--bw-ember)' }}>
                     {t('tutorialAutoStart.badge')}
                   </p>
-                  <h2 className='mt-1 text-2xl font-black' style={{ color: 'var(--bw-ink)' }}>
+                  <h2 className='mt-1 text-xl font-black sm:text-2xl' style={{ color: 'var(--bw-ink)' }}>
                     {t('tutorialAutoStart.title')}
                   </h2>
-                  <p className='mt-3 text-sm leading-6' style={{ color: 'var(--bw-ink-soft)' }}>
+                  <p className='mt-2 text-[13px] leading-5 sm:mt-3 sm:text-sm sm:leading-6' style={{ color: 'var(--bw-ink-soft)' }}>
                     {t('tutorialAutoStart.copy')}
                   </p>
                 </div>
               </div>
 
-              <div className='mt-5 flex flex-wrap items-center justify-between gap-3'>
-                <p className='text-xs font-black uppercase tracking-[0.16em]' style={{ color: 'var(--bw-muted)' }}>
+              <div className='mt-4 flex flex-wrap items-center justify-between gap-3 sm:mt-5'>
+                <p
+                  className='text-[11px] font-black uppercase tracking-[0.14em] sm:text-xs sm:tracking-[0.16em]'
+                  style={{ color: 'var(--bw-muted)' }}
+                >
                   {canStartTutorial
                     ? t('tutorialAutoStart.autoStarting')
                     : currentPlayer
@@ -386,21 +391,21 @@ const GameSetting: React.FC<GameSettingProps> = () => {
               </div>
 
               {room.mapName && (
-                <div className='flex items-center justify-between gap-3 border border-zinc-800 bg-zinc-950/60 px-4 py-3'>
+                <div className='flex items-center justify-between gap-2 border border-zinc-800 bg-zinc-950/60 px-3 py-2.5 sm:gap-3 sm:px-4 sm:py-3'>
                   <Link
                     href={`/maps/${room.mapId}`}
                     target='_blank'
                     rel='noopener noreferrer'
-                    className='truncate text-sm font-black uppercase tracking-[0.12em] text-yellow-300'
+                    className='truncate text-[11px] font-black uppercase tracking-[0.1em] text-yellow-300 sm:text-sm sm:tracking-[0.12em]'
                   >
                     {t('custom-map')}: {room.mapName}
                   </Link>
                   {!disabledUi && (
                     <button
                       type='button'
-                      className='grid size-9 place-items-center border border-zinc-700 bg-zinc-950 text-zinc-50 transition hover:bg-red-500 hover:text-zinc-950'
+                      className='grid size-8 place-items-center border border-zinc-700 bg-zinc-950 text-zinc-50 transition hover:bg-red-500 hover:text-zinc-950 sm:size-9'
                       onClick={clearRoomMap}
-                      aria-label='Clear room map'
+                      aria-label={t('clear-room-map')}
                     >
                       <Trash2 size={17} strokeWidth={2.5} />
                     </button>
@@ -408,7 +413,7 @@ const GameSetting: React.FC<GameSettingProps> = () => {
                 </div>
               )}
 
-              <div className='grid grid-cols-2 gap-2 min-[440px]:grid-cols-3 sm:flex sm:flex-wrap'>
+              <div className='grid grid-cols-3 gap-1.5 sm:flex sm:flex-wrap sm:gap-2'>
                 {tabLabels.map((tab, index) => (
                   <button
                     key={tab}
@@ -422,11 +427,11 @@ const GameSetting: React.FC<GameSettingProps> = () => {
               </div>
 
               <TabPanel value={tabIndex} index={0}>
-                <div className='space-y-3'>
-                  <p className='text-xs font-black uppercase tracking-[0.18em] text-zinc-500'>
+                <div className='space-y-2.5 sm:space-y-3'>
+                  <p className='text-[11px] font-black uppercase tracking-[0.16em] text-zinc-500 sm:text-xs sm:tracking-[0.18em]'>
                     {t('select-your-team')}
                   </p>
-                  <div className='grid grid-cols-4 gap-2 sm:flex sm:flex-wrap'>
+                  <div className='grid grid-cols-6 gap-1.5 sm:flex sm:flex-wrap sm:gap-2'>
                     {Array.from({ length: MaxTeamNum }, (_, i) => i + 1).map((value) => (
                       <button
                         key={value}
@@ -439,17 +444,17 @@ const GameSetting: React.FC<GameSettingProps> = () => {
                     ))}
                     <button
                       type='button'
-                      className={`${tabButtonClass(team === MaxTeamNum + 1)} col-span-2 w-full sm:w-auto`}
+                      className={`${tabButtonClass(team === MaxTeamNum + 1)} col-span-3 w-full sm:w-auto`}
                       onClick={() => handleTeamChange(null, MaxTeamNum + 1)}
                     >
-                      Spectators
+                      {t('spectators')}
                     </button>
                   </div>
                 </div>
               </TabPanel>
 
               <TabPanel value={tabIndex} index={1}>
-                <div className='space-y-4'>
+                <div className='space-y-3 sm:space-y-4'>
                   <button
                     type='button'
                     className='bw-button bw-button-primary w-full'
@@ -459,11 +464,11 @@ const GameSetting: React.FC<GameSettingProps> = () => {
                     {t('select-a-custom-map')}
                   </button>
 
-                  <div className='space-y-3'>
-                    <p className='text-xs font-black uppercase tracking-[0.18em] text-zinc-500'>
+                  <div className='space-y-2.5 sm:space-y-3'>
+                    <p className='text-[11px] font-black uppercase tracking-[0.16em] text-zinc-500 sm:text-xs sm:tracking-[0.18em]'>
                       {t('game-speed')}
                     </p>
-                    <div className='grid grid-cols-5 gap-2 sm:flex sm:flex-wrap'>
+                    <div className='grid grid-cols-5 gap-1.5 sm:flex sm:flex-wrap sm:gap-2'>
                       {SpeedOptions.map((value) => (
                         <button
                           key={value}
@@ -483,7 +488,7 @@ const GameSetting: React.FC<GameSettingProps> = () => {
               </TabPanel>
 
               <TabPanel value={tabIndex} index={2}>
-                <div className='space-y-4'>
+                <div className='space-y-3 sm:space-y-4'>
                   <SliderBox
                     label={t('height')}
                     value={room.mapWidth}
@@ -500,7 +505,7 @@ const GameSetting: React.FC<GameSettingProps> = () => {
               </TabPanel>
 
               <TabPanel value={tabIndex} index={3}>
-                <div className='space-y-4'>
+                <div className='space-y-3 sm:space-y-4'>
                   <SliderBox
                     label={t('mountain')}
                     value={room.mountain}
@@ -526,7 +531,7 @@ const GameSetting: React.FC<GameSettingProps> = () => {
               </TabPanel>
 
               <TabPanel value={tabIndex} index={4}>
-                <div className='space-y-4'>
+                <div className='space-y-3 sm:space-y-4'>
                   <SliderBox
                     label={t('max-player-num')}
                     value={room.maxPlayers}
@@ -541,7 +546,7 @@ const GameSetting: React.FC<GameSettingProps> = () => {
                     handleChange={handleSettingChange('maxPlayers')}
                   />
 
-                  <div className='grid gap-3'>
+                  <div className='grid gap-2.5 sm:gap-3'>
                     <ToggleRow
                       label={t('fog-of-war')}
                       checked={room.fogOfWar}
@@ -591,17 +596,17 @@ const GameSetting: React.FC<GameSettingProps> = () => {
       {!isTutorialRoom && (
         <>
           <section className='menu-container mt-4 overflow-hidden'>
-            <div className='flex flex-wrap items-center justify-between gap-3 border-b border-zinc-800 px-4 py-4 sm:px-5'>
-              <div className='flex items-center gap-3'>
-                <Users className='text-yellow-300' size={18} strokeWidth={2.25} />
+            <div className='flex flex-wrap items-center justify-between gap-2.5 border-b border-zinc-800 px-3 py-3 sm:gap-3 sm:px-5 sm:py-4'>
+              <div className='flex items-center gap-2.5 sm:gap-3'>
+                <Users className='text-yellow-300' size={16} strokeWidth={2.25} />
                 <div>
-                  <p className='bw-page-copy'>Roster</p>
-                  <h3 className='text-lg font-black text-zinc-50'>{t('players')}</h3>
+                  <p className='bw-page-copy'>{t('roster')}</p>
+                  <h3 className='text-base font-black text-zinc-50 sm:text-lg'>{t('players')}</h3>
                 </div>
               </div>
               <button
                 type='button'
-                className='bw-button bw-button-secondary min-h-10 px-3 text-xs'
+                className='bw-button bw-button-secondary min-h-9 px-2.5 text-[11px] sm:min-h-10 sm:px-3 sm:text-xs'
                 disabled={!canManageBots || room.players.length >= room.maxPlayers}
                 onClick={handleAddBot}
               >
@@ -609,7 +614,7 @@ const GameSetting: React.FC<GameSettingProps> = () => {
                 {t('add-bot')}
               </button>
             </div>
-            <div className='px-4 py-4 sm:px-5'>
+            <div className='px-3 py-3 sm:px-5 sm:py-4'>
               <PlayerTable
                 myPlayerId={myPlayerId}
                 players={room.players}
@@ -624,7 +629,7 @@ const GameSetting: React.FC<GameSettingProps> = () => {
 
           <button
             type='button'
-            className={`bw-button mt-4 w-full justify-center text-base ${
+            className={`bw-button mt-3 min-h-10 w-full justify-center text-sm sm:mt-4 sm:min-h-11 sm:text-base ${
               tutorialStarting || forceStart || !!currentPlayer?.forceStart
                 ? 'bw-button-primary'
                 : 'bw-button-secondary'

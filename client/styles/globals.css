@@ -45,6 +45,10 @@
   --bw-button-primary-bg: #f4f4f5;
   --bw-button-primary-hover: #f5c542;
   --bw-button-primary-text: #09090b;
+  --bw-button-danger-bg: color-mix(in srgb, var(--bw-red) 88%, var(--bw-panel-strong) 12%);
+  --bw-button-danger-hover: color-mix(in srgb, var(--bw-red) 74%, white 26%);
+  --bw-button-danger-text: #fff7f5;
+  --bw-button-danger-border: color-mix(in srgb, var(--bw-red) 72%, white 28%);
   --bw-button-secondary-bg: rgb(12 13 16 / 88%);
   --bw-button-secondary-hover: rgb(24 24 27);
   --bw-button-secondary-text: #f4f4f5;
@@ -89,6 +93,10 @@
   --bw-button-primary-bg: #171b22;
   --bw-button-primary-hover: #ddab28;
   --bw-button-primary-text: #f7f2e9;
+  --bw-button-danger-bg: color-mix(in srgb, var(--bw-red) 92%, var(--bw-panel-strong) 8%);
+  --bw-button-danger-hover: color-mix(in srgb, var(--bw-red) 82%, #b54236 18%);
+  --bw-button-danger-text: #fff8f4;
+  --bw-button-danger-border: color-mix(in srgb, var(--bw-red) 84%, #7a2d25 16%);
   --bw-button-secondary-bg: rgb(248 243 233 / 94%);
   --bw-button-secondary-hover: rgb(232 224 210 / 96%);
   --bw-button-secondary-text: #171b22;
@@ -278,9 +286,15 @@ select {
   }
 
   .bw-button-danger {
-    @apply border-red-400 bg-red-500 hover:bg-red-300;
-    color: var(--bw-selection-ink);
+    background: var(--bw-button-danger-bg);
+    color: var(--bw-button-danger-text);
+    border-color: var(--bw-button-danger-border);
     box-shadow: var(--bw-shadow-button-primary);
+  }
+
+  .bw-button-danger:hover,
+  .bw-button-danger:active {
+    background: var(--bw-button-danger-hover);
   }
 
   .bw-input {

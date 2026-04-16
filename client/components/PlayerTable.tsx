@@ -33,19 +33,19 @@ function PlayerTable(props: PlayerTableProps) {
   });
 
   return (
-    <div className='grid grid-cols-[repeat(auto-fit,minmax(170px,1fr))] gap-3'>
+    <div className='grid grid-cols-[repeat(auto-fit,minmax(145px,1fr))] gap-2 sm:gap-3'>
       {teams.map((teamPlayers, index) => {
         if (!teamPlayers || teamPlayers.length === 0) return null;
         const isSpectator = index > MaxTeamNum;
         return (
           <section
             key={index}
-            className='min-w-0 border border-zinc-800 bg-zinc-950/60 p-3'
+            className='min-w-0 border border-zinc-800 bg-zinc-950/60 p-2.5 sm:p-3'
           >
-            <div className='mb-3 text-[11px] font-black uppercase tracking-[0.18em] text-zinc-500'>
-              {isSpectator ? 'Spectators' : `Team ${index}`}
+            <div className='mb-2 text-[10px] font-black uppercase tracking-[0.16em] text-zinc-500 sm:mb-3 sm:text-[11px] sm:tracking-[0.18em]'>
+              {isSpectator ? t('spectators') : t('team-number', { number: index })}
             </div>
-            <div className='flex flex-col gap-2'>
+            <div className='flex flex-col gap-1.5 sm:gap-2'>
               {teamPlayers.map((player) => {
                 const isMine = player.id === myPlayerId;
                 const disabled = player.isBot ? !canManageBots : disabled_ui;
@@ -76,22 +76,22 @@ function PlayerTable(props: PlayerTableProps) {
                       }
                       handleChangeHost(player.id, player.username);
                     }}
-                    className='flex min-h-10 items-center justify-between gap-2 border px-3 py-2 text-left transition disabled:cursor-not-allowed disabled:opacity-60'
+                    className='flex min-h-9 items-center justify-between gap-1.5 border px-2.5 py-1.5 text-left transition disabled:cursor-not-allowed disabled:opacity-60 sm:min-h-10 sm:gap-2 sm:px-3 sm:py-2'
                     style={{
                       borderColor: ColorArr[player.color],
                       backgroundColor: bgColor,
                     }}
                   >
-                    <span className='flex min-w-0 items-center gap-2'>
+                    <span className='flex min-w-0 items-center gap-1.5 sm:gap-2'>
                       {player.isRoomHost ? (
                         <Crown
-                          size={16}
+                          size={14}
                           strokeWidth={2.25}
                           style={{ color: textColor }}
                         />
                       ) : null}
                       <span
-                        className='truncate text-sm font-black'
+                        className='truncate text-[13px] font-black sm:text-sm'
                         style={{
                           color: textColor,
                           textDecoration: player.forceStart ? 'underline' : 'none',

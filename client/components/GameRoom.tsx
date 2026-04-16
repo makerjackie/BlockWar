@@ -383,7 +383,7 @@ function GamingRoom() {
       {roomUiStatus === RoomUiStatus.gameSetting && (
         <div>
           <Navbar />
-          <div className='flex min-h-dvh w-full flex-col items-center justify-start px-4 pb-32 pt-24 sm:px-6 md:justify-center md:pb-36 md:pt-28'>
+          <div className='flex min-h-dvh w-full flex-col items-center justify-start px-3 pb-24 pt-20 sm:px-5 sm:pb-28 sm:pt-24 md:justify-center md:px-6 md:pb-36 md:pt-28'>
             <GameSetting />
           </div>
         </div>

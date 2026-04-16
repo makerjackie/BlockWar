@@ -7,7 +7,6 @@ import { useTranslation } from 'next-i18next';
 import {
   ChevronDown,
   GraduationCap,
-  HardDrive,
   Plus,
   Map as MapIcon,
 } from 'lucide-react';
@@ -19,28 +18,6 @@ import {
   type OnboardingStatus,
 } from '@/lib/onboarding';
 
-function getServerDisplayUrl(serverApi: string) {
-  if (typeof window === 'undefined') {
-    return serverApi.replace(/\/api\/?$/, '') || '/';
-  }
-
-  const origin = window.location.origin;
-
-  try {
-    const url = new URL(serverApi || origin, origin);
-
-    if (url.pathname === '/api') {
-      url.pathname = '/';
-    } else if (url.pathname.endsWith('/api')) {
-      url.pathname = url.pathname.slice(0, -4) || '/';
-    }
-
-    return url.toString();
-  } catch {
-    return origin;
-  }
-}
-
 function Lobby() {
   const [rooms, setRooms] = useState<RoomPool>({});
   const [loading, setLoading] = useState(true);
@@ -48,7 +25,6 @@ function Lobby() {
   const [snackOpen, setSnackOpen] = useState(false);
   const [snackMessage, setSnackMessage] = useState('');
   const [username, setUsername] = useState('');
-  const [serverStatus, setServerStatus] = useState(true);
   const [createPresetLoading, setCreatePresetLoading] =
     useState<RoomPreset | null>(null);
   const [onboardingStatus, setOnboardingStatus] =
@@ -56,9 +32,6 @@ function Lobby() {
   const router = useRouter();
 
   const { t } = useTranslation();
-  const serverDisplayUrl = getServerDisplayUrl(
-    process.env.NEXT_PUBLIC_SERVER_API ?? ''
-  );
   const hasRooms = Object.keys(rooms).length > 0;
   const showEmptyState = !loading && !hasRooms;
 
@@ -73,12 +46,10 @@ function Lobby() {
         const rooms = (await res.json()) as RoomPool;
         setRooms(rooms);
         setLoading(false);
-        setServerStatus(true);
       } catch (err: any) {
         setLoading(false);
         setSnackOpen(true);
         setSnackMessage(err.message);
-        setServerStatus(false);
       }
     };
     fetchRooms();
@@ -131,13 +102,11 @@ function Lobby() {
         setCreatePresetLoading(null);
         setSnackOpen(true);
         setSnackMessage(data.message ?? 'Failed to create room');
-        setServerStatus(true);
       }
     } catch (err: any) {
       setCreatePresetLoading(null);
       setSnackOpen(true);
       setSnackMessage(err.message);
-      setServerStatus(false);
     }
   };
 
@@ -175,34 +144,6 @@ function Lobby() {
             </div>
 
             <HolidayGreeting className='mb-4' />
-
-            <div className='menu-container relative mb-4 flex flex-col gap-3 overflow-hidden p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5'>
-              <div className='relative z-10 flex min-w-0 items-center gap-3'>
-                <div className='flex size-10 shrink-0 items-center justify-center border border-yellow-300/30 bg-yellow-300/10 text-yellow-300'>
-                  <HardDrive size={18} strokeWidth={2.25} />
-                </div>
-                <div className='min-w-0'>
-                  <div className='text-xs font-black uppercase tracking-[0.24em] text-zinc-500'>
-                    {t('gserver')}
-                  </div>
-                  <div className='truncate text-sm font-medium text-zinc-100 sm:text-base'>
-                    {serverDisplayUrl}
-                  </div>
-                </div>
-              </div>
-              <div className='relative z-10 inline-flex w-fit items-center gap-2 self-start border border-zinc-700 bg-zinc-950/70 px-3 py-2 text-xs font-black uppercase tracking-[0.14em] sm:self-auto'>
-                <span
-                  className={`size-3 border border-zinc-950 ${
-                    serverStatus ? 'bg-emerald-400' : 'bg-red-500'
-                  }`}
-                />
-                <span
-                  className={`bw-status-label ${serverStatus ? 'text-emerald-300' : 'text-red-300'}`}
-                >
-                  {serverStatus ? t('online') : t('offline')}
-                </span>
-              </div>
-            </div>
 
             <div className='menu-container relative flex max-h-[50vh] min-h-[18rem] flex-col overflow-auto p-0'>
               <table className='relative z-10 w-full border-separate border-spacing-0 text-left'>

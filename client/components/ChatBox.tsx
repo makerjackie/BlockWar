@@ -7,6 +7,8 @@ import { ColorArr } from '@/lib/constants';
 import useMediaQuery from '@/hooks/useMediaQuery';
 
 const ChatBoxMessage = ({ message }: { message: Message }) => {
+  const { t } = useTranslation();
+
   return (
     <div className='leading-6'>
       {message.player ? (
@@ -20,7 +22,7 @@ const ChatBoxMessage = ({ message }: { message: Message }) => {
         </span>
       ) : (
         <span className='font-black uppercase tracking-[0.16em] text-zinc-500'>
-          [system]
+          [{t('system')}]
         </span>
       )}
       <span className='ml-2 text-zinc-100'>{message.content}</span>
@@ -109,10 +111,10 @@ export default React.memo(function ChatBox({ socket, messages }: ChatBoxProp) {
         type='button'
         className='bw-side-dock fixed bottom-3 right-3 z-[1001] inline-flex min-h-14 items-center gap-2 border px-3 text-[11px] font-black uppercase tracking-[0.18em] text-zinc-500 transition-all duration-200 hover:text-zinc-200'
         onClick={() => setIsExpand(true)}
-        aria-label='Open chat'
+        aria-label={t('open-chat')}
       >
         <MessageSquare size={16} strokeWidth={2.25} />
-        Chat
+        {t('chat')}
       </button>
     );
   }
@@ -131,10 +133,10 @@ export default React.memo(function ChatBox({ socket, messages }: ChatBoxProp) {
         }}
       >
         <span className='truncate text-[11px] font-black uppercase tracking-[0.22em] text-zinc-500'>
-          Tactical Feed
+          {t('tactical-feed')}
         </span>
         <span className='shrink-0 text-[10px] font-black uppercase tracking-[0.18em] text-zinc-600'>
-          Enter
+          {t('enter-key')}
         </span>
       </div>
       <div

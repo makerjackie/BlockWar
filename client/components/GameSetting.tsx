@@ -256,49 +256,41 @@ const GameSetting: React.FC<GameSettingProps> = () => {
       </ModalShell>
 
       <section className='menu-container overflow-hidden'>
-        <div className='flex items-start justify-between gap-2 border-b border-zinc-800 px-3 py-3 sm:gap-3 sm:px-5 sm:py-4'>
-          <div className='flex min-w-0 items-start gap-2.5 sm:gap-3'>
+        <div className='grid grid-cols-[2.5rem_minmax(0,1fr)_2.5rem] items-center gap-2 border-b border-zinc-800 px-3 py-3 sm:grid-cols-[2.75rem_minmax(0,1fr)_2.75rem] sm:gap-3 sm:px-5 sm:py-4'>
+          <button
+            type='button'
+            className='grid size-10 place-items-center border border-zinc-700 bg-zinc-950 text-zinc-50 transition hover:bg-yellow-300 hover:text-zinc-950 sm:size-11'
+            onClick={handleLeaveRoom}
+            aria-label={t('leave-room')}
+          >
+            <ArrowLeft size={18} strokeWidth={2.5} />
+          </button>
+
+          {!isNameFocused || disabledUi ? (
             <button
               type='button'
-              className='grid size-10 shrink-0 place-items-center border border-zinc-700 bg-zinc-950 text-zinc-50 transition hover:bg-yellow-300 hover:text-zinc-950 sm:size-11'
-              onClick={handleLeaveRoom}
-              aria-label={t('leave-room')}
+              className='bw-title min-w-0 truncate text-center text-xl leading-none text-zinc-50 sm:text-2xl'
+              title={disabledUi ? t('room-settings-host-only') : room.roomName}
+              onClick={() => {
+                if (!disabledUi) setIsNamedFocused(true);
+              }}
             >
-              <ArrowLeft size={18} strokeWidth={2.5} />
+              {room.roomName}
             </button>
-
-            <div className='min-w-0'>
-              {!isNameFocused || disabledUi ? (
-                <button
-                  type='button'
-                  className='max-w-full truncate text-left text-xl font-black text-zinc-50 sm:text-2xl'
-                  onClick={() => {
-                    if (!disabledUi) setIsNamedFocused(true);
-                  }}
-                >
-                  {room.roomName}
-                </button>
-              ) : (
-                <input
-                  ref={roomNameInputRef}
-                  className='bw-input h-10 text-left text-lg sm:h-11 sm:text-xl'
-                  value={room.roomName}
-                  onChange={handleRoomNameChange}
-                  onBlur={handleRoomNameBlur}
-                  disabled={disabledUi}
-                />
-              )}
-              {disabledUi ? (
-                <p className='mt-1.5 text-[11px] font-black uppercase tracking-[0.12em] text-zinc-500 sm:mt-2 sm:text-xs sm:tracking-[0.14em]'>
-                  {t('room-settings-host-only')}
-                </p>
-              ) : null}
-            </div>
-          </div>
+          ) : (
+            <input
+              ref={roomNameInputRef}
+              className='bw-input h-10 min-w-0 text-center text-lg sm:h-11 sm:text-xl'
+              value={room.roomName}
+              onChange={handleRoomNameChange}
+              onBlur={handleRoomNameBlur}
+              disabled={disabledUi}
+            />
+          )}
 
           <button
             type='button'
-            className='grid size-10 shrink-0 place-items-center border border-zinc-700 bg-zinc-950 text-zinc-50 transition hover:bg-yellow-300 hover:text-zinc-950 sm:size-11'
+            className='grid size-10 place-items-center border border-zinc-700 bg-zinc-950 text-zinc-50 transition hover:bg-yellow-300 hover:text-zinc-950 sm:size-11'
             onClick={() => {
               navigator.clipboard.writeText(shareLink);
               snackStateDispatch({

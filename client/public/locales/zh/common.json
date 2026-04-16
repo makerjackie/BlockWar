@@ -19,6 +19,8 @@
   "how-to-play": "教程",
   "room-id": "房间号",
   "room-name": "房间名",
+  "room-page-title": "游戏房间",
+  "room-page-title-id": "房间 {{roomId}}",
   "room-settings": "房间设置",
   "room-settings-host-only": "仅房主可调整地图和规则",
   "room-role-host": "房主",

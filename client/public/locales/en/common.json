@@ -19,6 +19,8 @@
   "how-to-play": "Tutorial",
   "room-id": "Room Id",
   "room-name": "Room Name",
+  "room-page-title": "Room",
+  "room-page-title-id": "Room {{roomId}}",
   "room-settings": "Room Settings",
   "room-settings-host-only": "Only the host can edit maps and rules",
   "room-role-host": "Host",

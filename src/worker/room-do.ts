@@ -912,6 +912,81 @@ export class RoomDurableObject extends DurableObject<Env> {
         await this.checkForcedStart();
         break;
       }
+      case 'start_tutorial': {
+        if (!player) return;
+        if (room.preset !== 'tutorial') {
+          this.send(
+            connectionId,
+            'error',
+            'Unable to start tutorial',
+            'This room is not a tutorial room.'
+          );
+          return;
+        }
+        if (!player.isRoomHost) {
+          this.send(
+            connectionId,
+            'error',
+            'Unable to start tutorial',
+            'You are not the room host.'
+          );
+          return;
+        }
+        if (room.gameStarted) {
+          this.send(
+            connectionId,
+            'error',
+            'Unable to start tutorial',
+            'The tutorial has already started.'
+          );
+          return;
+        }
+        if (player.spectating()) {
+          this.send(
+            connectionId,
+            'error',
+            'Unable to start tutorial',
+            'Spectators cannot start the tutorial.'
+          );
+          return;
+        }
+
+        let botCount = room.players.filter(
+          (roomPlayer) => roomPlayer.isBot && roomPlayer.team !== MaxTeamNum + 1
+        ).length;
+
+        while (botCount < 2) {
+          if (room.players.length >= room.maxPlayers) {
+            this.send(
+              connectionId,
+              'error',
+              'Unable to start tutorial',
+              'The tutorial room is full.'
+            );
+            return;
+          }
+
+          const botId = randomPlayerId();
+          const bot = createManagedBotPlayer({
+            room,
+            botId,
+            color: this.pickPlayerColor(room),
+            team: this.pickPlayerTeam(room),
+          });
+          room.players.push(bot);
+          this.broadcast('room_message', bot.minify(), 'joined as a bot.');
+          botCount += 1;
+        }
+
+        if (!player.forceStart) {
+          player.forceStart = true;
+        }
+        room.forceStartNum = countReadyParticipants(room);
+        this.broadcast('update_room', room);
+        await this.syncRoomSummary();
+        await this.checkForcedStart();
+        break;
+      }
       case 'remove_bot': {
         if (!player) return;
         if (!player.isRoomHost) {

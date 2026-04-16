@@ -2,8 +2,8 @@ import { DurableObject } from 'cloudflare:workers';
 import {
   createDefaultRoom,
   LEGACY_SEED_ROOM_IDS,
-  type RoomPreset,
 } from '@shared/game/room-defaults';
+import type { RoomPreset } from '@shared/game/room-presets';
 import { DEFAULT_ROOM_NAME } from '@shared/game/room-names';
 import type { CustomMapData, CustomMapInfo } from '@shared/game/types';
 import {

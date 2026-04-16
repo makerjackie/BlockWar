@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { env, runInDurableObject } from 'cloudflare:test';
 import { DEFAULT_ROOM_NAME, formatCreatorRoomName } from '@shared/game/room-names';
 import Player from '@shared/game/player';
+import Point from '@shared/game/point';
+import { TileType } from '@shared/game/types';
 import type { RoomDurableObject } from '../src/worker/room-do';
 import { cloneRoomSummary } from '../src/worker/lib/room-summary';
 
@@ -109,6 +111,35 @@ describe('RoomDurableObject', () => {
     );
   });
 
+  it('starts tutorial rooms through a single tutorial packet', async () => {
+    const roomId = `room-${crypto.randomUUID().slice(0, 8)}`;
+    const stub = env.ROOMS.getByName(roomId);
+
+    await runInDurableObject(
+      stub,
+      async (instance: RoomDurableObject) => {
+        captureEvents(instance);
+        const room = await (instance as any).ensureRoom(roomId);
+        room.preset = 'tutorial';
+        room.maxPlayers = 3;
+        room.fogOfWar = false;
+        room.revealKing = true;
+        room.players.push(new Player('player-a', 'socket-a', 'Alice', 1, 1, true));
+
+        await (instance as any).handlePacket('socket-a', {
+          type: 'start_tutorial',
+          data: [],
+        });
+
+        expect(room.players.filter((player: Player) => player.isBot)).toHaveLength(2);
+        expect(room.gameStarted).toBe(true);
+        expect(room.forceStartNum).toBe(1);
+
+        (instance as any).clearGameLoop();
+      }
+    );
+  });
+
   it('moves a bot forward after a few real game ticks', async () => {
     const roomId = `room-${crypto.randomUUID().slice(0, 8)}`;
     const stub = env.ROOMS.getByName(roomId);
@@ -128,16 +159,54 @@ describe('RoomDurableObject', () => {
           type: 'force_start',
           data: [],
         });
+        (instance as any).clearGameLoop();
 
         const bot = room.players.find((player: Player) => player.isBot);
         expect(bot).toBeTruthy();
 
-        for (let index = 0; index < 6; index += 1) {
+        const botKing = bot!.king!;
+        const adjacentPoints = [
+          new Point(botKing.x - 1, botKing.y),
+          new Point(botKing.x + 1, botKing.y),
+          new Point(botKing.x, botKing.y - 1),
+          new Point(botKing.x, botKing.y + 1),
+        ].filter((point) => {
+          return (
+            room.map!.withinMap(point) &&
+            !room.players.some((player: Player) => {
+              return player.king?.x === point.x && player.king?.y === point.y;
+            })
+          );
+        });
+        const neighbor = adjacentPoints[0];
+        expect(neighbor).toBeTruthy();
+
+        const kingBlock = room.map!.getBlock(botKing);
+        const neighborBlock = room.map!.getBlock(neighbor!);
+        for (const point of adjacentPoints.slice(1)) {
+          const block = room.map!.getBlock(point);
+          if (block.player) {
+            block.player.loseLand(block);
+          }
+          block.beNeutralized();
+          block.setType(TileType.Mountain);
+          block.setUnit(0);
+        }
+        if (neighborBlock.player) {
+          neighborBlock.player.loseLand(neighborBlock);
+        }
+        neighborBlock.beNeutralized();
+        neighborBlock.setType(TileType.Plain);
+        neighborBlock.setUnit(0);
+        kingBlock.setUnit(8);
+
+        for (let index = 0; index < 3; index += 1) {
           await (instance as any).runGameTick();
         }
 
         expect(bot!.operatedTurn).toBeGreaterThan(0);
-        expect(bot!.land.length).toBeGreaterThan(1);
+        expect(neighborBlock.player).toBe(bot);
+        (instance as any).clearGameLoop();
       }
     );
   });

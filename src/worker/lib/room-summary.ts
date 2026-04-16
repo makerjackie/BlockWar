@@ -1,5 +1,6 @@
 import Player from '@shared/game/player';
 import { createDefaultRoom } from '@shared/game/room-defaults';
+import type { RoomPreset } from '@shared/game/room-presets';
 import { Room } from '@shared/game/types';
 
 export type PlainPlayer = {
@@ -41,6 +42,7 @@ export type PlainRoom = {
   keepAlive: boolean;
   revealKing: boolean;
   warringStatesMode: boolean;
+  preset?: RoomPreset;
 };
 
 type SanitizeRoomSummaryOptions = {
@@ -72,6 +74,7 @@ export function sanitizeRoomSummary(
 
   return {
     ...room,
+    preset: room.preset ?? 'standard',
     gameStarted: hasPlayers ? room.gameStarted : false,
     forceStartNum,
     mapGenerated: hasPlayers ? room.mapGenerated : false,
@@ -122,6 +125,7 @@ export function cloneRoomSummary(room: Room): PlainRoom {
     keepAlive: room.keepAlive,
     revealKing: room.revealKing,
     warringStatesMode: room.warringStatesMode,
+    preset: room.preset,
   });
 }
 
@@ -157,6 +161,7 @@ export function hydrateRoomSummary(roomId: string, summary?: PlainRoom | null) {
     keepAlive: sanitizedSummary.keepAlive,
     revealKing: sanitizedSummary.revealKing,
     warringStatesMode: sanitizedSummary.warringStatesMode,
+    preset: sanitizedSummary.preset ?? 'standard',
     players: [],
   });
 

@@ -28,6 +28,7 @@
 
 - 基于原生 WebSocket 的实时多人房间。
 - 大厅、创建房间、转移房主、队伍、观战、准备/强制开局、按需添加机器人、房间聊天。
+- 新手教程流程：创建 1v2 机器人练习房，并在对局内提供分步指引。
 - 类 generals.io 玩法：战争迷雾、主城/国王、城市、山地、沼泽、队列移动、投降、排行榜实时更新。
 - 支持战国模式、显示国王、死亡后观战、地图尺寸/地形比例调节、变速对局。
 - 自定义地图编辑、发布、浏览、搜索、浏览量、收藏，以及 new/hot/best 排序。
@@ -61,7 +62,7 @@
 | --- | --- |
 | `GET /api/ping` | 客户端使用的健康检查。 |
 | `GET /api/get_rooms` | 获取当前由应用协调器保存的活跃房间。 |
-| `GET /api/create_room?name=...&creator=...&preset=warring_state` | 创建房间并返回 room id；当未传 `name` 时，会默认使用 `【creator】的房间`。 |
+| `GET /api/create_room?name=...&creator=...&preset=warring_state` | 创建房间并返回 room id；支持 `standard`、`warring_state` 和 `tutorial` 三种 preset；当未传 `name` 时，会默认使用 `【creator】的房间`。 |
 | `GET /api/get_replay/:replayId` | 获取已保存的回放。 |
 | `GET /api/maps` / `POST /api/maps` | 获取或创建自定义地图。 |
 | `GET /api/maps/:id` / `PUT /api/maps/:id` / `DELETE /api/maps/:id` | 读取、更新或删除自定义地图。 |

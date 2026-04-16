@@ -5,6 +5,7 @@ import LeaderBoard from './LeaderBoard';
 import TurnsCount from './TurnsCount';
 import OverDialog from './OverDialog';
 import { useGame, useGameDispatch } from '@/context/GameContext';
+import TutorialGuide from './TutorialGuide';
 
 export default function Game() {
   const { room, socketRef, myPlayerId, turnsCount, leaderBoardData } =
@@ -33,6 +34,7 @@ export default function Game() {
         players={room.players}
         warringStatesMode={room.warringStatesMode}
       />
+      <TutorialGuide />
       <GameMap />
       <SurrenderDialog
         isOpen={isSurrenderDialogOpen}

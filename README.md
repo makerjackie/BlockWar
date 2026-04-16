@@ -29,6 +29,7 @@
 
 - Real-time multiplayer rooms with native WebSocket transport.
 - Lobby, room creation, host transfer, teams, spectators, ready/force-start flow, on-demand bots, and room chat.
+- Beginner tutorial flow that creates a 1v2 bot practice room with guided in-game tips.
 - Classic generals.io-style gameplay with fog of war, generals/kings, cities, mountains, swamps, queued moves, surrender, and leaderboard updates.
 - Optional Warring States mode, reveal-king mode, death spectator mode, map size/terrain controls, and variable game speed.
 - Custom map editor, map publishing, map browsing, search, views, stars, and map ordering by new/hot/best.
@@ -62,7 +63,7 @@
 | --- | --- |
 | `GET /api/ping` | Health check used by the client. |
 | `GET /api/get_rooms` | List active rooms currently stored by the app coordinator. |
-| `GET /api/create_room?name=...&creator=...&preset=warring_state` | Create a room and return its room id. If `name` is omitted, the API falls back to `【creator】的房间`. |
+| `GET /api/create_room?name=...&creator=...&preset=warring_state` | Create a room and return its room id. Supported presets are `standard`, `warring_state`, and `tutorial`; if `name` is omitted, the API falls back to `【creator】的房间`. |
 | `GET /api/get_replay/:replayId` | Load a saved replay. |
 | `GET /api/maps` / `POST /api/maps` | List or create custom maps. |
 | `GET /api/maps/:id` / `PUT /api/maps/:id` / `DELETE /api/maps/:id` | Read, update, or delete a custom map. |

@@ -75,6 +75,7 @@ const HowToPlay: React.FC<HowToPlayProps> = ({ show, toggleShow }) => {
               <p>{t('howToPlay.openChat')}: Enter</p>
               <p>{t('howToPlay.surrender')}: Esc</p>
               <p>{t('howToPlay.toggle50')}: Z</p>
+              <p>{t('howToPlay.beginnerTutorial')}</p>
             </div>
           </div>
         </div>

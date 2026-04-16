@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import type { RoomPreset } from '@shared/game/room-defaults';
+import { normalizeRoomPreset } from '@shared/game/room-presets';
 import { resolveRoomName } from '@shared/game/room-names';
 import { AppDurableObject } from './app-do';
 import { RoomDurableObject } from './room-do';
@@ -23,8 +23,7 @@ api.get('/get_rooms', async (c) => {
 
 api.get('/create_room', async (c) => {
   const roomName = resolveRoomName(c.req.query('name'), c.req.query('creator'));
-  const rawPreset = c.req.query('preset');
-  const preset: RoomPreset = rawPreset === 'warring_state' ? rawPreset : 'standard';
+  const preset = normalizeRoomPreset(c.req.query('preset'));
   const result = await c.env.APP.getByName('global').createRoom(roomName, preset);
   return c.json(result);
 });

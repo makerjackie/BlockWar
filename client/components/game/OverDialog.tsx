@@ -4,6 +4,7 @@ import { useTranslation } from 'next-i18next';
 import { RoomUiStatus } from '@/lib/types';
 import { useGame, useGameDispatch } from '@/context/GameContext';
 import ModalShell from '@/components/ui/ModalShell';
+import { writeOnboardingStatus } from '@/lib/onboarding';
 
 export default function OverDialog() {
   const { myPlayerId, room, dialogContent, openOverDialog } = useGame();
@@ -15,6 +16,7 @@ export default function OverDialog() {
   let title = '';
   let subtitle = '';
   const [userData, gameStatus] = dialogContent;
+  const tutorialCompleted = room.preset === 'tutorial' && gameStatus === 'game_ended';
 
   if (gameStatus === 'game_surrender') {
     title = t('you-surrender');
@@ -33,10 +35,18 @@ export default function OverDialog() {
     }
   }
 
+  if (tutorialCompleted) {
+    title = t('tutorial-complete-title');
+    subtitle = t('tutorial-complete-copy');
+  }
+
   useEffect(() => {
     const [, currentStatus, currentReplayLink] = dialogContent;
     setReplayLink(currentStatus === 'game_ended' ? currentReplayLink ?? '' : '');
-  }, [dialogContent]);
+    if (room.preset === 'tutorial' && currentStatus === 'game_ended') {
+      writeOnboardingStatus('completed');
+    }
+  }, [dialogContent, room.preset]);
 
   const handleExit = () => {
     router.push('/');

@@ -50,13 +50,44 @@ describe('BlockWar API', () => {
     const finalResponse = await SELF.fetch('http://example.com/api/get_rooms');
     const finalRooms = (await finalResponse.json()) as Record<
       string,
-      { roomName: string; warringStatesMode?: boolean; revealKing?: boolean }
+      {
+        roomName: string;
+        warringStatesMode?: boolean;
+        revealKing?: boolean;
+        preset?: string;
+        maxPlayers?: number;
+        gameSpeed?: number;
+        fogOfWar?: boolean;
+      }
     >;
 
     expect(warring.success).toBe(true);
     expect(finalRooms[warring.roomId]).toMatchObject({
       roomName: 'Warring Test',
       warringStatesMode: true,
+      revealKing: true,
+      preset: 'warring_state',
+    });
+
+    const tutorialResponse = await SELF.fetch(
+      'http://example.com/api/create_room?name=Tutorial%20Test&preset=tutorial'
+    );
+    expect(tutorialResponse.ok).toBe(true);
+
+    const tutorial = (await tutorialResponse.json()) as {
+      success: boolean;
+      roomId: string;
+    };
+    const tutorialRoomsResponse = await SELF.fetch('http://example.com/api/get_rooms');
+    const tutorialRooms = (await tutorialRoomsResponse.json()) as typeof finalRooms;
+
+    expect(tutorial.success).toBe(true);
+    expect(tutorialRooms[tutorial.roomId]).toMatchObject({
+      roomName: 'Tutorial Test',
+      preset: 'tutorial',
+      maxPlayers: 3,
+      gameSpeed: 1,
+      fogOfWar: false,
       revealKing: true,
     });
   });

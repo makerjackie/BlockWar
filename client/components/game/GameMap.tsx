@@ -145,7 +145,9 @@ function GameMap() {
           clearQueue();
           break;
         case 'g':
+          event.preventDefault();
           selectGeneral();
+          centerGeneral();
           break;
         case 'c':
           setPosition({ x: 0, y: 0 });

@@ -9,6 +9,27 @@ declare module 'cloudflare:test' {
 }
 
 describe('AppDurableObject', () => {
+  it('defaults legacy room summaries to the standard preset', async () => {
+    const stub = env.APP.getByName(`app-${crypto.randomUUID().slice(0, 8)}`);
+    const roomId = `room-${crypto.randomUUID().slice(0, 8)}`;
+
+    await runInDurableObject(stub, async (instance: AppDurableObject) => {
+      const room = cloneRoomSummary(createDefaultRoom(roomId));
+      delete room.preset;
+
+      await (instance as any).ensureInitialized();
+      await (instance as any).execute(
+        'INSERT INTO rooms (id, room_json, updated_at) VALUES (?, ?, ?)',
+        room.id,
+        JSON.stringify(room),
+        Date.now()
+      );
+
+      const rooms = await instance.listRooms();
+      expect(rooms[roomId]?.preset).toBe('standard');
+    });
+  });
+
   it('removes stale custom rooms that have no live sockets', async () => {
     const stub = env.APP.getByName(`app-${crypto.randomUUID().slice(0, 8)}`);
     const roomId = `room-${crypto.randomUUID().slice(0, 8)}`;

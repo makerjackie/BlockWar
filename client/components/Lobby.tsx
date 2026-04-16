@@ -2,12 +2,16 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { Room, RoomPool } from '@/lib/types';
 import { formatCreatorRoomName } from '@shared/game/room-names';
+import type { RoomPreset } from '@shared/game/room-presets';
 import { useTranslation } from 'next-i18next';
-import { HardDrive, Plus, Map as MapIcon } from 'lucide-react';
+import { GraduationCap, HardDrive, Plus, Map as MapIcon } from 'lucide-react';
 import Toast from '@/components/ui/Toast';
 import HolidayGreeting from '@/components/HolidayGreeting';
-
-type RoomPreset = 'standard' | 'warring_state';
+import {
+  readOnboardingStatus,
+  shouldShowOnboardingPrompt,
+  type OnboardingStatus,
+} from '@/lib/onboarding';
 
 function getServerDisplayUrl(serverApi: string) {
   if (typeof window === 'undefined') {
@@ -39,6 +43,10 @@ function Lobby() {
   const [snackMessage, setSnackMessage] = useState('');
   const [username, setUsername] = useState('');
   const [serverStatus, setServerStatus] = useState(true);
+  const [createPresetLoading, setCreatePresetLoading] =
+    useState<RoomPreset | null>(null);
+  const [onboardingStatus, setOnboardingStatus] =
+    useState<OnboardingStatus | null>(null);
   const router = useRouter();
 
   const { t } = useTranslation();
@@ -81,6 +89,10 @@ function Lobby() {
     }
   }, [setUsername, router]);
 
+  useEffect(() => {
+    setOnboardingStatus(readOnboardingStatus());
+  }, []);
+
   const handleRoomClick = async (roomName: string) => {
     setJoinLoading(true);
     await router.push(`/rooms/${roomName}`);
@@ -88,8 +100,14 @@ function Lobby() {
 
   const handleCreateRoomClick = async (preset: RoomPreset = 'standard') => {
     try {
+      setCreatePresetLoading(preset);
       const params = new URLSearchParams();
-      params.set('name', formatCreatorRoomName(username));
+      params.set(
+        'name',
+        preset === 'tutorial'
+          ? t('tutorial-room-name')
+          : formatCreatorRoomName(username)
+      );
       params.set('creator', username);
       if (preset !== 'standard') {
         params.set('preset', preset);
@@ -102,16 +120,20 @@ function Lobby() {
       if (res.status === 200) {
         router.push(`/rooms/${data.roomId}`);
       } else {
+        setCreatePresetLoading(null);
         setSnackOpen(true);
         setSnackMessage(data.message ?? 'Failed to create room');
         setServerStatus(true);
       }
     } catch (err: any) {
+      setCreatePresetLoading(null);
       setSnackOpen(true);
       setSnackMessage(err.message);
       setServerStatus(false);
     }
   };
+  const tutorialRecommended =
+    onboardingStatus !== null && shouldShowOnboardingPrompt(onboardingStatus);
 
   return (
     <>
@@ -208,7 +230,19 @@ function Lobby() {
                           <div className='flex flex-col gap-3 sm:flex-row'>
                             <button
                               type='button'
+                              className='bw-button bw-button-secondary'
+                              disabled={createPresetLoading !== null}
+                              onClick={() => handleCreateRoomClick('tutorial')}
+                            >
+                              <GraduationCap size={16} strokeWidth={2.5} />
+                              {createPresetLoading === 'tutorial'
+                                ? t('onboarding.creatingTutorial')
+                                : t('onboarding.startTutorial')}
+                            </button>
+                            <button
+                              type='button'
                               className='bw-button bw-button-primary'
+                              disabled={createPresetLoading !== null}
                               onClick={() => handleCreateRoomClick()}
                             >
                               <Plus size={16} strokeWidth={2.5} />
@@ -217,6 +251,7 @@ function Lobby() {
                             <button
                               type='button'
                               className='bw-button bw-button-secondary'
+                              disabled={createPresetLoading !== null}
                               onClick={() => handleCreateRoomClick('warring_state')}
                             >
                               {t('create-warring-room')}
@@ -253,10 +288,27 @@ function Lobby() {
               </table>
             </div>
 
-            <div className='mt-4 grid gap-3 md:grid-cols-2'>
+            <div className='mt-4 grid gap-3 md:grid-cols-3'>
+              <button
+                type='button'
+                className='bw-button bw-button-secondary w-full justify-center'
+                disabled={createPresetLoading !== null}
+                onClick={() => handleCreateRoomClick('tutorial')}
+              >
+                <GraduationCap size={16} strokeWidth={2.5} />
+                {createPresetLoading === 'tutorial'
+                  ? t('onboarding.creatingTutorial')
+                  : t('onboarding.startTutorial')}
+                {tutorialRecommended ? (
+                  <span className='ml-1 border border-yellow-300/40 px-1.5 py-0.5 text-[10px] uppercase tracking-[0.14em] text-yellow-300'>
+                    {t('onboarding.tutorialBadge')}
+                  </span>
+                ) : null}
+              </button>
               <button
                 type='button'
                 className='bw-button bw-button-primary w-full'
+                disabled={createPresetLoading !== null}
                 onClick={() => handleCreateRoomClick()}
               >
                 <Plus size={16} strokeWidth={2.5} />
@@ -265,6 +317,7 @@ function Lobby() {
               <button
                 type='button'
                 className='bw-button bw-button-secondary w-full'
+                disabled={createPresetLoading !== null}
                 onClick={() => {
                   router.push('/mapcreator');
                 }}

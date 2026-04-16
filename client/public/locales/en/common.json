@@ -39,6 +39,7 @@
   "lobby": "Game Rooms",
   "create-room": "Create Room",
   "create-warring-room": "Create Warring Room",
+  "tutorial-room-name": "Beginner Tutorial",
   "create-map": "Create Map",
   "game": "Game",
   "modifiers": "Modifiers",
@@ -92,6 +93,8 @@
   "add-bot": "Add Bot",
   "remove-bot": "Remove Bot",
   "bot": "Bot",
+  "tutorial-complete-title": "Beginner Tutorial Complete!",
+  "tutorial-complete-copy": "You finished your first practice match. You can now enter the lobby for real matches; normal rooms enable fog of war by default.",
   "are-you-sure-to-surrender": "Are you sure you want to surrender?",
   "are-you-sure-to-exit": "Are you sure you want to exit?",
   "type-a-message": "Click to Chat, Enter to send",
@@ -118,6 +121,63 @@
   "country": "Country",
   "expandWSAD": "Expand WSAD",
   "disconnect-from-server": "Disconnected from server.",
+  "onboarding": {
+    "tutorialBadge": "Recommended",
+    "title": "New here? Start with the beginner tutorial",
+    "copy": "BlockWar will create a 1v2 bot practice room at 1x speed with fog of war disabled, so you can learn movement, expansion, and capturing the enemy king.",
+    "startTutorial": "Start Beginner Tutorial",
+    "creatingTutorial": "Creating Tutorial...",
+    "skipTutorial": "Enter Lobby"
+  },
+  "tutorialSetup": {
+    "badge": "Beginner Tutorial",
+    "title": "Play a bot practice match",
+    "copy": "Press start to add two bots and begin immediately. Follow the in-game guide to select your king, expand, split armies, and attack the enemy king.",
+    "opponentValue": "2 bots",
+    "speedLabel": "Speed",
+    "opponentLabel": "Opponent",
+    "fogLabel": "Fog",
+    "fogValue": "Disabled here",
+    "fogNote": "Note: tutorial rooms soften fog of war to reduce confusion; normal rooms enable fog of war by default.",
+    "goalLabel": "Your Goal",
+    "goalCopy": "Capture one enemy crown early so you feel the swing of instantly taking over a full territory, then snowball toward the final win.",
+    "stepsLabel": "Read these 3 steps first",
+    "stepOne": "Remember the goal: once you capture an enemy crown tile, their territory becomes yours.",
+    "stepTwo": "Press the start button below and the game will add 2 bots and begin immediately.",
+    "stepThree": "Follow the top tutorial prompts to learn how to return home, expand, split armies, and capture your first enemy crown.",
+    "keysLabel": "Useful Keys",
+    "keyG": "Return to king",
+    "keyZ": "Half move",
+    "keyQ": "Clear queue",
+    "startButton": "Start Beginner Tutorial",
+    "startingButton": "Starting Tutorial..."
+  },
+  "tutorialGuide": {
+    "progress": "Tutorial {{current}} / {{total}}",
+    "hide": "Hide",
+    "show": "Show Tutorial",
+    "cityHint": "Cities keep producing units and are the best neutral resources to capture while expanding.",
+    "fogHint": "Tutorial matches reveal the enemy king to help you practice tempo; normal matches require scouting through fog of war.",
+    "keyGHint": "Press G to jump back to your king whenever you lose your bearings.",
+    "steps": {
+      "select_general": {
+        "title": "Select your king first",
+        "copy": "Click the crown tile, or press G to jump back to your king. Every move starts from a tile you own."
+      },
+      "expand_frontier": {
+        "title": "Expand to adjacent tiles",
+        "copy": "Use WASD, arrow keys, mouse clicks, or mobile drag to move into a neighboring tile. Spread out early so your army can grow."
+      },
+      "split_army": {
+        "title": "Try a half-army move",
+        "copy": "Press Z to send 50% of a stack, then move again. Splitting lets you keep strength behind while expanding."
+      },
+      "hunt_king": {
+        "title": "Attack the enemy king",
+        "copy": "Keep advancing and capture the enemy crown tile. Once you take their king, their territory becomes yours."
+      }
+    }
+  },
   "howToPlay": {
     "title": "How to Play",
     "shortcut": "Shortcut",
@@ -142,6 +202,7 @@
     "mouse-wheel": "Mouse Wheel",
     "wsad": "WSAD / ArrowKey / MouseClick / TouchDrag on Mobile",
     "enter": "Enter",
-    "surrender": "Surrender"
+    "surrender": "Surrender",
+    "beginnerTutorial": "If this is your first match, start from Beginner Tutorial in the lobby. It disables fog and adds 2 bots for practice; normal rooms enable fog by default."
   }
 }

@@ -13,6 +13,10 @@ import {
 import { useTranslation } from 'next-i18next';
 import { useRouter } from 'next/router';
 import { useThemeMode } from '@/context/ThemeModeContext';
+import {
+  fallbackLanguage,
+  resolveSupportedLanguage,
+} from '@/lib/language';
 import HowToPlay from './HowToPlay';
 
 import Link from 'next/link';
@@ -93,8 +97,16 @@ function Navbar() {
   };
 
   const { t, i18n } = useTranslation();
-  const locale = router.locale ?? i18n.resolvedLanguage ?? i18n.language ?? 'en';
-  const isChinese = locale.startsWith('zh');
+  const locale =
+    resolveSupportedLanguage(router.locale) ??
+    resolveSupportedLanguage(i18n.resolvedLanguage) ??
+    resolveSupportedLanguage(i18n.language) ??
+    fallbackLanguage;
+  const isChinese = locale === 'zh';
+  const languageOptions =
+    router.locales && router.locales.length > 0
+      ? router.locales
+      : [fallbackLanguage];
   const navLinkClass = `navbar-link navbar-link-primary ${
     isChinese ? 'navbar-link-zh' : 'navbar-link-en'
   }`;
@@ -105,6 +117,34 @@ function Navbar() {
   const themeToggleLabel =
     mode === 'dark' ? t('switch-to-light') : t('switch-to-dark');
   const mobileNavItems = [...primaryNavItems, ...utilityNavItems];
+  const renderLanguageSwitcher = (className: string) => (
+    <div className='relative flex items-center'>
+      <Globe
+        className='pointer-events-none absolute left-3 text-zinc-500'
+        size={14}
+        strokeWidth={2.4}
+      />
+      <select
+        className={className}
+        value={locale}
+        onChange={(event) => {
+          void handleLanguageChange(event.target.value);
+        }}
+        aria-label='Language'
+      >
+        {languageOptions.map((lang) => (
+          <option key={lang} value={lang}>
+            {languageLabels[lang] ?? lang}
+          </option>
+        ))}
+      </select>
+      <ChevronDown
+        className='pointer-events-none absolute right-2 text-zinc-500'
+        size={14}
+        strokeWidth={2.4}
+      />
+    </div>
+  );
 
   return (
     <header className='navbar'>
@@ -180,40 +220,35 @@ function Navbar() {
           >
             {t('how-to-play')}
           </button>
-          <div className='relative flex items-center'>
-            <Globe
-              className='pointer-events-none absolute left-3 text-zinc-500'
-              size={14}
-              strokeWidth={2.4}
-            />
-            <select
-              className='navbar-language-switch pl-8 pr-7 text-sm font-black tracking-[0.08em]'
-              value={router.locale ?? 'en'}
-              onChange={(event) => {
-                void handleLanguageChange(event.target.value);
-              }}
-              aria-label='Language'
-            >
-              {router.locales &&
-                router.locales.map((lang) => (
-                  <option key={lang} value={lang}>
-                    {languageLabels[lang] ?? lang}
-                  </option>
-                ))}
-            </select>
-            <ChevronDown
-              className='pointer-events-none absolute right-2 text-zinc-500'
-              size={14}
-              strokeWidth={2.4}
-            />
-          </div>
+          {renderLanguageSwitcher(
+            'navbar-language-switch pl-8 pr-7 text-sm font-black tracking-[0.08em]'
+          )}
+        </div>
+
+        <div className='ml-auto flex shrink-0 items-center gap-1.5 md:hidden'>
+          <button
+            type='button'
+            className='navbar-tool-icon size-11 min-h-11 shrink-0'
+            onClick={toggleMode}
+            aria-label={themeToggleLabel}
+            title={themeToggleLabel}
+          >
+            {mode === 'dark' ? (
+              <Sun size={16} strokeWidth={2.4} />
+            ) : (
+              <Moon size={16} strokeWidth={2.4} />
+            )}
+          </button>
+          {renderLanguageSwitcher(
+            'navbar-language-switch h-11 min-h-11 w-16 min-w-0 pl-7 pr-6 text-sm font-black tracking-[0.08em]'
+          )}
         </div>
 
         <button
           type='button'
           aria-label='Open navigation menu'
           aria-expanded={isNavOpen}
-          className='ml-auto grid size-11 place-items-center border border-zinc-500/50 bg-zinc-950 text-zinc-50 md:hidden'
+          className='grid size-11 shrink-0 place-items-center border border-zinc-500/50 bg-zinc-950 text-zinc-50 md:hidden'
           onClick={() => setIsNavOpen((value) => !value)}
         >
           <Menu size={18} strokeWidth={2.5} />
@@ -237,55 +272,17 @@ function Navbar() {
               </Link>
             ))}
           </nav>
-          <div className='mt-2 grid gap-2 border-t border-zinc-800 pt-2'>
-            <div className='grid grid-cols-2 gap-2'>
-              <button
-                type='button'
-                className='bw-button bw-button-primary text-xs'
-                onClick={toggleShow}
-              >
-                {t('how-to-play')}
-              </button>
-              <button
-                type='button'
-                className='bw-button bw-button-secondary text-xs'
-                onClick={toggleMode}
-                aria-label={themeToggleLabel}
-              >
-                {mode === 'dark' ? (
-                  <Sun size={16} strokeWidth={2.4} />
-                ) : (
-                  <Moon size={16} strokeWidth={2.4} />
-                )}
-              </button>
-            </div>
-            <div className='relative flex items-center'>
-              <Globe
-                className='pointer-events-none absolute left-3 text-zinc-500'
-                size={14}
-                strokeWidth={2.4}
-              />
-              <select
-                className='navbar-language-switch w-full pl-8 pr-8 text-sm font-black tracking-[0.08em]'
-                value={router.locale ?? 'en'}
-                onChange={(event) => {
-                  void handleLanguageChange(event.target.value);
-                }}
-                aria-label='Language'
-              >
-                {router.locales &&
-                  router.locales.map((lang) => (
-                    <option key={lang} value={lang}>
-                      {languageLabels[lang] ?? lang}
-                    </option>
-                  ))}
-              </select>
-              <ChevronDown
-                className='pointer-events-none absolute right-2 text-zinc-500'
-                size={14}
-                strokeWidth={2.4}
-              />
-            </div>
+          <div className='mt-2 border-t border-zinc-800 pt-2'>
+            <button
+              type='button'
+              className='bw-button bw-button-primary h-11 w-full text-xs'
+              onClick={() => {
+                setIsNavOpen(false);
+                toggleShow();
+              }}
+            >
+              {t('how-to-play')}
+            </button>
           </div>
         </div>
       )}

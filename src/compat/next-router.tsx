@@ -1,5 +1,11 @@
 import { useCallback, useMemo } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import {
+  fallbackLanguage,
+  localeStorageKey,
+  resolveSupportedLanguage,
+  supportedLanguages,
+} from '@/lib/language';
 import i18n from '../app/i18n';
 
 type RouteHandler = (url: string) => void;
@@ -53,9 +59,13 @@ export function useRouter() {
       }
     ) => {
       if (options?.locale) {
-        await i18n.changeLanguage(options.locale);
-        if (typeof window !== 'undefined') {
-          window.localStorage.setItem('locale', options.locale);
+        const nextLocale = resolveSupportedLanguage(options.locale);
+
+        if (nextLocale) {
+          await i18n.changeLanguage(nextLocale);
+          if (typeof window !== 'undefined') {
+            window.localStorage.setItem(localeStorageKey, nextLocale);
+          }
         }
       }
       navigate(url);
@@ -65,13 +75,18 @@ export function useRouter() {
     [navigate]
   );
 
+  const locale =
+    resolveSupportedLanguage(i18n.resolvedLanguage) ??
+    resolveSupportedLanguage(i18n.language) ??
+    fallbackLanguage;
+
   return {
     query,
     push,
     asPath: `${location.pathname}${location.search}`,
     pathname: location.pathname,
-    locale: i18n.language,
-    locales: ['en', 'zh'],
+    locale,
+    locales: [...supportedLanguages],
   };
 }
 

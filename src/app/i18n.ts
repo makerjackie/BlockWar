@@ -2,21 +2,21 @@ import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import enCommon from '@/public/locales/en/common.json';
 import zhCommon from '@/public/locales/zh/common.json';
-
-const savedLanguage =
-  typeof window !== 'undefined' ? window.localStorage.getItem('locale') : null;
-const browserLanguage =
-  typeof navigator !== 'undefined' && navigator.language.startsWith('zh')
-    ? 'zh'
-    : 'en';
+import {
+  fallbackLanguage,
+  getInitialLanguage,
+  supportedLanguages,
+} from '@/lib/language';
 
 void i18n.use(initReactI18next).init({
   resources: {
     en: { common: enCommon },
     zh: { common: zhCommon },
   },
-  lng: savedLanguage ?? browserLanguage,
-  fallbackLng: 'en',
+  lng: getInitialLanguage(),
+  fallbackLng: fallbackLanguage,
+  supportedLngs: [...supportedLanguages],
+  nonExplicitSupportedLngs: true,
   defaultNS: 'common',
   interpolation: {
     escapeValue: false,

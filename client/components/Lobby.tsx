@@ -4,7 +4,13 @@ import { Room, RoomPool } from '@/lib/types';
 import { formatCreatorRoomName } from '@shared/game/room-names';
 import type { RoomPreset } from '@shared/game/room-presets';
 import { useTranslation } from 'next-i18next';
-import { GraduationCap, HardDrive, Plus, Map as MapIcon } from 'lucide-react';
+import {
+  ChevronDown,
+  GraduationCap,
+  HardDrive,
+  Plus,
+  Map as MapIcon,
+} from 'lucide-react';
 import Toast from '@/components/ui/Toast';
 import HolidayGreeting from '@/components/HolidayGreeting';
 import {
@@ -53,6 +59,8 @@ function Lobby() {
   const serverDisplayUrl = getServerDisplayUrl(
     process.env.NEXT_PUBLIC_SERVER_API ?? ''
   );
+  const hasRooms = Object.keys(rooms).length > 0;
+  const showEmptyState = !loading && !hasRooms;
 
   useEffect(() => {
     console.log('fetching rooms from: ', process.env.NEXT_PUBLIC_SERVER_API);
@@ -132,6 +140,11 @@ function Lobby() {
       setServerStatus(false);
     }
   };
+
+  const handleCreateMapClick = () => {
+    router.push('/mapcreator');
+  };
+
   const tutorialRecommended =
     onboardingStatus !== null && shouldShowOnboardingPrompt(onboardingStatus);
 
@@ -215,10 +228,10 @@ function Lobby() {
                         Loading rooms...
                       </td>
                     </tr>
-                  ) : Object.keys(rooms).length === 0 ? (
+                  ) : !hasRooms ? (
                     <tr>
                       <td className='px-4 py-8 text-center' colSpan={4}>
-                        <div className='mx-auto flex max-w-xl flex-col items-center gap-4'>
+                        <div className='mx-auto flex max-w-xl flex-col items-center gap-3'>
                           <div>
                             <p className='text-lg font-black text-zinc-100'>
                               {t('no-rooms-available')}
@@ -226,36 +239,6 @@ function Lobby() {
                             <p className='mt-2 text-sm text-zinc-400'>
                               {t('empty-room-help')}
                             </p>
-                          </div>
-                          <div className='flex flex-col gap-3 sm:flex-row'>
-                            <button
-                              type='button'
-                              className='bw-button bw-button-secondary'
-                              disabled={createPresetLoading !== null}
-                              onClick={() => handleCreateRoomClick('tutorial')}
-                            >
-                              <GraduationCap size={16} strokeWidth={2.5} />
-                              {createPresetLoading === 'tutorial'
-                                ? t('onboarding.creatingTutorial')
-                                : t('onboarding.startTutorial')}
-                            </button>
-                            <button
-                              type='button'
-                              className='bw-button bw-button-primary'
-                              disabled={createPresetLoading !== null}
-                              onClick={() => handleCreateRoomClick()}
-                            >
-                              <Plus size={16} strokeWidth={2.5} />
-                              {t('create-room')}
-                            </button>
-                            <button
-                              type='button'
-                              className='bw-button bw-button-secondary'
-                              disabled={createPresetLoading !== null}
-                              onClick={() => handleCreateRoomClick('warring_state')}
-                            >
-                              {t('create-warring-room')}
-                            </button>
                           </div>
                         </div>
                       </td>
@@ -288,44 +271,128 @@ function Lobby() {
               </table>
             </div>
 
-            <div className='mt-4 grid gap-3 md:grid-cols-3'>
-              <button
-                type='button'
-                className='bw-button bw-button-secondary w-full justify-center'
-                disabled={createPresetLoading !== null}
-                onClick={() => handleCreateRoomClick('tutorial')}
-              >
-                <GraduationCap size={16} strokeWidth={2.5} />
-                {createPresetLoading === 'tutorial'
-                  ? t('onboarding.creatingTutorial')
-                  : t('onboarding.startTutorial')}
-                {tutorialRecommended ? (
-                  <span className='ml-1 border border-yellow-300/40 px-1.5 py-0.5 text-[10px] uppercase tracking-[0.14em] text-yellow-300'>
-                    {t('onboarding.tutorialBadge')}
-                  </span>
-                ) : null}
-              </button>
-              <button
-                type='button'
-                className='bw-button bw-button-primary w-full'
-                disabled={createPresetLoading !== null}
-                onClick={() => handleCreateRoomClick()}
-              >
-                <Plus size={16} strokeWidth={2.5} />
-                {t('create-room')}
-              </button>
-              <button
-                type='button'
-                className='bw-button bw-button-secondary w-full'
-                disabled={createPresetLoading !== null}
-                onClick={() => {
-                  router.push('/mapcreator');
-                }}
-              >
-                <MapIcon size={16} strokeWidth={2.5} />
-                {t('create-map')}
-              </button>
-            </div>
+            {showEmptyState ? (
+              <div className='mt-4 flex flex-col gap-3'>
+                <div className='grid gap-3 md:grid-cols-2'>
+                  {tutorialRecommended ? (
+                    <>
+                      <button
+                        type='button'
+                        className='bw-button bw-button-primary w-full justify-center'
+                        disabled={createPresetLoading !== null}
+                        onClick={() => handleCreateRoomClick('tutorial')}
+                      >
+                        <GraduationCap size={16} strokeWidth={2.5} />
+                        {createPresetLoading === 'tutorial'
+                          ? t('onboarding.creatingTutorial')
+                          : t('onboarding.startTutorial')}
+                        <span className='ml-1 border border-zinc-950/30 bg-zinc-950/10 px-1.5 py-0.5 text-[10px] uppercase tracking-[0.14em]'>
+                          {t('onboarding.tutorialBadge')}
+                        </span>
+                      </button>
+                      <button
+                        type='button'
+                        className='bw-button bw-button-secondary w-full'
+                        disabled={createPresetLoading !== null}
+                        onClick={() => handleCreateRoomClick()}
+                      >
+                        <Plus size={16} strokeWidth={2.5} />
+                        {t('create-room')}
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        type='button'
+                        className='bw-button bw-button-primary w-full'
+                        disabled={createPresetLoading !== null}
+                        onClick={() => handleCreateRoomClick()}
+                      >
+                        <Plus size={16} strokeWidth={2.5} />
+                        {t('create-room')}
+                      </button>
+                      <button
+                        type='button'
+                        className='bw-button bw-button-secondary w-full justify-center'
+                        disabled={createPresetLoading !== null}
+                        onClick={() => handleCreateRoomClick('tutorial')}
+                      >
+                        <GraduationCap size={16} strokeWidth={2.5} />
+                        {createPresetLoading === 'tutorial'
+                          ? t('onboarding.creatingTutorial')
+                          : t('onboarding.startTutorial')}
+                      </button>
+                    </>
+                  )}
+                </div>
+
+                <details className='menu-container overflow-hidden p-0'>
+                  <summary className='flex cursor-pointer list-none items-center justify-center gap-2 px-4 py-3 text-xs font-black uppercase tracking-[0.18em] text-zinc-400 transition hover:text-zinc-100 [&::-webkit-details-marker]:hidden'>
+                    {t('lobby-more-actions')}
+                    <ChevronDown size={16} strokeWidth={2.5} />
+                  </summary>
+                  <div
+                    className='grid gap-3 border-t px-4 pb-4 pt-3 md:grid-cols-2'
+                    style={{ borderColor: 'var(--bw-line)' }}
+                  >
+                    <button
+                      type='button'
+                      className='bw-button bw-button-secondary w-full'
+                      disabled={createPresetLoading !== null}
+                      onClick={() => handleCreateRoomClick('warring_state')}
+                    >
+                      {t('create-warring-room')}
+                    </button>
+                    <button
+                      type='button'
+                      className='bw-button bw-button-secondary w-full'
+                      disabled={createPresetLoading !== null}
+                      onClick={handleCreateMapClick}
+                    >
+                      <MapIcon size={16} strokeWidth={2.5} />
+                      {t('create-map')}
+                    </button>
+                  </div>
+                </details>
+              </div>
+            ) : (
+              <div className='mt-4 grid gap-3 md:grid-cols-3'>
+                <button
+                  type='button'
+                  className='bw-button bw-button-secondary w-full justify-center'
+                  disabled={createPresetLoading !== null}
+                  onClick={() => handleCreateRoomClick('tutorial')}
+                >
+                  <GraduationCap size={16} strokeWidth={2.5} />
+                  {createPresetLoading === 'tutorial'
+                    ? t('onboarding.creatingTutorial')
+                    : t('onboarding.startTutorial')}
+                  {tutorialRecommended ? (
+                    <span className='ml-1 border border-yellow-300/40 px-1.5 py-0.5 text-[10px] uppercase tracking-[0.14em] text-yellow-300'>
+                      {t('onboarding.tutorialBadge')}
+                    </span>
+                  ) : null}
+                </button>
+                <button
+                  type='button'
+                  className='bw-button bw-button-primary w-full'
+                  disabled={createPresetLoading !== null}
+                  onClick={() => handleCreateRoomClick()}
+                >
+                  <Plus size={16} strokeWidth={2.5} />
+                  {t('create-room')}
+                </button>
+                <button
+                  type='button'
+                  className='bw-button bw-button-secondary w-full'
+                  disabled={createPresetLoading !== null}
+                  onClick={handleCreateMapClick}
+                >
+                  <MapIcon size={16} strokeWidth={2.5} />
+                  {t('create-map')}
+                </button>
+              </div>
+            )}
           </section>
         </div>
       </main>

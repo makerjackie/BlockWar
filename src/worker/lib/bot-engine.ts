@@ -16,11 +16,21 @@ export const BOT_SEARCH_LIMITS = {
   targets: 12,
 } as const;
 
+const BOT_OPENING_RULES = {
+  turns: 80,
+  landRatio: 0.08,
+  minLandGoal: 10,
+  maxLandGoal: 18,
+  frontierPlainPriority: 2600,
+  frontierSwampPriority: 2100,
+} as const;
+
 type StrategicTargetKind =
   | 'enemy_king'
   | 'enemy_city'
   | 'enemy_land'
-  | 'neutral_city';
+  | 'neutral_city'
+  | 'frontier_land';
 
 type StrategicTarget = {
   point: Point;
@@ -106,6 +116,32 @@ function createDecision(
   };
 }
 
+function getOpeningLandGoal(room: Room) {
+  if (!room.map) {
+    return BOT_OPENING_RULES.minLandGoal;
+  }
+
+  const mapArea = room.map.width * room.map.height;
+  return Math.max(
+    BOT_OPENING_RULES.minLandGoal,
+    Math.min(
+      BOT_OPENING_RULES.maxLandGoal,
+      Math.ceil(mapArea * BOT_OPENING_RULES.landRatio)
+    )
+  );
+}
+
+function shouldPrioritizeExpansion(room: Room, player: Player) {
+  if (!room.map) {
+    return false;
+  }
+
+  return (
+    room.map.turn < BOT_OPENING_RULES.turns &&
+    player.land.length < getOpeningLandGoal(room)
+  );
+}
+
 function collectCandidateOrigins(room: Room, player: Player): CandidateOrigin[] {
   const weightedOrigins = player.land
     .map((block) => {
@@ -139,7 +175,11 @@ function collectCandidateOrigins(room: Room, player: Player): CandidateOrigin[] 
   return weightedOrigins.slice(0, BOT_SEARCH_LIMITS.origins);
 }
 
-function collectStrategicTargets(room: Room, player: Player): StrategicTarget[] {
+function collectStrategicTargets(
+  room: Room,
+  player: Player,
+  prioritizeExpansion: boolean
+) {
   if (!room.map) {
     return [];
   }
@@ -152,12 +192,29 @@ function collectStrategicTargets(room: Room, player: Player): StrategicTarget[] 
         continue;
       }
 
+      const point = new Point(x, y);
       if (!block.player) {
+        if (
+          prioritizeExpansion &&
+          block.type !== TileType.City &&
+          getNeighborBlocks(room, point).some((neighbor) => isFriendlyBlock(player, neighbor))
+        ) {
+          targets.push({
+            point,
+            kind: 'frontier_land',
+            priority:
+              block.type === TileType.Swamp
+                ? BOT_OPENING_RULES.frontierSwampPriority
+                : BOT_OPENING_RULES.frontierPlainPriority,
+          });
+          continue;
+        }
+
         if (block.type === TileType.City) {
           targets.push({
-            point: new Point(x, y),
+            point,
             kind: 'neutral_city',
-            priority: 1500 - block.unit,
+            priority: prioritizeExpansion ? 700 - block.unit * 2 : 1500 - block.unit,
           });
         }
         continue;
@@ -165,7 +222,7 @@ function collectStrategicTargets(room: Room, player: Player): StrategicTarget[] 
 
       if (block.type === TileType.King) {
         targets.push({
-          point: new Point(x, y),
+          point,
           kind: 'enemy_king',
           priority: 9000 - block.unit * 3,
         });
@@ -174,15 +231,15 @@ function collectStrategicTargets(room: Room, player: Player): StrategicTarget[] 
 
       if (block.type === TileType.City) {
         targets.push({
-          point: new Point(x, y),
+          point,
           kind: 'enemy_city',
-          priority: 4500 - block.unit * 2,
+          priority: prioritizeExpansion ? 1000 - block.unit * 2 : 4500 - block.unit * 2,
         });
         continue;
       }
 
       targets.push({
-        point: new Point(x, y),
+        point,
         kind: 'enemy_land',
         priority: 1800 - block.unit,
       });
@@ -249,7 +306,12 @@ function planKingDefense(
   return createDecision(best.from, best.to, 'defend_king', origins.length, metrics);
 }
 
-function scoreImmediateMove(player: Player, fromBlock: Block, toBlock: Block) {
+function scoreImmediateMove(
+  player: Player,
+  fromBlock: Block,
+  toBlock: Block,
+  prioritizeExpansion: boolean
+) {
   const movable = fromBlock.getMovableUnit();
 
   if (toBlock.type === TileType.Mountain || isFriendlyBlock(player, toBlock)) {
@@ -271,6 +333,16 @@ function scoreImmediateMove(player: Player, fromBlock: Block, toBlock: Block) {
   }
 
   if (toBlock.type === TileType.City) {
+    if (prioritizeExpansion) {
+      return {
+        reason: 'capture_city' as const,
+        score:
+          (isEnemyBlock(player, toBlock) ? 500 : 350) +
+          movable * 4 -
+          toBlock.unit * 4,
+      };
+    }
+
     return {
       reason: 'capture_city' as const,
       score:
@@ -300,7 +372,8 @@ function planImmediateMove(
   room: Room,
   player: Player,
   origins: CandidateOrigin[],
-  metrics: BotMetrics
+  metrics: BotMetrics,
+  prioritizeExpansion: boolean
 ) {
   if (!room.map) {
     return null;
@@ -318,7 +391,12 @@ function planImmediateMove(
         continue;
       }
 
-      const scored = scoreImmediateMove(player, origin.block, neighbor);
+      const scored = scoreImmediateMove(
+        player,
+        origin.block,
+        neighbor,
+        prioritizeExpansion
+      );
       if (!scored || scored.score <= 0) {
         continue;
       }
@@ -351,8 +429,13 @@ function scoreStrategicAdvance(
     return Number.NEGATIVE_INFINITY;
   }
 
-  const friendlyPenalty = isFriendlyBlock(player, toBlock) ? 120 : 0;
+  const friendlyPenalty = isFriendlyBlock(player, toBlock)
+    ? target.kind === 'frontier_land'
+      ? 30
+      : 120
+    : 0;
   const swampPenalty = toBlock.type === TileType.Swamp ? 200 : 0;
+  const frontierBonus = target.kind === 'frontier_land' ? 180 : 0;
 
   return (
     target.priority -
@@ -360,7 +443,8 @@ function scoreStrategicAdvance(
     fromBlock.getMovableUnit() * 6 -
     toBlock.unit * 2 -
     friendlyPenalty -
-    swampPenalty
+    swampPenalty +
+    frontierBonus
   );
 }
 
@@ -437,11 +521,12 @@ export function planBotMove(room: Room, player: Player): BotDecision | null {
   }
 
   const metrics: BotMetrics = { evaluatedMoves: 0 };
-  const targets = collectStrategicTargets(room, player);
+  const prioritizeExpansion = shouldPrioritizeExpansion(room, player);
+  const targets = collectStrategicTargets(room, player, prioritizeExpansion);
 
   return (
     planKingDefense(room, player, origins, metrics) ??
-    planImmediateMove(room, player, origins, metrics) ??
+    planImmediateMove(room, player, origins, metrics, prioritizeExpansion) ??
     planStrategicAdvance(room, player, origins, targets, metrics)
   );
 }

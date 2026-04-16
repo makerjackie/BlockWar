@@ -80,7 +80,7 @@ export default function Toast({
   return (
     <div className='pointer-events-none fixed inset-x-4 top-20 z-[1600] flex justify-end md:inset-x-6'>
       <div
-        className={`pointer-events-auto relative w-full max-w-md border bg-zinc-950/96 p-4 text-zinc-100 shadow-[10px_10px_0_#000] backdrop-blur-xl ${currentStatus.border}`}
+        className={`pointer-events-auto relative w-full max-w-md border bg-zinc-950/96 p-4 text-zinc-100 shadow-[10px_10px_0_var(--bw-shadow-solid)] backdrop-blur-xl ${currentStatus.border}`}
         role='alert'
         aria-live='assertive'
       >

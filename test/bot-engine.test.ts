@@ -98,6 +98,20 @@ function assignOwnedBlock(
   block.setUnit(unit);
 }
 
+function neutralizeEnemyKing(room: Room, enemy: Player) {
+  if (!enemy.king) {
+    return;
+  }
+
+  const kingBlock = room.map!.getBlock(enemy.king);
+  enemy.loseLand(kingBlock);
+  enemy.king = null;
+  enemy.isDead = true;
+  kingBlock.player = null;
+  kingBlock.setType(TileType.Plain);
+  kingBlock.setUnit(0);
+}
+
 describe('bot-engine', () => {
   it('creates unique bot names for the same room', () => {
     const room = new Room('room');
@@ -165,6 +179,51 @@ describe('bot-engine', () => {
       from: { x: 1, y: 2 },
       to: { x: 1, y: 1 },
       reason: 'defend_king',
+    });
+  });
+
+  it('prefers early expansion over grabbing a nearby city', () => {
+    const { room, bot } = createScenario({
+      botKing: new Point(1, 1),
+      enemyKing: new Point(5, 5),
+    });
+
+    room.map!.turn = 10;
+    assignOwnedBlock(room, bot, new Point(1, 2), 8);
+    room.map!.getBlock(new Point(0, 2)).setType(TileType.Mountain);
+    room.map!.getBlock(new Point(1, 3)).setType(TileType.City);
+    room.map!.getBlock(new Point(1, 3)).setUnit(0);
+
+    const decision = planBotMove(room, bot);
+
+    expect(decision).toMatchObject({
+      from: { x: 1, y: 2 },
+      to: { x: 2, y: 2 },
+      reason: 'expand',
+    });
+  });
+
+  it('repositions toward frontier instead of cities during the opening', () => {
+    const { room, bot, enemy } = createScenario({
+      botKing: new Point(0, 0),
+      enemyKing: new Point(5, 5),
+    });
+
+    room.map!.turn = 12;
+    room.map!.getBlock(new Point(0, 0)).setUnit(18);
+    assignOwnedBlock(room, bot, new Point(1, 0), 1);
+    assignOwnedBlock(room, bot, new Point(2, 0), 1);
+    assignOwnedBlock(room, bot, new Point(0, 1), 1);
+    room.map!.getBlock(new Point(0, 2)).setType(TileType.City);
+    room.map!.getBlock(new Point(0, 2)).setUnit(0);
+    neutralizeEnemyKing(room, enemy);
+
+    const decision = planBotMove(room, bot);
+
+    expect(decision).toMatchObject({
+      from: { x: 0, y: 0 },
+      to: { x: 1, y: 0 },
+      reason: 'advance',
     });
   });
 

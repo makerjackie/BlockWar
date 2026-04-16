@@ -28,6 +28,7 @@ import Loading from '@/components/Loading';
 import PublishMapDialog from '@/components/PublishMapDialog';
 import ReactMarkdown from 'react-markdown';
 import { v4 as uuidv4 } from 'uuid';
+import { blankFill } from '@/lib/constants';
 import Toast from '@/components/ui/Toast';
 import ModalShell from '@/components/ui/ModalShell';
 import {
@@ -65,7 +66,13 @@ function EditorCard({
     <section
       className={`bw-panel-hard w-full shrink-0 overflow-y-auto p-2 md:shrink md:overflow-visible md:p-4 ${className}`}
     >
-      <div className='mb-1 flex items-center gap-2 border-b border-zinc-800 pb-1.5 text-[10px] font-black uppercase tracking-[0.18em] text-zinc-400 md:mb-3 md:pb-3 md:text-xs'>
+      <div
+        className='mb-1 flex items-center gap-2 border-b pb-1.5 text-[10px] font-black uppercase tracking-[0.18em] md:mb-3 md:pb-3 md:text-xs'
+        style={{
+          borderColor: 'var(--bw-line)',
+          color: 'var(--bw-muted)',
+        }}
+      >
         {icon}
         {title}
       </div>
@@ -91,15 +98,19 @@ function EditorField({
 }) {
   return (
     <label className='block w-full' htmlFor={id}>
-      <span className='mb-1 block text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500'>
+      <span
+        className='mb-1 block text-[10px] font-black uppercase tracking-[0.2em]'
+        style={{ color: 'var(--bw-muted)' }}
+      >
         {label}
       </span>
       {multiline ? (
         <textarea
           id={id}
-          className='bw-input h-auto min-h-14 resize-y py-2 text-left md:min-h-24 md:py-3'
+          className='bw-input h-auto min-h-20 resize-y py-2 text-left md:min-h-24 md:py-3'
           value={value}
           onChange={onChange}
+          rows={4}
         />
       ) : (
         <input
@@ -111,6 +122,53 @@ function EditorField({
         />
       )}
     </label>
+  );
+}
+
+function CompactSettingsTrigger({
+  icon,
+  title,
+  summary,
+  detail,
+  onClick,
+}: {
+  icon: ReactNode;
+  title: string;
+  summary: string;
+  detail: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type='button'
+      className='bw-panel-hard flex w-full items-start gap-3 px-3 py-3 text-left transition duration-200 ease-out hover:-translate-y-0.5 active:translate-y-0'
+      onClick={onClick}
+    >
+      <span className='mt-0.5 shrink-0 text-[color:var(--bw-ember)]'>{icon}</span>
+      <span className='min-w-0 flex-1'>
+        <span
+          className='block text-[10px] font-black uppercase tracking-[0.18em]'
+          style={{ color: 'var(--bw-muted)' }}
+        >
+          {title}
+        </span>
+        <span className='mt-1 block truncate text-sm font-black'>
+          {summary}
+        </span>
+        <span
+          className='mt-1 block line-clamp-2 text-xs leading-relaxed'
+          style={{ color: 'var(--bw-ink-soft)' }}
+        >
+          {detail}
+        </span>
+      </span>
+      <span
+        className='shrink-0 text-xs font-black uppercase tracking-[0.16em]'
+        style={{ color: 'var(--bw-muted)' }}
+      >
+        {`›`}
+      </span>
+    </button>
   );
 }
 
@@ -149,6 +207,8 @@ function MapEditor({ editMode }: { editMode: boolean }) {
   const [loading, setLoading] = useState(false);
   const [openMapExplorer, setOpenMapExplorer] = useState(false);
   const [openPublishDialog, setOpenPublishDialog] = useState(false);
+  const [openCompactBasicInfoDialog, setOpenCompactBasicInfoDialog] = useState(false);
+  const [openCompactMapSizeDialog, setOpenCompactMapSizeDialog] = useState(false);
   const [publishMapId, setPublishMapId] = useState('');
   const isCompactEditor = useMediaQuery('(max-width: 767px)');
 
@@ -604,7 +664,7 @@ function MapEditor({ editMode }: { editMode: boolean }) {
   }, [mapRef, editMode, handleKeyDown]);
 
   const settingsDockClassName =
-    'menu-container absolute inset-x-2 top-[82px] z-[102] flex h-[188px] min-h-[188px] max-h-[188px] flex-col gap-2 overflow-hidden p-2 md:left-auto md:right-0 md:top-[70px] md:h-[calc(100dvh-140px)] md:min-h-0 md:max-h-none md:w-[min(360px,88vw)] md:gap-4 md:overflow-x-hidden md:overflow-y-auto md:p-4';
+    'menu-container absolute inset-x-2 top-[82px] z-[102] flex flex-col gap-2 p-2 md:left-auto md:right-0 md:top-[70px] md:h-[calc(100dvh-140px)] md:w-[min(360px,88vw)] md:gap-4 md:overflow-x-hidden md:overflow-y-auto md:p-4';
   const paletteDockClassName =
     'menu-container absolute inset-x-2 bottom-[calc(env(safe-area-inset-bottom)+8px)] z-[102] overflow-x-auto overflow-y-hidden p-2 md:bottom-[70px] md:left-0 md:right-auto md:top-[70px] md:h-[calc(100dvh-140px)] md:w-[96px] md:overflow-x-hidden md:overflow-y-auto';
   const paletteGridClassName =
@@ -621,14 +681,13 @@ function MapEditor({ editMode }: { editMode: boolean }) {
     'bw-button bw-button-secondary h-11 min-h-11 w-full px-2.5 text-[10px] leading-tight tracking-[0.1em] whitespace-normal';
   const compactPrimaryActionButtonClassName =
     'bw-button bw-button-primary col-span-2 h-11 min-h-11 w-full px-3 text-[10px] leading-tight tracking-[0.1em] whitespace-normal';
-  const compactCardStripClassName =
-    'flex min-h-0 flex-1 items-stretch gap-2 overflow-x-auto overflow-y-hidden pb-1';
-  const compactCardClassName =
-    'h-full min-w-[min(262px,calc(100vw-2.75rem))] overflow-y-auto';
   const paletteIconSize = isCompactEditor ? 34 : 40;
   const palettePropertyIconSize = isCompactEditor ? 24 : 28;
   const mapCenterTop =
-    editMode && isCompactEditor ? 'calc(50% + 80px)' : '50%';
+    editMode && isCompactEditor ? 'calc(50% + 56px)' : '50%';
+  const compactMapNameSummary = mapName.trim() || t('untitled-map');
+  const compactMapDescriptionSummary =
+    mapDescription.trim() || t('edit-map-info');
 
   return (
     <div
@@ -693,6 +752,75 @@ function MapEditor({ editMode }: { editMode: boolean }) {
         <MapExplorer userId={username} onSelect={handleMapSelect} />
       </ModalShell>
 
+      {editMode && isCompactEditor && (
+        <>
+          <ModalShell
+            open={openCompactBasicInfoDialog}
+            onClose={() => setOpenCompactBasicInfoDialog(false)}
+            title={t('edit-map-info')}
+            widthClassName='max-w-lg'
+            actions={
+              <button
+                type='button'
+                className='bw-button bw-button-primary'
+                onClick={() => setOpenCompactBasicInfoDialog(false)}
+              >
+                {t('done')}
+              </button>
+            }
+          >
+            <div className='space-y-4'>
+              <EditorField
+                id='map-name-dialog'
+                label='Map Name'
+                value={mapName}
+                onChange={(e) => setMapName(e.target.value)}
+              />
+              <EditorField
+                id='map-desc-dialog'
+                label='Map Description'
+                value={mapDescription}
+                onChange={(e) => setMapDescription(e.target.value)}
+                multiline
+              />
+            </div>
+          </ModalShell>
+
+          <ModalShell
+            open={openCompactMapSizeDialog}
+            onClose={() => setOpenCompactMapSizeDialog(false)}
+            title={t('edit-map-size')}
+            widthClassName='max-w-lg'
+            actions={
+              <button
+                type='button'
+                className='bw-button bw-button-primary'
+                onClick={() => setOpenCompactMapSizeDialog(false)}
+              >
+                {t('done')}
+              </button>
+            }
+          >
+            <div className='grid gap-4 sm:grid-cols-2'>
+              <EditorField
+                id='map-width-dialog'
+                label='Map Width'
+                type='number'
+                value={mapWidth}
+                onChange={handleMapWidthChange}
+              />
+              <EditorField
+                id='map-height-dialog'
+                label='Map Height'
+                type='number'
+                value={mapHeight}
+                onChange={handleMapHeightChange}
+              />
+            </div>
+          </ModalShell>
+        </>
+      )}
+
       {editMode && (
         <aside className={settingsDockClassName}>
           {isCompactEditor ? (
@@ -740,48 +868,21 @@ function MapEditor({ editMode }: { editMode: boolean }) {
                 </button>
               </div>
 
-              <div className={compactCardStripClassName}>
-                <EditorCard
+              <div className='grid gap-2'>
+                <CompactSettingsTrigger
                   icon={<Info size={18} strokeWidth={2.25} />}
                   title={t('basic-info')}
-                  className={compactCardClassName}
-                >
-                  <EditorField
-                    id='map-name'
-                    label='Map Name'
-                    value={mapName}
-                    onChange={(e) => setMapName(e.target.value)}
-                  />
-                  <EditorField
-                    id='map-desc'
-                    label='Map Description'
-                    value={mapDescription}
-                    onChange={(e) => setMapDescription(e.target.value)}
-                    multiline
-                  />
-                </EditorCard>
-                <EditorCard
+                  summary={compactMapNameSummary}
+                  detail={compactMapDescriptionSummary}
+                  onClick={() => setOpenCompactBasicInfoDialog(true)}
+                />
+                <CompactSettingsTrigger
                   icon={<Scaling size={18} strokeWidth={2.25} />}
                   title={t('map-size')}
-                  className={compactCardClassName}
-                >
-                  <div className='grid grid-cols-2 gap-3'>
-                    <EditorField
-                      id='map-width'
-                      label='Map Width'
-                      type='number'
-                      value={mapWidth}
-                      onChange={handleMapWidthChange}
-                    />
-                    <EditorField
-                      id='map-height'
-                      label='Map Height'
-                      type='number'
-                      value={mapHeight}
-                      onChange={handleMapHeightChange}
-                    />
-                  </div>
-                </EditorCard>
+                  summary={`${mapWidth} × ${mapHeight}`}
+                  detail={t('edit-map-size')}
+                  onClick={() => setOpenCompactMapSizeDialog(true)}
+                />
               </div>
             </>
           ) : (
@@ -894,20 +995,48 @@ function MapEditor({ editMode }: { editMode: boolean }) {
                 {tileName === 'plain' ? (
                   <div
                     style={{
-                      height: paletteIconSize,
-                      width: paletteIconSize,
-                      backgroundColor: '#808080',
-                      border: '#000 solid 1px',
+                      display: 'grid',
+                      placeItems: 'center',
+                      width: paletteIconSize + 10,
+                      height: paletteIconSize + 10,
+                      borderRadius: 9999,
+                      background: 'var(--bw-map-icon-backdrop)',
+                      boxShadow: 'inset 0 0 0 1px var(--bw-map-icon-outline)',
                     }}
-                  />
+                  >
+                    <div
+                      style={{
+                        height: paletteIconSize,
+                        width: paletteIconSize,
+                        backgroundColor: blankFill,
+                        border: '1px solid var(--bw-map-tile-border)',
+                      }}
+                    />
+                  </div>
                 ) : (
-                  <Image
-                    src={TileType2Image[name2TileType[tileName]]}
-                    alt={tileName}
-                    width={paletteIconSize}
-                    height={paletteIconSize}
-                    draggable={false}
-                  />
+                  <div
+                    style={{
+                      display: 'grid',
+                      placeItems: 'center',
+                      width: paletteIconSize + 10,
+                      height: paletteIconSize + 10,
+                      borderRadius: 9999,
+                      background: 'var(--bw-map-icon-backdrop)',
+                      boxShadow: 'inset 0 0 0 1px var(--bw-map-icon-outline)',
+                    }}
+                  >
+                    <Image
+                      src={TileType2Image[name2TileType[tileName]]}
+                      alt={tileName}
+                      width={paletteIconSize}
+                      height={paletteIconSize}
+                      draggable={false}
+                      style={{
+                        opacity: 'var(--bw-map-icon-opacity)',
+                        filter: 'var(--bw-map-icon-filter)',
+                      }}
+                    />
+                  </div>
                 )}
                 <span className='mt-1 text-center text-[9px] font-black uppercase tracking-[0.08em] md:text-[10px]'>
                   {t(tileName)}
@@ -934,7 +1063,7 @@ function MapEditor({ editMode }: { editMode: boolean }) {
                   <input
                     id={property}
                     type='number'
-                    className='h-9 w-full border border-zinc-700 bg-zinc-950/90 px-1 py-1 text-center text-xs font-black text-zinc-100 md:h-10'
+                    className='bw-input h-9 min-h-0 px-1 py-1 text-xs md:h-10'
                     min={property2min[property]}
                     max={property2max[property]}
                     value={property2var[property]}

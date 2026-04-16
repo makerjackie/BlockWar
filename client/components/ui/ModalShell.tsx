@@ -39,7 +39,7 @@ export default function ModalShell({
 
   return (
     <div
-      className='fixed inset-0 z-[1500] flex items-center justify-center bg-black/78 px-4 py-6 backdrop-blur-sm'
+      className='pointer-events-auto fixed inset-0 z-[1500] flex items-center justify-center bg-black/78 px-4 py-6 backdrop-blur-sm'
       onClick={() => {
         if (closeOnBackdrop) onClose();
       }}
@@ -49,7 +49,10 @@ export default function ModalShell({
         onClick={(event) => event.stopPropagation()}
       >
         {(title || showCloseButton) && (
-          <div className='flex items-start justify-between gap-4 border-b border-zinc-800 px-5 py-4'>
+          <div
+            className='flex items-start justify-between gap-4 border-b px-5 py-4'
+            style={{ borderColor: 'var(--bw-line)' }}
+          >
             <div className='min-w-0'>
               {typeof title === 'string' ? (
                 <h2 className='bw-title text-3xl'>{title}</h2>
@@ -60,7 +63,7 @@ export default function ModalShell({
             {showCloseButton && (
               <button
                 type='button'
-                className='grid size-10 shrink-0 place-items-center border border-zinc-700 bg-zinc-950 text-zinc-100 transition hover:bg-yellow-300 hover:text-zinc-950'
+                className='bw-button bw-button-secondary grid size-10 min-h-0 shrink-0 place-items-center px-0'
                 onClick={onClose}
                 aria-label='Close dialog'
               >
@@ -73,7 +76,10 @@ export default function ModalShell({
           {children}
         </div>
         {actions && (
-          <div className='flex flex-wrap justify-end gap-2 border-t border-zinc-800 px-5 py-4'>
+          <div
+            className='flex flex-wrap justify-end gap-2 border-t px-5 py-4'
+            style={{ borderColor: 'var(--bw-line)' }}
+          >
             {actions}
           </div>
         )}

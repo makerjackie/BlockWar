@@ -62,6 +62,14 @@ export default React.memo(function CustomMapTile(props: CustomMapTileProps) {
     () => (zoomedSize - zoomedImageSize) / 2,
     [zoomedSize, zoomedImageSize]
   );
+  const imageFrameSize = useMemo(
+    () => Math.min(zoomedSize - 2, zoomedImageSize + Math.max(4, zoomedSize * 0.22)),
+    [zoomedImageSize, zoomedSize]
+  );
+  const imageFrameXY = useMemo(
+    () => (zoomedSize - imageFrameSize) / 2,
+    [imageFrameSize, zoomedSize]
+  );
 
   const bgcolor = useMemo(() => {
     //
@@ -116,9 +124,24 @@ export default React.memo(function CustomMapTile(props: CustomMapTileProps) {
           width: zoomedSize,
           height: zoomedSize,
           backgroundColor: bgcolor,
-          border: '#000 solid 1px',
+          border: '1px solid var(--bw-map-tile-border)',
         }}
       />
+      {image && (
+        <div
+          style={{
+            position: 'absolute',
+            left: imageFrameXY,
+            top: imageFrameXY,
+            width: imageFrameSize,
+            height: imageFrameSize,
+            borderRadius: 9999,
+            background: 'var(--bw-map-icon-backdrop)',
+            boxShadow: 'inset 0 0 0 1px var(--bw-map-icon-outline)',
+            pointerEvents: 'none',
+          }}
+        />
+      )}
       {image && (
         <Image
           src={image}
@@ -128,7 +151,9 @@ export default React.memo(function CustomMapTile(props: CustomMapTileProps) {
             position: 'absolute',
             left: imageXY,
             top: imageXY,
-            opacity: 0.8,
+            opacity: 'var(--bw-map-icon-opacity)',
+            filter: 'var(--bw-map-icon-filter)',
+            pointerEvents: 'none',
           }}
           alt={`tile-${x}-${y}`}
           draggable={false}

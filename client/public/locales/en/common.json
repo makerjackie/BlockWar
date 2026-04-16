@@ -131,26 +131,43 @@
   },
   "tutorialSetup": {
     "badge": "Beginner Tutorial",
-    "title": "Play a bot practice match",
-    "copy": "Press start to add two bots and begin immediately. Follow the in-game guide to select your king, expand, split armies, and attack the enemy king.",
-    "opponentValue": "2 bots",
-    "speedLabel": "Speed",
-    "opponentLabel": "Opponent",
-    "fogLabel": "Fog",
-    "fogValue": "Disabled here",
-    "fogNote": "Note: tutorial rooms soften fog of war to reduce confusion; normal rooms enable fog of war by default.",
-    "goalLabel": "Your Goal",
-    "goalCopy": "Capture one enemy crown early so you feel the swing of instantly taking over a full territory, then snowball toward the final win.",
-    "stepsLabel": "Read these 3 steps first",
-    "stepOne": "Remember the goal: once you capture an enemy crown tile, their territory becomes yours.",
-    "stepTwo": "Press the start button below and the game will add 2 bots and begin immediately.",
-    "stepThree": "Follow the top tutorial prompts to learn how to return home, expand, split armies, and capture your first enemy crown.",
-    "keysLabel": "Useful Keys",
-    "keyG": "Return to king",
-    "keyZ": "Half move",
-    "keyQ": "Clear queue",
+    "title": "Before you start, take these 3 quick steps",
+    "progress": "Step {{current}} / {{total}}",
+    "backButton": "Back",
+    "nextButton": "Next",
     "startButton": "Start Beginner Tutorial",
-    "startingButton": "Starting Tutorial..."
+    "startingButton": "Starting Tutorial...",
+    "steps": {
+      "objective": {
+        "label": "First, the goal",
+        "title": "Capture one enemy king early",
+        "copy": "You do not need to learn every rule upfront. The fast aha moment is feeling how the map swings once you take an enemy crown.",
+        "highlightLabel": "Remember this one rule",
+        "highlightValue": "When you capture an enemy crown tile, their entire territory becomes yours instantly."
+      },
+      "practiceRoom": {
+        "label": "Then, the setup",
+        "title": "This room is a light practice match",
+        "copy": "BlockWar will add 2 bots for you, keep the pace at 1x speed, and let you focus on movement, expansion, and your first king capture.",
+        "speedLabel": "Speed",
+        "speedValue": "1x",
+        "opponentLabel": "Opponents",
+        "opponentValue": "2 bots",
+        "fogLabel": "Fog",
+        "fogValue": "Off in tutorial",
+        "note": "Normal matches enable fog of war by default. The tutorial turns it off first so you can learn with less noise."
+      },
+      "firstMoves": {
+        "label": "Finally, your opening",
+        "title": "Follow the top guide after the match begins",
+        "copy": "Once the match starts, do just three things: return to your king, expand outward, then look for your first enemy crown capture.",
+        "keysLabel": "Useful keys to remember",
+        "keyG": "Return to king",
+        "keyZ": "Half move",
+        "keyQ": "Clear queue",
+        "note": "Especially G: if you lose track of your position, one tap brings you straight back to your own king."
+      }
+    }
   },
   "tutorialGuide": {
     "progress": "Tutorial {{current}} / {{total}}",

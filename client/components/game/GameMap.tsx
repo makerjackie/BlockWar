@@ -30,6 +30,8 @@ import {
 } from 'lucide-react';
 import MapTile from './MapTile';
 
+const myKingStartHighlightDurationMs = 4500;
+
 function MapControlButton({
   title,
   onClick,
@@ -80,6 +82,7 @@ function GameMap() {
   const lastTouchTime = useRef(0);
   const touchHalf = useRef(false);
   const [showDirections, setShowDirections] = useState(false);
+  const [showMyKingStartHighlight, setShowMyKingStartHighlight] = useState(false);
 
   const toggleDirections = () => {
     setShowDirections(!showDirections);
@@ -130,6 +133,22 @@ function GameMap() {
   //     centerGeneral();
   //   }
   // }, [isSmallScreen, centerGeneral]);
+
+  useEffect(() => {
+    if (!initGameInfo || !room.gameStarted) {
+      setShowMyKingStartHighlight(false);
+      return;
+    }
+
+    setShowMyKingStartHighlight(true);
+    const timeoutId = window.setTimeout(() => {
+      setShowMyKingStartHighlight(false);
+    }, myKingStartHighlightDurationMs);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [initGameInfo, room.gameStarted]);
 
   const handleKeyDown = useCallback(
     (event: KeyboardEvent) => {
@@ -209,7 +228,7 @@ function GameMap() {
           _className: queueItem?.className ?? '',
           tileHalf,
           isSelected,
-          isMyKing,
+          showMyKingHighlight: isMyKing && showMyKingStartHighlight,
           isNextPossibleMove: testIfNextPossibleMove(tile[0], x, y),
         };
       });
@@ -220,6 +239,7 @@ function GameMap() {
     myPlayerColor,
     queueEmpty,
     selectedMapTileInfo,
+    showMyKingStartHighlight,
     testIfNextPossibleMove,
   ]);
 

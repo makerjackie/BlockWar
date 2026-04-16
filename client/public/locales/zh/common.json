@@ -132,26 +132,43 @@
   },
   "tutorialSetup": {
     "badge": "新手教程",
-    "title": "打一局机器人练习赛",
-    "copy": "点击开始后会自动加入 2 个机器人并开局。跟着对局内提示练习选中主城、扩张、半兵移动和进攻敌方主城。",
-    "opponentValue": "2 个机器人",
-    "speedLabel": "速度",
-    "opponentLabel": "对手",
-    "fogLabel": "迷雾",
-    "fogValue": "教程关闭",
-    "fogNote": "说明：教程房为了降低理解成本会弱化战争迷雾；普通房默认开启战争迷雾。",
-    "goalLabel": "你的目标",
-    "goalCopy": "优先吃掉一个敌方王城，感受“占领后直接接管整片地盘”的节奏变化，再推进到最终胜利。",
-    "stepsLabel": "开始前看这 3 步",
-    "stepOne": "先记住目标：占领敌方皇冠格子后，对方领地会整体归你。",
-    "stepTwo": "点击下方开始按钮，系统会自动加入 2 个机器人并立即开局。",
-    "stepThree": "开局后跟着顶部提示操作，先学会回主城、扩张、半兵，再去吃掉第一个敌方王城。",
-    "keysLabel": "建议先记住",
-    "keyG": "回到主城",
-    "keyZ": "半兵移动",
-    "keyQ": "清空队列",
+    "title": "开始前，先看这 3 小步",
+    "progress": "第 {{current}} 步 / 共 {{total}} 步",
+    "backButton": "上一步",
+    "nextButton": "下一步",
     "startButton": "开始新手教程",
-    "startingButton": "正在启动教程..."
+    "startingButton": "正在启动教程...",
+    "steps": {
+      "objective": {
+        "label": "先记目标",
+        "title": "先吃掉一个敌方王城",
+        "copy": "这局最重要的不是一次看懂所有规则，而是尽快体验到第一次“翻盘感”。",
+        "highlightLabel": "记住这一条就够了",
+        "highlightValue": "占领敌方皇冠格子后，对方整片领地会立刻归你。"
+      },
+      "practiceRoom": {
+        "label": "再看环境",
+        "title": "这是一局轻量练习房",
+        "copy": "系统会自动给你配 2 个机器人，节奏维持 1 倍速，方便你把注意力放在移动、扩张和吃王城上。",
+        "speedLabel": "速度",
+        "speedValue": "1 倍速",
+        "opponentLabel": "对手",
+        "opponentValue": "2 个机器人",
+        "fogLabel": "迷雾",
+        "fogValue": "教程里关闭",
+        "note": "普通模式默认开启战争迷雾；教程先帮你把信息噪音降下来。"
+      },
+      "firstMoves": {
+        "label": "最后看操作",
+        "title": "开局后先跟着顶部提示走",
+        "copy": "进局后只做三件事：先回主城、再向外扩张、接着找机会吃掉第一个敌方王城。",
+        "keysLabel": "建议先记住这几个键",
+        "keyG": "回到主城",
+        "keyZ": "半兵移动",
+        "keyQ": "清空队列",
+        "note": "尤其是 G：迷路时按一下，就能立刻找回“我的主城”在哪里。"
+      }
+    }
   },
   "tutorialGuide": {
     "progress": "教程 {{current}} / {{total}}",

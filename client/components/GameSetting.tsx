@@ -18,6 +18,9 @@ import {
 import SliderBox from './SliderBox';
 import PlayerTable from './PlayerTable';
 import MapExplorer from './game/MapExplorer';
+import TutorialSetupFlow, {
+  TutorialSetupFlowStep,
+} from './game/TutorialSetupFlow';
 
 import { forceStartOK, MaxTeamNum, SpeedOptions } from '@/lib/constants';
 import { useGame, useGameDispatch } from '@/context/GameContext';
@@ -92,6 +95,7 @@ const GameSetting: React.FC<GameSettingProps> = () => {
   const [forceStart, setForceStart] = useState(false);
   const [openMapExplorer, setOpenMapExplorer] = useState(false);
   const [tutorialStarting, setTutorialStarting] = useState(false);
+  const [tutorialSetupStepIndex, setTutorialSetupStepIndex] = useState(0);
 
   const { room, socketRef, myPlayerId, myUserName, team } = useGame();
   const { roomDispatch, snackStateDispatch } = useGameDispatch();
@@ -212,14 +216,105 @@ const GameSetting: React.FC<GameSettingProps> = () => {
     socketRef.current.emit('start_tutorial');
   };
 
+  const tutorialSetupSteps = useMemo<TutorialSetupFlowStep[]>(() => {
+    return [
+      {
+        id: 'objective',
+        label: t('tutorialSetup.steps.objective.label'),
+        title: t('tutorialSetup.steps.objective.title'),
+        copy: t('tutorialSetup.steps.objective.copy'),
+        icon: <Crown size={20} strokeWidth={2.25} />,
+        detail: (
+          <div className='border border-zinc-800 bg-zinc-950 px-4 py-3'>
+            <p className='text-xs font-black uppercase tracking-[0.16em] text-yellow-300'>
+              {t('tutorialSetup.steps.objective.highlightLabel')}
+            </p>
+            <p className='mt-2 text-sm leading-6 text-zinc-200'>
+              {t('tutorialSetup.steps.objective.highlightValue')}
+            </p>
+          </div>
+        ),
+      },
+      {
+        id: 'practice-room',
+        label: t('tutorialSetup.steps.practiceRoom.label'),
+        title: t('tutorialSetup.steps.practiceRoom.title'),
+        copy: t('tutorialSetup.steps.practiceRoom.copy'),
+        icon: <Bot size={20} strokeWidth={2.25} />,
+        detail: (
+          <div className='grid gap-3 sm:grid-cols-3'>
+            <div className='border border-zinc-800 bg-zinc-950 px-4 py-3'>
+              <p className='text-[11px] font-black uppercase tracking-[0.18em] text-zinc-500'>
+                {t('tutorialSetup.steps.practiceRoom.speedLabel')}
+              </p>
+              <p className='mt-1 text-lg font-black text-yellow-300'>
+                {t('tutorialSetup.steps.practiceRoom.speedValue')}
+              </p>
+            </div>
+            <div className='border border-zinc-800 bg-zinc-950 px-4 py-3'>
+              <p className='text-[11px] font-black uppercase tracking-[0.18em] text-zinc-500'>
+                {t('tutorialSetup.steps.practiceRoom.opponentLabel')}
+              </p>
+              <p className='mt-1 text-lg font-black text-yellow-300'>
+                {t('tutorialSetup.steps.practiceRoom.opponentValue')}
+              </p>
+            </div>
+            <div className='border border-zinc-800 bg-zinc-950 px-4 py-3'>
+              <p className='text-[11px] font-black uppercase tracking-[0.18em] text-zinc-500'>
+                {t('tutorialSetup.steps.practiceRoom.fogLabel')}
+              </p>
+              <p className='mt-1 text-lg font-black text-yellow-300'>
+                {t('tutorialSetup.steps.practiceRoom.fogValue')}
+              </p>
+            </div>
+          </div>
+        ),
+        note: t('tutorialSetup.steps.practiceRoom.note'),
+      },
+      {
+        id: 'first-moves',
+        label: t('tutorialSetup.steps.firstMoves.label'),
+        title: t('tutorialSetup.steps.firstMoves.title'),
+        copy: t('tutorialSetup.steps.firstMoves.copy'),
+        icon: <Castle size={20} strokeWidth={2.25} />,
+        detail: (
+          <div>
+            <p className='bw-page-copy mb-3'>
+              {t('tutorialSetup.steps.firstMoves.keysLabel')}
+            </p>
+            <div className='flex flex-wrap gap-2 text-xs font-black uppercase tracking-[0.14em] text-zinc-300'>
+              <span className='border border-yellow-300/60 bg-yellow-300/10 px-3 py-2 text-yellow-300'>
+                G · {t('tutorialSetup.steps.firstMoves.keyG')}
+              </span>
+              <span className='border border-zinc-700 px-3 py-2'>
+                Z · {t('tutorialSetup.steps.firstMoves.keyZ')}
+              </span>
+              <span className='border border-zinc-700 px-3 py-2'>
+                Q · {t('tutorialSetup.steps.firstMoves.keyQ')}
+              </span>
+            </div>
+          </div>
+        ),
+        note: t('tutorialSetup.steps.firstMoves.note'),
+      },
+    ];
+  }, [t]);
+
+  const currentTutorialSetupStep =
+    tutorialSetupSteps[tutorialSetupStepIndex] ?? tutorialSetupSteps[0];
+  const isLastTutorialSetupStep =
+    tutorialSetupStepIndex === tutorialSetupSteps.length - 1;
+
   useEffect(() => {
     if (!isTutorialRoom) {
       setTutorialStarting(false);
+      setTutorialSetupStepIndex(0);
       return;
     }
 
     if (room.gameStarted || currentPlayer?.forceStart) {
       setTutorialStarting(false);
+      setTutorialSetupStepIndex(0);
     }
   }, [currentPlayer?.forceStart, isTutorialRoom, room.gameStarted]);
 
@@ -312,83 +407,36 @@ const GameSetting: React.FC<GameSettingProps> = () => {
 
         <div className='space-y-4 px-4 py-4 sm:px-5'>
           {isTutorialRoom ? (
-            <div className='space-y-4'>
-              <div className='border border-yellow-300/30 bg-yellow-300/10 px-4 py-4'>
-                <p className='bw-page-copy mb-2'>{t('tutorialSetup.badge')}</p>
-                <h2 className='text-2xl font-black text-zinc-50'>
-                  {t('tutorialSetup.title')}
-                </h2>
-                <p className='mt-2 text-sm text-zinc-300'>
-                  {t('tutorialSetup.copy')}
-                </p>
-              </div>
-
-              <div className='grid gap-3 sm:grid-cols-3'>
-                <div className='border border-zinc-800 bg-zinc-950/60 px-4 py-3'>
-                  <p className='text-[11px] font-black uppercase tracking-[0.18em] text-zinc-500'>
-                    {t('tutorialSetup.speedLabel')}
-                  </p>
-                  <p className='mt-1 text-lg font-black text-yellow-300'>1x</p>
-                </div>
-                <div className='border border-zinc-800 bg-zinc-950/60 px-4 py-3'>
-                  <p className='text-[11px] font-black uppercase tracking-[0.18em] text-zinc-500'>
-                    {t('tutorialSetup.opponentLabel')}
-                  </p>
-                  <p className='mt-1 text-lg font-black text-yellow-300'>
-                    {t('bot')}
-                  </p>
-                  <p className='mt-1 text-xs text-zinc-500'>
-                    {t('tutorialSetup.opponentValue')}
-                  </p>
-                </div>
-                <div className='border border-zinc-800 bg-zinc-950/60 px-4 py-3'>
-                  <p className='text-[11px] font-black uppercase tracking-[0.18em] text-zinc-500'>
-                    {t('tutorialSetup.fogLabel')}
-                  </p>
-                  <p className='mt-1 text-lg font-black text-yellow-300'>
-                    {t('tutorialSetup.fogValue')}
-                  </p>
-                </div>
-              </div>
-
-              <p className='text-sm text-zinc-400'>
-                {t('tutorialSetup.fogNote')}
-              </p>
-
-              <div className='border border-zinc-800 bg-zinc-950/60 px-4 py-4'>
-                <p className='bw-page-copy mb-2'>{t('tutorialSetup.goalLabel')}</p>
-                <p className='text-sm leading-6 text-zinc-300'>
-                  {t('tutorialSetup.goalCopy')}
-                </p>
-              </div>
-
-              <div className='border border-zinc-800 bg-zinc-950/60 px-4 py-4'>
-                <p className='bw-page-copy mb-3'>{t('tutorialSetup.stepsLabel')}</p>
-                <ol className='space-y-3 text-sm leading-6 text-zinc-300'>
-                  <li>
-                    <span className='mr-2 text-yellow-300'>1.</span>
-                    {t('tutorialSetup.stepOne')}
-                  </li>
-                  <li>
-                    <span className='mr-2 text-yellow-300'>2.</span>
-                    {t('tutorialSetup.stepTwo')}
-                  </li>
-                  <li>
-                    <span className='mr-2 text-yellow-300'>3.</span>
-                    {t('tutorialSetup.stepThree')}
-                  </li>
-                </ol>
-              </div>
-
-              <div className='border border-zinc-800 bg-zinc-950/60 px-4 py-4'>
-                <p className='bw-page-copy mb-3'>{t('tutorialSetup.keysLabel')}</p>
-                <div className='flex flex-wrap gap-2 text-xs font-black uppercase tracking-[0.14em] text-zinc-300'>
-                  <span className='border border-zinc-700 px-3 py-2'>G · {t('tutorialSetup.keyG')}</span>
-                  <span className='border border-zinc-700 px-3 py-2'>Z · {t('tutorialSetup.keyZ')}</span>
-                  <span className='border border-zinc-700 px-3 py-2'>Q · {t('tutorialSetup.keyQ')}</span>
-                </div>
-              </div>
-            </div>
+            <TutorialSetupFlow
+              badge={t('tutorialSetup.badge')}
+              title={t('tutorialSetup.title')}
+              progressLabel={t('tutorialSetup.progress', {
+                current: tutorialSetupStepIndex + 1,
+                total: tutorialSetupSteps.length,
+              })}
+              stepIndex={tutorialSetupStepIndex}
+              totalSteps={tutorialSetupSteps.length}
+              step={currentTutorialSetupStep}
+              canGoBack={tutorialSetupStepIndex > 0}
+              isLastStep={isLastTutorialSetupStep}
+              nextLabel={t('tutorialSetup.nextButton')}
+              backLabel={t('tutorialSetup.backButton')}
+              startLabel={t('tutorialSetup.startButton')}
+              startingLabel={t('tutorialSetup.startingButton')}
+              startBusy={tutorialStarting}
+              startDisabled={!canStartTutorial}
+              onBack={() =>
+                setTutorialSetupStepIndex((currentStep) =>
+                  Math.max(currentStep - 1, 0)
+                )
+              }
+              onNext={() =>
+                setTutorialSetupStepIndex((currentStep) =>
+                  Math.min(currentStep + 1, tutorialSetupSteps.length - 1)
+                )
+              }
+              onStart={handleStartTutorial}
+            />
           ) : (
             <>
               <div className='flex items-center justify-between gap-3'>
@@ -598,56 +646,54 @@ const GameSetting: React.FC<GameSettingProps> = () => {
         </div>
       </section>
 
-      <section className='menu-container mt-4 overflow-hidden'>
-        <div className='flex flex-wrap items-center justify-between gap-3 border-b border-zinc-800 px-4 py-4 sm:px-5'>
-          <div className='flex items-center gap-3'>
-            <Users className='text-yellow-300' size={18} strokeWidth={2.25} />
-            <div>
-              <p className='bw-page-copy'>Roster</p>
-              <h3 className='text-lg font-black text-zinc-50'>{t('players')}</h3>
+      {!isTutorialRoom && (
+        <>
+          <section className='menu-container mt-4 overflow-hidden'>
+            <div className='flex flex-wrap items-center justify-between gap-3 border-b border-zinc-800 px-4 py-4 sm:px-5'>
+              <div className='flex items-center gap-3'>
+                <Users className='text-yellow-300' size={18} strokeWidth={2.25} />
+                <div>
+                  <p className='bw-page-copy'>Roster</p>
+                  <h3 className='text-lg font-black text-zinc-50'>{t('players')}</h3>
+                </div>
+              </div>
+              <button
+                type='button'
+                className='bw-button bw-button-secondary min-h-10 px-3 text-xs'
+                disabled={!canManageBots || room.players.length >= room.maxPlayers}
+                onClick={handleAddBot}
+              >
+                <Bot size={16} strokeWidth={2.5} />
+                {t('add-bot')}
+              </button>
             </div>
-          </div>
-          {!isTutorialRoom && (
-            <button
-              type='button'
-              className='bw-button bw-button-secondary min-h-10 px-3 text-xs'
-              disabled={!canManageBots || room.players.length >= room.maxPlayers}
-              onClick={handleAddBot}
-            >
-              <Bot size={16} strokeWidth={2.5} />
-              {t('add-bot')}
-            </button>
-          )}
-        </div>
-        <div className='px-4 py-4 sm:px-5'>
-          <PlayerTable
-            myPlayerId={myPlayerId}
-            players={room.players}
-            handleChangeHost={handleChangeHost}
-            handleRemoveBot={handleRemoveBot}
-            disabled_ui={disabledUi}
-            canManageBots={canManageBots}
-            warringStatesMode={room.warringStatesMode}
-          />
-        </div>
-      </section>
+            <div className='px-4 py-4 sm:px-5'>
+              <PlayerTable
+                myPlayerId={myPlayerId}
+                players={room.players}
+                handleChangeHost={handleChangeHost}
+                handleRemoveBot={handleRemoveBot}
+                disabled_ui={disabledUi}
+                canManageBots={canManageBots}
+                warringStatesMode={room.warringStatesMode}
+              />
+            </div>
+          </section>
 
-      <button
-        type='button'
-        className={`bw-button mt-4 w-full justify-center text-base ${
-          tutorialStarting || forceStart || !!currentPlayer?.forceStart
-            ? 'bw-button-primary'
-            : 'bw-button-secondary'
-        }`}
-        disabled={isTutorialRoom ? !canStartTutorial || tutorialStarting : team === MaxTeamNum + 1}
-        onClick={isTutorialRoom ? handleStartTutorial : handleClickForceStart}
-      >
-        {isTutorialRoom
-          ? tutorialStarting
-            ? t('tutorialSetup.startingButton')
-            : t('tutorialSetup.startButton')
-          : `${t('ready')}(${room.forceStartNum}/${forceStartTarget})`}
-      </button>
+          <button
+            type='button'
+            className={`bw-button mt-4 w-full justify-center text-base ${
+              tutorialStarting || forceStart || !!currentPlayer?.forceStart
+                ? 'bw-button-primary'
+                : 'bw-button-secondary'
+            }`}
+            disabled={team === MaxTeamNum + 1}
+            onClick={handleClickForceStart}
+          >
+            {`${t('ready')}(${room.forceStartNum}/${forceStartTarget})`}
+          </button>
+        </>
+      )}
     </div>
   );
 };

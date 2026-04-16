@@ -15,12 +15,11 @@ import {
   revealedStroke,
 } from '@/lib/constants';
 
-const myKingGlowColor = 'rgba(250, 204, 21, 0.55)';
-const myKingRingColor = 'rgba(250, 204, 21, 0.95)';
-const myKingInnerRingColor = 'rgba(254, 249, 195, 0.95)';
-const myKingBadgeBackground = 'rgba(120, 53, 15, 0.95)';
-const myKingBadgeOutline = 'rgba(255, 255, 255, 0.75)';
-const myKingShadowColor = 'rgba(15, 23, 42, 0.72)';
+const myKingOutlineColor = 'rgba(250, 204, 21, 0.85)';
+const myKingHaloColor = 'rgba(250, 204, 21, 0.22)';
+const myKingBadgeBackground = 'rgba(24, 24, 27, 0.92)';
+const myKingBadgeBorder = 'rgba(250, 204, 21, 0.55)';
+const myKingBadgeIconColor = 'rgba(254, 249, 195, 0.95)';
 
 interface MapTileProps {
   zoom?: number;
@@ -35,7 +34,7 @@ interface MapTileProps {
   tileHalf: boolean;
   isSelected: boolean;
   isNextPossibleMove: boolean;
-  isMyKing: boolean;
+  showMyKingHighlight: boolean;
   warringStatesMode: boolean;
 }
 
@@ -53,7 +52,7 @@ export default React.memo(function MapTile(props: MapTileProps) {
     tileHalf,
     isSelected,
     isNextPossibleMove,
-    isMyKing,
+    showMyKingHighlight,
     warringStatesMode = false,
   } = props;
   const resolvedZoom = zoom ?? 1;
@@ -94,28 +93,24 @@ export default React.memo(function MapTile(props: MapTileProps) {
     [zoomedSize, resolvedImageZoom]
   );
 
-  const myKingGlowInset = useMemo(
-    () => -Math.max(3, Math.round(zoomedSize * 0.12)),
+  const myKingOutlineInset = useMemo(
+    () => Math.max(1, Math.round(zoomedSize * 0.06)),
     [zoomedSize]
   );
-  const myKingInnerInset = useMemo(
-    () => Math.max(2, Math.round(zoomedSize * 0.08)),
-    [zoomedSize]
-  );
-  const myKingRingWidth = useMemo(
-    () => Math.max(2, Math.round(zoomedSize * 0.08)),
+  const myKingOutlineWidth = useMemo(
+    () => Math.max(2, Math.round(zoomedSize * 0.05)),
     [zoomedSize]
   );
   const myKingBadgeSize = useMemo(
-    () => Math.max(14, Math.round(zoomedSize * 0.34)),
+    () => Math.max(10, Math.round(zoomedSize * 0.22)),
     [zoomedSize]
   );
   const myKingBadgeIconSize = useMemo(
-    () => Math.max(10, Math.round(myKingBadgeSize * 0.58)),
+    () => Math.max(8, Math.round(myKingBadgeSize * 0.56)),
     [myKingBadgeSize]
   );
-  const myKingBadgeOffset = useMemo(
-    () => -Math.max(5, Math.round(zoomedSize * 0.14)),
+  const myKingBadgeInset = useMemo(
+    () => Math.max(2, Math.round(zoomedSize * 0.08)),
     [zoomedSize]
   );
   const imageXY = useMemo(
@@ -191,32 +186,19 @@ export default React.memo(function MapTile(props: MapTileProps) {
       >
         {country}
       </div>
-      {isMyKing && (
+      {showMyKingHighlight && (
         <>
           <div
-            data-highlight='my-king-glow'
+            data-highlight='my-king-outline'
             aria-hidden='true'
             style={{
               position: 'absolute',
-              inset: myKingGlowInset,
-              border: `${myKingRingWidth}px solid ${myKingRingColor}`,
-              borderRadius: Math.max(8, Math.round(zoomedSize * 0.18)),
-              boxShadow: `0 0 0 2px ${myKingShadowColor}, 0 0 18px 6px ${myKingGlowColor}`,
+              inset: myKingOutlineInset,
+              border: `${myKingOutlineWidth}px solid ${myKingOutlineColor}`,
+              borderRadius: Math.max(4, Math.round(zoomedSize * 0.12)),
+              boxShadow: `0 0 0 2px ${myKingHaloColor}`,
               pointerEvents: 'none',
               zIndex: 2,
-            }}
-          />
-          <div
-            data-highlight='my-king-ring'
-            aria-hidden='true'
-            style={{
-              position: 'absolute',
-              inset: myKingInnerInset,
-              border: `${myKingRingWidth}px solid ${myKingInnerRingColor}`,
-              borderRadius: Math.max(6, Math.round(zoomedSize * 0.14)),
-              boxShadow: `0 0 0 1px ${myKingShadowColor} inset`,
-              pointerEvents: 'none',
-              zIndex: 3,
             }}
           />
           <div
@@ -224,14 +206,13 @@ export default React.memo(function MapTile(props: MapTileProps) {
             aria-hidden='true'
             style={{
               position: 'absolute',
-              top: myKingBadgeOffset,
-              right: myKingBadgeOffset,
+              top: myKingBadgeInset,
+              right: myKingBadgeInset,
               width: myKingBadgeSize,
               height: myKingBadgeSize,
               borderRadius: '9999px',
               backgroundColor: myKingBadgeBackground,
-              border: `1px solid ${myKingBadgeOutline}`,
-              boxShadow: `0 0 0 2px ${myKingRingColor}, 0 6px 12px rgba(15, 23, 42, 0.32)`,
+              border: `1px solid ${myKingBadgeBorder}`,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -242,7 +223,7 @@ export default React.memo(function MapTile(props: MapTileProps) {
             <Home
               size={myKingBadgeIconSize}
               strokeWidth={2.4}
-              color={myKingInnerRingColor}
+              color={myKingBadgeIconColor}
             />
           </div>
         </>

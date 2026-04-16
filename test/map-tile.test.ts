@@ -17,7 +17,7 @@ function renderMapTile(overrides: Partial<React.ComponentProps<typeof MapTile>> 
       tileHalf: false,
       isSelected: false,
       isNextPossibleMove: false,
-      isMyKing: false,
+      showMyKingHighlight: false,
       warringStatesMode: false,
       ...overrides,
     })
@@ -25,21 +25,19 @@ function renderMapTile(overrides: Partial<React.ComponentProps<typeof MapTile>> 
 }
 
 describe('MapTile own king highlight', () => {
-  it('renders a dedicated badge and ring for the player king', () => {
-    const html = renderMapTile({ isMyKing: true });
+  it('renders a light start-of-match cue for the player king', () => {
+    const html = renderMapTile({ showMyKingHighlight: true });
 
-    expect(html).toContain('data-highlight="my-king-glow"');
-    expect(html).toContain('data-highlight="my-king-ring"');
+    expect(html).toContain('data-highlight="my-king-outline"');
     expect(html).toContain('data-highlight="my-king-badge"');
   });
 
-  it('keeps ordinary tiles free of the own-king marker', () => {
+  it('keeps the marker hidden when the start hint is off', () => {
     const html = renderMapTile({
-      tile: [TileType.City, 1, 40] as TileProp,
-      isMyKing: false,
+      showMyKingHighlight: false,
     });
 
-    expect(html).not.toContain('data-highlight="my-king-glow"');
+    expect(html).not.toContain('data-highlight="my-king-outline"');
     expect(html).not.toContain('data-highlight="my-king-badge"');
   });
 });

@@ -4,6 +4,7 @@ import { Room, RoomPool } from '@/lib/types';
 import { useTranslation } from 'next-i18next';
 import { HardDrive, Plus, Map as MapIcon } from 'lucide-react';
 import Toast from '@/components/ui/Toast';
+import HolidayGreeting from '@/components/HolidayGreeting';
 
 type RoomPreset = 'standard' | 'warring_state';
 
@@ -134,6 +135,8 @@ function Lobby() {
                 BlockWar / 方块战争
               </div>
             </div>
+
+            <HolidayGreeting className='mb-4' />
 
             <div className='menu-container relative mb-4 flex flex-col gap-3 overflow-hidden p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5'>
               <div className='relative z-10 flex min-w-0 items-center gap-3'>

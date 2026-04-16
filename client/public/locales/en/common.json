@@ -41,6 +41,7 @@
   "create-warring-room": "Create Warring Room",
   "tutorial-room-name": "Beginner Tutorial",
   "create-map": "Create Map",
+  "lobby-more-actions": "More Actions",
   "game": "Game",
   "modifiers": "Modifiers",
   "basic-info": "Basic Info",
@@ -94,7 +95,7 @@
   "remove-bot": "Remove Bot",
   "bot": "Bot",
   "tutorial-complete-title": "Beginner Tutorial Complete!",
-  "tutorial-complete-copy": "You finished your first practice match. You can now enter the lobby for real matches; normal rooms enable fog of war by default.",
+  "tutorial-complete-copy": "You finished your first practice match. Head back to the lobby for another game against players or bots.",
   "are-you-sure-to-surrender": "Are you sure you want to surrender?",
   "are-you-sure-to-exit": "Are you sure you want to exit?",
   "type-a-message": "Click to Chat, Enter to send",
@@ -123,75 +124,45 @@
   "disconnect-from-server": "Disconnected from server.",
   "onboarding": {
     "tutorialBadge": "Recommended",
-    "title": "New here? Start with the beginner tutorial",
-    "copy": "BlockWar will create a 1v2 bot practice room at 1x speed with fog of war disabled, so you can learn movement, expansion, and capturing the enemy king.",
+    "title": "New here? Start with one tutorial match",
+    "copy": "Jump straight into a practice match and learn while playing: start from your capital, expand, then capture enemy capitals.",
     "startTutorial": "Start Beginner Tutorial",
     "creatingTutorial": "Creating Tutorial...",
     "skipTutorial": "Enter Lobby"
   },
-  "tutorialSetup": {
+  "tutorialAutoStart": {
     "badge": "Beginner Tutorial",
-    "title": "Before you start, take these 3 quick steps",
-    "progress": "Step {{current}} / {{total}}",
-    "backButton": "Back",
-    "nextButton": "Next",
-    "startButton": "Start Beginner Tutorial",
-    "startingButton": "Starting Tutorial...",
-    "steps": {
-      "objective": {
-        "label": "First, the goal",
-        "title": "Capture one enemy king early",
-        "copy": "You do not need to learn every rule upfront. The fast aha moment is feeling how the map swings once you take an enemy crown.",
-        "highlightLabel": "Remember this one rule",
-        "highlightValue": "When you capture an enemy crown tile, their entire territory becomes yours instantly."
-      },
-      "practiceRoom": {
-        "label": "Then, the setup",
-        "title": "This room is a light practice match",
-        "copy": "BlockWar will add 2 bots for you, keep the pace at 1x speed, and let you focus on movement, expansion, and your first king capture.",
-        "speedLabel": "Speed",
-        "speedValue": "1x",
-        "opponentLabel": "Opponents",
-        "opponentValue": "2 bots",
-        "fogLabel": "Fog",
-        "fogValue": "Off in tutorial",
-        "note": "Normal matches enable fog of war by default. The tutorial turns it off first so you can learn with less noise."
-      },
-      "firstMoves": {
-        "label": "Finally, your opening",
-        "title": "Follow the top guide after the match begins",
-        "copy": "Once the match starts, do just three things: return to your king, expand outward, then look for your first enemy crown capture.",
-        "keysLabel": "Useful keys to remember",
-        "keyG": "Return to king",
-        "keyZ": "Half move",
-        "keyQ": "Clear queue",
-        "note": "Especially G: if you lose track of your position, one tap brings you straight back to your own king."
-      }
-    }
+    "title": "Entering practice match",
+    "copy": "Follow the top guide once the match begins: move out from your capital, expand, then capture enemy capitals.",
+    "autoStarting": "Room ready, auto-starting now",
+    "connecting": "Connecting to room...",
+    "waitingHost": "Waiting for host to start the tutorial...",
+    "startButton": "Enter now",
+    "startingButton": "Entering..."
   },
   "tutorialGuide": {
     "progress": "Tutorial {{current}} / {{total}}",
     "hide": "Hide",
     "show": "Show Tutorial",
-    "cityHint": "Cities keep producing units and are the best neutral resources to capture while expanding.",
-    "fogHint": "Tutorial matches reveal the enemy king to help you practice tempo; normal matches require scouting through fog of war.",
-    "keyGHint": "Press G to jump back to your king whenever you lose your bearings.",
+    "cityHint": "Cities and capitals produce 1 unit every turn, so grabbing a city early is usually worth it.",
+    "captureHint": "After one capital falls, keep looking for the next one. You win when every enemy capital is yours.",
+    "moveHint": "You can move with WASD, arrow keys, mouse clicks, or mobile drag. A tile needs at least 2 units to move because 1 unit must stay behind.",
     "steps": {
-      "select_general": {
-        "title": "Select your king first",
-        "copy": "Click the crown tile, or press G to jump back to your king. Every move starts from a tile you own."
+      "first_move": {
+        "title": "Learn the basic move",
+        "copy": "Your capital is already selected. Move into a neighboring tile now. You can only move from your own land, and a tile needs at least 2 units because 1 unit always stays behind."
       },
-      "expand_frontier": {
-        "title": "Expand to adjacent tiles",
-        "copy": "Use WASD, arrow keys, mouse clicks, or mobile drag to move into a neighboring tile. Spread out early so your army can grow."
+      "grow_income": {
+        "title": "Spread out to grow faster",
+        "copy": "Plains produce 1 unit every 25 turns, so more land means faster growth. Expand first, then pick stronger fights."
       },
       "split_army": {
         "title": "Try a half-army move",
-        "copy": "Press Z to send 50% of a stack, then move again. Splitting lets you keep strength behind while expanding."
+        "copy": "Press Z to send half your army, then move again. It helps you expand without emptying the tile behind you."
       },
       "hunt_king": {
-        "title": "Attack the enemy king",
-        "copy": "Keep advancing and capture the enemy crown tile. Once you take their king, their territory becomes yours."
+        "title": "Capture enemy capitals",
+        "copy": "Your goal is to capture every enemy capital. When one falls, all of that player's land and army become yours, but the army is halved."
       }
     }
   },
@@ -199,11 +170,11 @@
     "title": "How to Play",
     "shortcut": "Shortcut",
     "key": "Key",
-    "goal": "Your goal is to capture other generals",
-    "plains": "Plains produce one unit every 25 turns, expand your territory as much as possible!",
-    "cities": "Cities and generals produce one unit every turn",
+    "goal": "Your goal is to capture every opponent's capital (crown tile).",
+    "plains": "Plains produce 1 unit every 25 turns. Expanding territory helps you build up faster.",
+    "cities": "Cities and capitals produce 1 unit every turn",
     "moves": "You can move twice per turn.",
-    "capture": "When you capture the enemy general, all his territory belongs to you and his army strength is halved and becomes yours.",
+    "capture": "When you capture an enemy capital, their territory becomes yours instantly (army is halved).",
     "shortcuts": "Keyboard shortcuts:",
     "move": "Move",
     "openChat": "Open Chat",
@@ -220,6 +191,6 @@
     "wsad": "WSAD / ArrowKey / MouseClick / TouchDrag on Mobile",
     "enter": "Enter",
     "surrender": "Surrender",
-    "beginnerTutorial": "If this is your first match, start from Beginner Tutorial in the lobby. It disables fog and adds 2 bots for practice; normal rooms enable fog by default."
+    "beginnerTutorial": "If this is your first match, start Beginner Tutorial from the lobby and learn step by step in-game."
   }
 }

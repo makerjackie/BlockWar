@@ -21,30 +21,32 @@ describe('onboarding helpers', () => {
 
 describe('tutorial guide progression', () => {
   it('advances only after the player performs each tutorial action', () => {
-    let stage = advanceTutorialStage('select-general', {
-      selectedGeneral: false,
+    let stage = advanceTutorialStage('first-move', {
       ownedLandCount: 1,
       halfArmySelected: false,
     });
-    expect(stage).toBe('select-general');
+    expect(stage).toBe('first-move');
 
     stage = advanceTutorialStage(stage, {
-      selectedGeneral: true,
-      ownedLandCount: 1,
-      halfArmySelected: false,
-    });
-    expect(stage).toBe('expand-frontier');
-
-    stage = advanceTutorialStage(stage, {
-      selectedGeneral: false,
       ownedLandCount: 2,
+      halfArmySelected: false,
+    });
+    expect(stage).toBe('grow-income');
+
+    stage = advanceTutorialStage(stage, {
+      ownedLandCount: 3,
+      halfArmySelected: false,
+    });
+    expect(stage).toBe('grow-income');
+
+    stage = advanceTutorialStage(stage, {
+      ownedLandCount: 4,
       halfArmySelected: false,
     });
     expect(stage).toBe('split-army');
 
     stage = advanceTutorialStage(stage, {
-      selectedGeneral: false,
-      ownedLandCount: 2,
+      ownedLandCount: 4,
       halfArmySelected: true,
     });
     expect(stage).toBe('hunt-king');

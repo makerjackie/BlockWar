@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { useTranslation } from 'next-i18next';
@@ -18,15 +18,12 @@ import {
 import SliderBox from './SliderBox';
 import PlayerTable from './PlayerTable';
 import MapExplorer from './game/MapExplorer';
-import TutorialSetupFlow, {
-  TutorialSetupFlowStep,
-} from './game/TutorialSetupFlow';
 
 import { forceStartOK, MaxTeamNum, SpeedOptions } from '@/lib/constants';
 import { useGame, useGameDispatch } from '@/context/GameContext';
 import ModalShell from '@/components/ui/ModalShell';
 
-interface GameSettingProps {}
+type GameSettingProps = Record<string, never>;
 
 const tabLabels = ['team', 'game', 'map', 'terrain', 'modifiers'] as const;
 
@@ -91,11 +88,12 @@ function ToggleRow({
 const GameSetting: React.FC<GameSettingProps> = () => {
   const [tabIndex, setTabIndex] = useState(0);
   const [isNameFocused, setIsNamedFocused] = useState(false);
+  const roomNameInputRef = useRef<HTMLInputElement | null>(null);
   const [shareLink, setShareLink] = useState('');
   const [forceStart, setForceStart] = useState(false);
   const [openMapExplorer, setOpenMapExplorer] = useState(false);
   const [tutorialStarting, setTutorialStarting] = useState(false);
-  const [tutorialSetupStepIndex, setTutorialSetupStepIndex] = useState(0);
+  const tutorialAutoStartRequestedRef = useRef(false);
 
   const { room, socketRef, myPlayerId, myUserName, team } = useGame();
   const { roomDispatch, snackStateDispatch } = useGameDispatch();
@@ -212,111 +210,36 @@ const GameSetting: React.FC<GameSettingProps> = () => {
   const handleStartTutorial = () => {
     if (!canStartTutorial) return;
 
+    tutorialAutoStartRequestedRef.current = true;
     setTutorialStarting(true);
     socketRef.current.emit('start_tutorial');
   };
 
-  const tutorialSetupSteps = useMemo<TutorialSetupFlowStep[]>(() => {
-    return [
-      {
-        id: 'objective',
-        label: t('tutorialSetup.steps.objective.label'),
-        title: t('tutorialSetup.steps.objective.title'),
-        copy: t('tutorialSetup.steps.objective.copy'),
-        icon: <Crown size={20} strokeWidth={2.25} />,
-        detail: (
-          <div className='border border-zinc-800 bg-zinc-950 px-4 py-3'>
-            <p className='text-xs font-black uppercase tracking-[0.16em] text-yellow-300'>
-              {t('tutorialSetup.steps.objective.highlightLabel')}
-            </p>
-            <p className='mt-2 text-sm leading-6 text-zinc-200'>
-              {t('tutorialSetup.steps.objective.highlightValue')}
-            </p>
-          </div>
-        ),
-      },
-      {
-        id: 'practice-room',
-        label: t('tutorialSetup.steps.practiceRoom.label'),
-        title: t('tutorialSetup.steps.practiceRoom.title'),
-        copy: t('tutorialSetup.steps.practiceRoom.copy'),
-        icon: <Bot size={20} strokeWidth={2.25} />,
-        detail: (
-          <div className='grid gap-3 sm:grid-cols-3'>
-            <div className='border border-zinc-800 bg-zinc-950 px-4 py-3'>
-              <p className='text-[11px] font-black uppercase tracking-[0.18em] text-zinc-500'>
-                {t('tutorialSetup.steps.practiceRoom.speedLabel')}
-              </p>
-              <p className='mt-1 text-lg font-black text-yellow-300'>
-                {t('tutorialSetup.steps.practiceRoom.speedValue')}
-              </p>
-            </div>
-            <div className='border border-zinc-800 bg-zinc-950 px-4 py-3'>
-              <p className='text-[11px] font-black uppercase tracking-[0.18em] text-zinc-500'>
-                {t('tutorialSetup.steps.practiceRoom.opponentLabel')}
-              </p>
-              <p className='mt-1 text-lg font-black text-yellow-300'>
-                {t('tutorialSetup.steps.practiceRoom.opponentValue')}
-              </p>
-            </div>
-            <div className='border border-zinc-800 bg-zinc-950 px-4 py-3'>
-              <p className='text-[11px] font-black uppercase tracking-[0.18em] text-zinc-500'>
-                {t('tutorialSetup.steps.practiceRoom.fogLabel')}
-              </p>
-              <p className='mt-1 text-lg font-black text-yellow-300'>
-                {t('tutorialSetup.steps.practiceRoom.fogValue')}
-              </p>
-            </div>
-          </div>
-        ),
-        note: t('tutorialSetup.steps.practiceRoom.note'),
-      },
-      {
-        id: 'first-moves',
-        label: t('tutorialSetup.steps.firstMoves.label'),
-        title: t('tutorialSetup.steps.firstMoves.title'),
-        copy: t('tutorialSetup.steps.firstMoves.copy'),
-        icon: <Castle size={20} strokeWidth={2.25} />,
-        detail: (
-          <div>
-            <p className='bw-page-copy mb-3'>
-              {t('tutorialSetup.steps.firstMoves.keysLabel')}
-            </p>
-            <div className='flex flex-wrap gap-2 text-xs font-black uppercase tracking-[0.14em] text-zinc-300'>
-              <span className='border border-yellow-300/60 bg-yellow-300/10 px-3 py-2 text-yellow-300'>
-                G · {t('tutorialSetup.steps.firstMoves.keyG')}
-              </span>
-              <span className='border border-zinc-700 px-3 py-2'>
-                Z · {t('tutorialSetup.steps.firstMoves.keyZ')}
-              </span>
-              <span className='border border-zinc-700 px-3 py-2'>
-                Q · {t('tutorialSetup.steps.firstMoves.keyQ')}
-              </span>
-            </div>
-          </div>
-        ),
-        note: t('tutorialSetup.steps.firstMoves.note'),
-      },
-    ];
-  }, [t]);
-
-  const currentTutorialSetupStep =
-    tutorialSetupSteps[tutorialSetupStepIndex] ?? tutorialSetupSteps[0];
-  const isLastTutorialSetupStep =
-    tutorialSetupStepIndex === tutorialSetupSteps.length - 1;
-
   useEffect(() => {
     if (!isTutorialRoom) {
       setTutorialStarting(false);
-      setTutorialSetupStepIndex(0);
+      tutorialAutoStartRequestedRef.current = false;
       return;
     }
 
-    if (room.gameStarted || currentPlayer?.forceStart) {
+    if (room.gameStarted) {
       setTutorialStarting(false);
-      setTutorialSetupStepIndex(0);
+      tutorialAutoStartRequestedRef.current = false;
     }
-  }, [currentPlayer?.forceStart, isTutorialRoom, room.gameStarted]);
+  }, [isTutorialRoom, room.gameStarted]);
+
+  useEffect(() => {
+    if (!canStartTutorial || tutorialAutoStartRequestedRef.current) return;
+
+    tutorialAutoStartRequestedRef.current = true;
+    setTutorialStarting(true);
+    socketRef.current.emit('start_tutorial');
+  }, [canStartTutorial, socketRef]);
+
+  useEffect(() => {
+    if (!isNameFocused || disabledUi) return;
+    roomNameInputRef.current?.focus();
+  }, [disabledUi, isNameFocused]);
 
   return (
     <div className='mx-auto w-full max-w-2xl'>
@@ -354,7 +277,7 @@ const GameSetting: React.FC<GameSettingProps> = () => {
                 </button>
               ) : (
                 <input
-                  autoFocus
+                  ref={roomNameInputRef}
                   className='bw-input h-11 text-left text-xl'
                   value={room.roomName}
                   onChange={handleRoomNameChange}
@@ -407,36 +330,55 @@ const GameSetting: React.FC<GameSettingProps> = () => {
 
         <div className='space-y-4 px-4 py-4 sm:px-5'>
           {isTutorialRoom ? (
-            <TutorialSetupFlow
-              badge={t('tutorialSetup.badge')}
-              title={t('tutorialSetup.title')}
-              progressLabel={t('tutorialSetup.progress', {
-                current: tutorialSetupStepIndex + 1,
-                total: tutorialSetupSteps.length,
-              })}
-              stepIndex={tutorialSetupStepIndex}
-              totalSteps={tutorialSetupSteps.length}
-              step={currentTutorialSetupStep}
-              canGoBack={tutorialSetupStepIndex > 0}
-              isLastStep={isLastTutorialSetupStep}
-              nextLabel={t('tutorialSetup.nextButton')}
-              backLabel={t('tutorialSetup.backButton')}
-              startLabel={t('tutorialSetup.startButton')}
-              startingLabel={t('tutorialSetup.startingButton')}
-              startBusy={tutorialStarting}
-              startDisabled={!canStartTutorial}
-              onBack={() =>
-                setTutorialSetupStepIndex((currentStep) =>
-                  Math.max(currentStep - 1, 0)
-                )
-              }
-              onNext={() =>
-                setTutorialSetupStepIndex((currentStep) =>
-                  Math.min(currentStep + 1, tutorialSetupSteps.length - 1)
-                )
-              }
-              onStart={handleStartTutorial}
-            />
+            <div
+              className='border px-4 py-5'
+              style={{
+                borderColor: 'var(--bw-line-strong)',
+                backgroundColor: 'var(--bw-panel-strong)',
+                boxShadow: 'var(--bw-shadow)',
+              }}
+            >
+              <div className='flex items-start gap-3'>
+                <div className='bw-brand-mark text-[color:var(--bw-ember)]'>
+                  <Crown size={20} strokeWidth={2.25} />
+                </div>
+                <div className='min-w-0 flex-1'>
+                  <p className='bw-page-copy' style={{ color: 'var(--bw-ember)' }}>
+                    {t('tutorialAutoStart.badge')}
+                  </p>
+                  <h2 className='mt-1 text-2xl font-black' style={{ color: 'var(--bw-ink)' }}>
+                    {t('tutorialAutoStart.title')}
+                  </h2>
+                  <p className='mt-3 text-sm leading-6' style={{ color: 'var(--bw-ink-soft)' }}>
+                    {t('tutorialAutoStart.copy')}
+                  </p>
+                </div>
+              </div>
+
+              <div className='mt-5 flex flex-wrap items-center justify-between gap-3'>
+                <p className='text-xs font-black uppercase tracking-[0.16em]' style={{ color: 'var(--bw-muted)' }}>
+                  {canStartTutorial
+                    ? t('tutorialAutoStart.autoStarting')
+                    : currentPlayer
+                      ? t('tutorialAutoStart.waitingHost')
+                      : t('tutorialAutoStart.connecting')}
+                </p>
+                <button
+                  type='button'
+                  className='bw-button bw-button-primary min-h-10 px-4 text-sm'
+                  disabled={
+                    !canStartTutorial ||
+                    tutorialStarting ||
+                    !!currentPlayer?.forceStart
+                  }
+                  onClick={handleStartTutorial}
+                >
+                  {tutorialStarting || currentPlayer?.forceStart
+                    ? t('tutorialAutoStart.startingButton')
+                    : t('tutorialAutoStart.startButton')}
+                </button>
+              </div>
+            </div>
           ) : (
             <>
               <div className='flex items-center justify-between gap-3'>

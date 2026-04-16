@@ -19,10 +19,9 @@ export default function TutorialGuide() {
     mapQueueData,
     myPlayerId,
     selectedMapTileInfo,
-    initGameInfo,
   } = useGame();
   const { t } = useTranslation();
-  const [stage, setStage] = useState<TutorialStage>('select-general');
+  const [stage, setStage] = useState<TutorialStage>('first-move');
   const [visible, setVisible] = useState(true);
 
   const myPlayerColor = useMemo(() => {
@@ -30,10 +29,6 @@ export default function TutorialGuide() {
   }, [myPlayerId, room.players]);
 
   const snapshot = useMemo(() => {
-    const selectedGeneral =
-      !!initGameInfo &&
-      selectedMapTileInfo.x === initGameInfo.king.x &&
-      selectedMapTileInfo.y === initGameInfo.king.y;
     const ownedLandCount =
       myPlayerColor === null
         ? 0
@@ -48,25 +43,21 @@ export default function TutorialGuide() {
       mapQueueData.some((row) => row.some((queueItem) => !!queueItem?.half));
 
     return {
-      selectedGeneral,
       ownedLandCount,
       halfArmySelected,
     };
   }, [
-    initGameInfo,
     mapData,
     mapQueueData,
     myPlayerColor,
     selectedMapTileInfo.half,
-    selectedMapTileInfo.x,
-    selectedMapTileInfo.y,
   ]);
 
   useEffect(() => {
     if (room.preset !== 'tutorial' || !room.gameStarted) return;
-    setStage('select-general');
+    setStage('first-move');
     setVisible(true);
-  }, [room.gameStarted, room.id, room.preset]);
+  }, [room.gameStarted, room.preset]);
 
   useEffect(() => {
     if (room.preset !== 'tutorial' || !room.gameStarted) return;
@@ -81,7 +72,13 @@ export default function TutorialGuide() {
     return (
       <button
         type='button'
-        className='fixed left-4 top-20 z-[120] border border-yellow-300/40 bg-zinc-950/90 px-3 py-2 text-xs font-black uppercase tracking-[0.16em] text-yellow-300 backdrop-blur transition hover:bg-yellow-300 hover:text-zinc-950'
+        className='fixed left-4 top-20 z-[120] border px-3 py-2 text-xs font-black uppercase tracking-[0.16em] backdrop-blur transition hover:bg-[var(--bw-ember)] hover:text-[var(--bw-selection-ink)]'
+        style={{
+          borderColor: 'color-mix(in srgb, var(--bw-ember) 40%, transparent)',
+          backgroundColor: 'var(--bw-panel-strong)',
+          color: 'var(--bw-ember)',
+          boxShadow: 'var(--bw-shadow-soft)',
+        }}
         onClick={() => setVisible(true)}
       >
         {t('tutorialGuide.show')}
@@ -93,10 +90,18 @@ export default function TutorialGuide() {
   const stageNumber = getTutorialStageIndex(stage);
 
   return (
-    <section className='fixed inset-x-4 top-16 z-[120] mx-auto max-w-xl border border-yellow-300/40 bg-zinc-950/90 p-4 text-zinc-100 shadow-2xl backdrop-blur md:top-20'>
+    <section
+      className='fixed inset-x-4 top-16 z-[120] mx-auto max-w-xl border p-4 backdrop-blur md:top-20'
+      style={{
+        borderColor: 'color-mix(in srgb, var(--bw-ember) 40%, transparent)',
+        backgroundColor: 'var(--bw-panel-strong)',
+        color: 'var(--bw-ink)',
+        boxShadow: 'var(--bw-shadow)',
+      }}
+    >
       <div className='flex items-start justify-between gap-3'>
         <div>
-          <p className='bw-page-copy text-yellow-300'>
+          <p className='bw-page-copy' style={{ color: 'var(--bw-ember)' }}>
             {t('tutorialGuide.progress', {
               current: stageNumber,
               total: tutorialStages.length,
@@ -108,37 +113,48 @@ export default function TutorialGuide() {
         </div>
         <button
           type='button'
-          className='border border-zinc-700 px-2 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-zinc-400 transition hover:border-yellow-300 hover:text-yellow-300'
+          className='border px-2 py-1 text-[10px] font-black uppercase tracking-[0.14em] transition hover:border-[var(--bw-ember)] hover:text-[var(--bw-ember)]'
+          style={{ borderColor: 'var(--bw-line-strong)', color: 'var(--bw-muted)' }}
           onClick={() => setVisible(false)}
         >
           {t('tutorialGuide.hide')}
         </button>
       </div>
 
-      <p className='mt-3 text-sm leading-6 text-zinc-300'>
+      <p className='mt-3 text-sm leading-6' style={{ color: 'var(--bw-ink-soft)' }}>
         {t(`tutorialGuide.steps.${translationKey}.copy`)}
       </p>
-      {stage === 'select-general' && (
-        <div className='mt-3 border-l border-zinc-700 pl-3 text-sm text-zinc-400'>
-          {t('tutorialGuide.keyGHint')}
+      {stage === 'first-move' && (
+        <div
+          className='mt-3 border-l pl-3 text-sm'
+          style={{ borderColor: 'var(--bw-line)', color: 'var(--bw-muted)' }}
+        >
+          {t('tutorialGuide.moveHint')}
         </div>
       )}
-      {stage === 'expand-frontier' && (
-        <div className='mt-3 flex items-center gap-2 border-l border-zinc-700 pl-3 text-sm text-zinc-400'>
+      {stage === 'grow-income' && (
+        <div
+          className='mt-3 flex items-center gap-2 border-l pl-3 text-sm'
+          style={{ borderColor: 'var(--bw-line)', color: 'var(--bw-muted)' }}
+        >
           <img
             src='/img/city.png'
             alt=''
             width={18}
             height={18}
-            className='border border-zinc-800 bg-white'
+            className='border bg-white'
+            style={{ borderColor: 'var(--bw-line)' }}
             draggable={false}
           />
           <span>{t('tutorialGuide.cityHint')}</span>
         </div>
       )}
       {stage === 'hunt-king' && (
-        <div className='mt-3 border-l border-zinc-700 pl-3 text-sm text-zinc-400'>
-          {t('tutorialGuide.fogHint')}
+        <div
+          className='mt-3 border-l pl-3 text-sm'
+          style={{ borderColor: 'var(--bw-line)', color: 'var(--bw-muted)' }}
+        >
+          {t('tutorialGuide.captureHint')}
         </div>
       )}
     </section>

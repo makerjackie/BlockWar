@@ -41,6 +41,7 @@
   "create-warring-room": "创建战国房",
   "tutorial-room-name": "新手教程",
   "create-map": "创建地图",
+  "lobby-more-actions": "更多创建方式",
   "game": "游戏",
   "modifiers": "修改器",
   "basic-info": "基础信息",
@@ -95,7 +96,7 @@
   "remove-bot": "移除机器人",
   "bot": "机器人",
   "tutorial-complete-title": "新手教程完成！",
-  "tutorial-complete-copy": "你已经完成第一局练习。接下来可以进入大厅和真人对战；普通模式默认开启战争迷雾。",
+  "tutorial-complete-copy": "你已经完成第一局练习。接下来可以回到大厅，继续和真人或机器人开局。",
   "are-you-sure-to-surrender": "你确定要投降？",
   "are-you-sure-to-exit": "你确定要退出？",
   "type-a-message": "开始聊天，回车发送",
@@ -124,75 +125,45 @@
   "disconnect-from-server": "与服务器断开连接",
   "onboarding": {
     "tutorialBadge": "推荐",
-    "title": "第一次玩？先打一局新手教程",
-    "copy": "系统会创建一个 1v2 机器人练习房，使用 1 倍速，并关闭战争迷雾帮助你理解移动、扩张和占领主城。",
+    "title": "第一次玩？先来一局新手教程",
+    "copy": "直接进入练习局，边打边学：先认主城、再扩张、最后吃掉对手主城。",
     "startTutorial": "开始新手教程",
     "creatingTutorial": "创建教程中...",
     "skipTutorial": "直接进入大厅"
   },
-  "tutorialSetup": {
+  "tutorialAutoStart": {
     "badge": "新手教程",
-    "title": "开始前，先看这 3 小步",
-    "progress": "第 {{current}} 步 / 共 {{total}} 步",
-    "backButton": "上一步",
-    "nextButton": "下一步",
-    "startButton": "开始新手教程",
-    "startingButton": "正在启动教程...",
-    "steps": {
-      "objective": {
-        "label": "先记目标",
-        "title": "先吃掉一个敌方王城",
-        "copy": "这局最重要的不是一次看懂所有规则，而是尽快体验到第一次“翻盘感”。",
-        "highlightLabel": "记住这一条就够了",
-        "highlightValue": "占领敌方皇冠格子后，对方整片领地会立刻归你。"
-      },
-      "practiceRoom": {
-        "label": "再看环境",
-        "title": "这是一局轻量练习房",
-        "copy": "系统会自动给你配 2 个机器人，节奏维持 1 倍速，方便你把注意力放在移动、扩张和吃王城上。",
-        "speedLabel": "速度",
-        "speedValue": "1 倍速",
-        "opponentLabel": "对手",
-        "opponentValue": "2 个机器人",
-        "fogLabel": "迷雾",
-        "fogValue": "教程里关闭",
-        "note": "普通模式默认开启战争迷雾；教程先帮你把信息噪音降下来。"
-      },
-      "firstMoves": {
-        "label": "最后看操作",
-        "title": "开局后先跟着顶部提示走",
-        "copy": "进局后只做三件事：先回主城、再向外扩张、接着找机会吃掉第一个敌方王城。",
-        "keysLabel": "建议先记住这几个键",
-        "keyG": "回到主城",
-        "keyZ": "半兵移动",
-        "keyQ": "清空队列",
-        "note": "尤其是 G：迷路时按一下，就能立刻找回“我的主城”在哪里。"
-      }
-    }
+    "title": "正在进入练习局",
+    "copy": "进局后跟着顶部提示操作就行：先从主城出兵，向外扩张，再去占领对手主城。",
+    "autoStarting": "房间已就绪，正在自动开局",
+    "connecting": "正在连接房间...",
+    "waitingHost": "等待房主启动教程...",
+    "startButton": "立即进入",
+    "startingButton": "正在进入..."
   },
   "tutorialGuide": {
     "progress": "教程 {{current}} / {{total}}",
     "hide": "隐藏",
     "show": "显示教程",
-    "cityHint": "城市会持续产兵，是你扩张时最值得抢的中立资源。",
-    "fogHint": "教程局会显示敌方主城帮助你练节奏；普通模式需要在战争迷雾中侦查。",
-    "keyGHint": "按 G 可以直接选中并回到你的主城，迷路时很好用。",
+    "cityHint": "城市和主城每回合产 1 兵，路过城市时可以优先拿下。",
+    "captureHint": "吃掉一座主城后，继续找下一座；场上只剩你的主城时，你就赢了。",
+    "moveHint": "用 WSAD、方向键、鼠标点击或手机拖拽都能移动。格子里至少要有 2 兵才能出兵，因为会留 1 兵守在原地。",
     "steps": {
-      "select_general": {
-        "title": "先选中你的主城",
-        "copy": "点击皇冠格子，或按 G 快速回到主城。所有出兵都从你拥有的格子开始。"
+      "first_move": {
+        "title": "先学会移动",
+        "copy": "你的主城已经选中。现在往相邻格子移动一次；只能从自己的地块出兵，而且至少要留 1 兵守地，所以要有 2 兵才能移动。"
       },
-      "expand_frontier": {
-        "title": "向相邻格子扩张",
-        "copy": "用 WSAD、方向键、鼠标点击或手机拖拽移动到旁边的格子。先铺开领土，兵力才会增长。"
+      "grow_income": {
+        "title": "先把地盘铺开",
+        "copy": "平原每 25 回合产 1 兵，所以地越多，兵涨得越快。先扩张，再考虑硬打。"
       },
       "split_army": {
         "title": "试试半兵移动",
-        "copy": "按 Z 可以切换 50% 出兵，再移动一次。半兵适合一边扩张、一边保留主力。"
+        "copy": "按 Z 切到半兵移动，再走一步。这样能一边扩张，一边把兵留在后方。"
       },
       "hunt_king": {
-        "title": "进攻敌方主城",
-        "copy": "继续推进，找到并占领敌方皇冠格子。吃掉敌方主城后，对方领土会归你。"
+        "title": "去吃掉对手主城",
+        "copy": "你的目标是占领所有对手的主城（皇冠格）。每吃下一座，对方领地和兵力都会归你，但兵力减半。"
       }
     }
   },
@@ -200,11 +171,11 @@
     "title": "如何玩",
     "shortcut": "快捷键",
     "key": "键位",
-    "goal": "你的目标是占领其他所有玩家的将军",
-    "plains": "平原每25回合产生一个小兵，尽可能扩张你的领土！",
-    "cities": "城市和将军每回合产生一个小兵",
+    "goal": "你的目标是占领所有对手的主城（皇冠格）。",
+    "plains": "平原每 25 回合产 1 兵；扩张领土能更快积累兵力。",
+    "cities": "城市和主城每回合产 1 兵",
     "moves": "你每回合可以移动两次。",
-    "capture": "当你占领敌方将军时，他的所有领土和兵力都属于你，但兵力会减半。",
+    "capture": "当你占领敌方主城时，对方所有领地与兵力都属于你，但兵力会减半。",
     "shortcuts": "键盘快捷键：",
     "move": "移动",
     "openChat": "打开聊天",
@@ -221,6 +192,6 @@
     "wsad": "WSAD / 方向键 / 鼠标点击 / 手机拖拽",
     "enter": "回车键",
     "surrender": "投降",
-    "beginnerTutorial": "第一次玩建议从大厅的「新手教程」开始；教程会关闭迷雾并提供 2 个机器人，普通模式默认开启迷雾。"
+    "beginnerTutorial": "第一次玩可以先从大厅进入「新手教程」，进局后会一步步带你上手。"
   }
 }

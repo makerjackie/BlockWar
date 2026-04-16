@@ -29,7 +29,7 @@
 
 - Real-time multiplayer rooms with native WebSocket transport.
 - Lobby, room creation, host transfer, teams, spectators, ready/force-start flow, on-demand bots, and room chat.
-- Beginner tutorial flow that creates a 1v2 bot practice room with guided in-game tips.
+- Beginner tutorial flow that jumps straight into a 1v2 bot practice room with step-by-step in-game guidance.
 - Classic generals.io-style gameplay with fog of war, generals/kings, cities, mountains, swamps, queued moves, surrender, and leaderboard updates.
 - Optional Warring States mode, reveal-king mode, death spectator mode, map size/terrain controls, and variable game speed.
 - Custom map editor, map publishing, map browsing, search, views, stars, and map ordering by new/hot/best.

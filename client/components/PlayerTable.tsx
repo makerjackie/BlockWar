@@ -33,14 +33,14 @@ function PlayerTable(props: PlayerTableProps) {
   });
 
   return (
-    <div className='flex flex-wrap gap-3'>
+    <div className='grid grid-cols-[repeat(auto-fit,minmax(170px,1fr))] gap-3'>
       {teams.map((teamPlayers, index) => {
         if (!teamPlayers || teamPlayers.length === 0) return null;
         const isSpectator = index > MaxTeamNum;
         return (
           <section
             key={index}
-            className='min-w-[170px] border border-zinc-800 bg-zinc-950/60 p-3'
+            className='min-w-0 border border-zinc-800 bg-zinc-950/60 p-3'
           >
             <div className='mb-3 text-[11px] font-black uppercase tracking-[0.18em] text-zinc-500'>
               {isSpectator ? 'Spectators' : `Team ${index}`}

@@ -26,7 +26,7 @@ interface GameSettingProps {}
 const tabLabels = ['team', 'game', 'map', 'terrain', 'modifiers'] as const;
 
 const tabButtonClass = (active: boolean) =>
-  `bw-button min-h-10 px-3 text-xs ${active ? 'bw-button-primary' : 'bw-button-secondary'}`;
+  `bw-button min-h-11 px-3 text-xs ${active ? 'bw-button-primary' : 'bw-button-secondary'}`;
 
 function getForceStartTarget(room: { players: { team: number; isBot?: boolean }[] }) {
   const activeHumans = room.players.filter(
@@ -195,7 +195,7 @@ const GameSetting: React.FC<GameSettingProps> = () => {
   const forceStartTarget = getForceStartTarget(room);
 
   return (
-    <div className='mx-auto w-[90vw] md:w-[55vw] lg:w-[45vw]'>
+    <div className='mx-auto w-full max-w-2xl'>
       <ModalShell
         open={openMapExplorer}
         onClose={() => setOpenMapExplorer(false)}
@@ -206,7 +206,7 @@ const GameSetting: React.FC<GameSettingProps> = () => {
       </ModalShell>
 
       <section className='menu-container overflow-hidden'>
-        <div className='flex items-start justify-between gap-3 border-b border-zinc-800 px-4 py-4'>
+        <div className='flex items-start justify-between gap-3 border-b border-zinc-800 px-4 py-4 sm:px-5'>
           <div className='flex min-w-0 items-start gap-3'>
             <button
               type='button'
@@ -218,7 +218,7 @@ const GameSetting: React.FC<GameSettingProps> = () => {
             </button>
 
             <div className='min-w-0'>
-              <p className='bw-page-copy'>Room Command</p>
+              <p className='bw-page-copy'>{t('room-settings')}</p>
               {!isNameFocused || disabledUi ? (
                 <button
                   type='button'
@@ -240,7 +240,9 @@ const GameSetting: React.FC<GameSettingProps> = () => {
                 />
               )}
               <p className='mt-1 text-xs font-black uppercase tracking-[0.14em] text-zinc-500'>
-                {disabledUi ? t('not-host') : 'Host controls enabled'}
+                {disabledUi
+                  ? t('room-settings-host-only')
+                  : t('room-settings-editable')}
               </p>
             </div>
           </div>
@@ -264,7 +266,7 @@ const GameSetting: React.FC<GameSettingProps> = () => {
           </button>
         </div>
 
-        <div className='space-y-4 px-4 py-4'>
+        <div className='space-y-4 px-4 py-4 sm:px-5'>
           {room.mapName && (
             <div className='flex items-center justify-between gap-3 border border-zinc-800 bg-zinc-950/60 px-4 py-3'>
               <Link
@@ -288,12 +290,12 @@ const GameSetting: React.FC<GameSettingProps> = () => {
             </div>
           )}
 
-          <div className='flex flex-wrap gap-2'>
+          <div className='grid grid-cols-2 gap-2 min-[440px]:grid-cols-3 sm:flex sm:flex-wrap'>
             {tabLabels.map((tab, index) => (
               <button
                 key={tab}
                 type='button'
-                className={tabButtonClass(tabIndex === index)}
+                className={`${tabButtonClass(tabIndex === index)} w-full sm:w-auto`}
                 onClick={() => setTabIndex(index)}
               >
                 {t(tab)}
@@ -306,12 +308,12 @@ const GameSetting: React.FC<GameSettingProps> = () => {
               <p className='text-xs font-black uppercase tracking-[0.18em] text-zinc-500'>
                 {t('select-your-team')}
               </p>
-              <div className='flex flex-wrap gap-2'>
+              <div className='grid grid-cols-4 gap-2 sm:flex sm:flex-wrap'>
                 {Array.from({ length: MaxTeamNum }, (_, i) => i + 1).map((value) => (
                   <button
                     key={value}
                     type='button'
-                    className={tabButtonClass(team === value)}
+                    className={`${tabButtonClass(team === value)} w-full sm:w-auto`}
                     onClick={() => handleTeamChange(null, value)}
                   >
                     {value}
@@ -319,7 +321,7 @@ const GameSetting: React.FC<GameSettingProps> = () => {
                 ))}
                 <button
                   type='button'
-                  className={tabButtonClass(team === MaxTeamNum + 1)}
+                  className={`${tabButtonClass(team === MaxTeamNum + 1)} col-span-2 w-full sm:w-auto`}
                   onClick={() => handleTeamChange(null, MaxTeamNum + 1)}
                 >
                   Spectators
@@ -343,12 +345,12 @@ const GameSetting: React.FC<GameSettingProps> = () => {
                 <p className='text-xs font-black uppercase tracking-[0.18em] text-zinc-500'>
                   {t('game-speed')}
                 </p>
-                <div className='flex flex-wrap gap-2'>
+                <div className='grid grid-cols-5 gap-2 sm:flex sm:flex-wrap'>
                   {SpeedOptions.map((value) => (
                     <button
                       key={value}
                       type='button'
-                      className={tabButtonClass(room.gameSpeed === value)}
+                      className={`${tabButtonClass(room.gameSpeed === value)} w-full sm:w-auto`}
                       disabled={disabledUi}
                       onClick={(event) =>
                         handleSettingChange('gameSpeed')(event as unknown as Event, value)
@@ -467,7 +469,7 @@ const GameSetting: React.FC<GameSettingProps> = () => {
       </section>
 
       <section className='menu-container mt-4 overflow-hidden'>
-        <div className='flex items-center justify-between gap-3 border-b border-zinc-800 px-4 py-4'>
+        <div className='flex flex-wrap items-center justify-between gap-3 border-b border-zinc-800 px-4 py-4 sm:px-5'>
           <div className='flex items-center gap-3'>
             <Users className='text-yellow-300' size={18} strokeWidth={2.25} />
             <div>
@@ -485,7 +487,7 @@ const GameSetting: React.FC<GameSettingProps> = () => {
             {t('add-bot')}
           </button>
         </div>
-        <div className='px-4 py-4'>
+        <div className='px-4 py-4 sm:px-5'>
           <PlayerTable
             myPlayerId={myPlayerId}
             players={room.players}

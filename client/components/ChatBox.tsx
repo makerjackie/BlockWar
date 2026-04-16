@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'next-i18next';
 import { Socket } from 'socket.io-client';
+import { MessageSquare } from 'lucide-react';
 import { Message } from '@/lib/types';
 import { ColorArr } from '@/lib/constants';
 import useMediaQuery from '@/hooks/useMediaQuery';
@@ -94,33 +95,45 @@ export default React.memo(function ChatBox({ socket, messages }: ChatBoxProp) {
     }
   };
 
-  const widthClass = isSmallScreen
-    ? isExpand
-      ? 'w-[60vw]'
-      : 'w-[52vw]'
-    : isExpand
-      ? 'w-[350px]'
-      : 'w-[300px]';
+  const dockLayoutClass = isSmallScreen
+    ? `bottom-3 left-3 right-3 w-auto ${isExpand ? 'h-[42dvh]' : 'h-14'}`
+    : `bottom-0 right-0 ${
+        isExpand ? 'h-[40vh] w-[350px]' : 'h-[11vh] w-[300px]'
+      }`;
 
-  const heightClass = isExpand ? 'h-[40vh]' : 'h-[11vh]';
+  const dockBorderClass = isSmallScreen ? 'border' : 'border-l border-t';
+
+  if (isSmallScreen && !isExpand) {
+    return (
+      <button
+        type='button'
+        className='bw-side-dock fixed bottom-3 right-3 z-[1001] inline-flex min-h-14 items-center gap-2 border px-3 text-[11px] font-black uppercase tracking-[0.18em] text-zinc-500 transition-all duration-200 hover:text-zinc-200'
+        onClick={() => setIsExpand(true)}
+        aria-label='Open chat'
+      >
+        <MessageSquare size={16} strokeWidth={2.25} />
+        Chat
+      </button>
+    );
+  }
 
   return (
     <section
-      className={`bw-side-dock fixed bottom-0 right-0 z-[1003] flex ${widthClass} ${heightClass} flex-col border-l border-t transition-all duration-200 ${isExpand ? 'opacity-100' : 'z-[1001] opacity-65'}`}
+      className={`bw-side-dock fixed z-[1003] flex ${dockLayoutClass} flex-col ${dockBorderClass} transition-all duration-200 ${isExpand ? 'opacity-100' : 'z-[1001] opacity-80'}`}
       onClick={() => {
         if (!isExpand) setIsExpand(true);
       }}
     >
       <div
-        className='flex items-center justify-between border-b border-zinc-800 px-4 py-2'
+        className='flex items-center justify-between gap-3 border-b border-zinc-800 px-3 py-2 sm:px-4'
         onClick={() => {
           if (isExpand) setIsExpand(false);
         }}
       >
-        <span className='text-[11px] font-black uppercase tracking-[0.22em] text-zinc-500'>
+        <span className='truncate text-[11px] font-black uppercase tracking-[0.22em] text-zinc-500'>
           Tactical Feed
         </span>
-        <span className='text-[10px] font-black uppercase tracking-[0.18em] text-zinc-600'>
+        <span className='shrink-0 text-[10px] font-black uppercase tracking-[0.18em] text-zinc-600'>
           Enter
         </span>
       </div>

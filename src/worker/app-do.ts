@@ -1,5 +1,9 @@
 import { DurableObject } from 'cloudflare:workers';
-import { createDefaultRoom, seedRoomIds } from '@shared/game/room-defaults';
+import {
+  createDefaultRoom,
+  LEGACY_SEED_ROOM_IDS,
+  type RoomPreset,
+} from '@shared/game/room-defaults';
 import type { CustomMapData, CustomMapInfo } from '@shared/game/types';
 import {
   cloneRoomSummary,
@@ -81,6 +85,10 @@ function hasPlayers(room: PlainRoom) {
   return room.players.length > 0;
 }
 
+function hasHumanPlayers(room: PlainRoom) {
+  return room.players.some((player) => !player.isBot);
+}
+
 export class AppDurableObject extends DurableObject<Env> {
   private initialization: Promise<void> | null = null;
 
@@ -92,7 +100,7 @@ export class AppDurableObject extends DurableObject<Env> {
     for (const statement of APP_SCHEMA_STATEMENTS) {
       await this.env.DB.prepare(statement).run();
     }
-    await this.seedRooms();
+    await this.cleanupLegacySeedRooms();
   }
 
   private async ensureInitialized() {
@@ -167,24 +175,12 @@ export class AppDurableObject extends DurableObject<Env> {
     return liveRoom;
   }
 
-  private async seedRooms() {
-    const statements = seedRoomIds.map((roomId) => {
-      const room = createDefaultRoom(roomId);
-      return this.env.DB
-        .prepare(
-          `
-            INSERT OR IGNORE INTO rooms (id, room_json, updated_at)
-            VALUES (?, ?, ?)
-          `
-        )
-        .bind(
-          room.id,
-          JSON.stringify(cloneRoomSummary(room)),
-          Date.now()
-        );
-    });
-
-    await this.executeBatch(statements);
+  private async cleanupLegacySeedRooms() {
+    await this.executeBatch(
+      LEGACY_SEED_ROOM_IDS.map((roomId) =>
+        this.env.DB.prepare('DELETE FROM rooms WHERE id = ?').bind(roomId)
+      )
+    );
   }
 
   private async getMapRow(
@@ -241,7 +237,11 @@ export class AppDurableObject extends DurableObject<Env> {
     await this.ensureInitialized();
     const sanitizedRoom = sanitizeRoomSummary(room);
 
-    if (hasPlayers(room) && sanitizedRoom.players.length === 0 && !sanitizedRoom.keepAlive) {
+    if (
+      hasPlayers(room) &&
+      (sanitizedRoom.players.length === 0 || !hasHumanPlayers(sanitizedRoom)) &&
+      !sanitizedRoom.keepAlive
+    ) {
       await this.deleteRoom(sanitizedRoom.id);
       return;
     }
@@ -262,24 +262,13 @@ export class AppDurableObject extends DurableObject<Env> {
 
   async deleteRoom(roomId: string): Promise<void> {
     await this.ensureInitialized();
-    if (seedRoomIds.includes(roomId)) {
-      const room = createDefaultRoom(roomId);
-      await this.execute(
-        'UPDATE rooms SET room_json = ?, updated_at = ? WHERE id = ?',
-        JSON.stringify(cloneRoomSummary(room)),
-        Date.now(),
-        roomId
-      );
-      return;
-    }
-
     await this.execute('DELETE FROM rooms WHERE id = ?', roomId);
   }
 
-  async createRoom(roomName = 'Untitled') {
+  async createRoom(roomName = 'Untitled', preset: RoomPreset = 'standard') {
     await this.ensureInitialized();
     const roomId = randomId();
-    const room = createDefaultRoom(roomId, roomName);
+    const room = createDefaultRoom(roomId, roomName, preset);
     await this.upsertRoom(cloneRoomSummary(room));
 
     return {

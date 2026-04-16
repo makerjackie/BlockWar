@@ -6,16 +6,16 @@ declare module 'cloudflare:test' {
 }
 
 describe('BlockWar API', () => {
-  it('lists seed rooms and creates a new room', async () => {
+  it('lists active rooms and creates new preset rooms', async () => {
     const initialResponse = await SELF.fetch('http://example.com/api/get_rooms');
     expect(initialResponse.ok).toBe(true);
 
     const initialRooms = (await initialResponse.json()) as Record<
       string,
-      { roomName: string }
+      { roomName: string; warringStatesMode?: boolean; revealKing?: boolean }
     >;
-    expect(initialRooms['1']?.roomName).toContain('BlockWar');
-    expect(initialRooms.warring_state?.roomName).toContain('战国');
+    expect(initialRooms['1']).toBeUndefined();
+    expect(initialRooms.warring_state).toBeUndefined();
 
     const createResponse = await SELF.fetch(
       'http://example.com/api/create_room?name=Test%20Room'
@@ -36,6 +36,28 @@ describe('BlockWar API', () => {
     >;
 
     expect(roomsAfter[created.roomId]?.roomName).toBe('Test Room');
+
+    const warringResponse = await SELF.fetch(
+      'http://example.com/api/create_room?name=Warring%20Test&preset=warring_state'
+    );
+    expect(warringResponse.ok).toBe(true);
+
+    const warring = (await warringResponse.json()) as {
+      success: boolean;
+      roomId: string;
+    };
+    const finalResponse = await SELF.fetch('http://example.com/api/get_rooms');
+    const finalRooms = (await finalResponse.json()) as Record<
+      string,
+      { roomName: string; warringStatesMode?: boolean; revealKing?: boolean }
+    >;
+
+    expect(warring.success).toBe(true);
+    expect(finalRooms[warring.roomId]).toMatchObject({
+      roomName: 'Warring Test',
+      warringStatesMode: true,
+      revealKing: true,
+    });
   });
 
   it('stores maps and star relationships', async () => {

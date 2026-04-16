@@ -8,7 +8,9 @@ interface PlayerTableProps {
   myPlayerId: string;
   players: Player[];
   handleChangeHost: any;
+  handleRemoveBot: (playerId: string) => void;
   disabled_ui: boolean;
+  canManageBots: boolean;
   warringStatesMode: boolean;
 }
 
@@ -17,7 +19,9 @@ function PlayerTable(props: PlayerTableProps) {
     myPlayerId,
     players,
     handleChangeHost,
+    handleRemoveBot,
     disabled_ui,
+    canManageBots,
     warringStatesMode,
   } = props;
   const { t } = useTranslation();
@@ -44,6 +48,7 @@ function PlayerTable(props: PlayerTableProps) {
             <div className='flex flex-col gap-2'>
               {teamPlayers.map((player) => {
                 const isMine = player.id === myPlayerId;
+                const disabled = player.isBot ? !canManageBots : disabled_ui;
                 const bgColor =
                   player.team === MaxTeamNum + 1
                     ? '#09090b'
@@ -56,9 +61,19 @@ function PlayerTable(props: PlayerTableProps) {
                   <button
                     type='button'
                     key={player.id}
-                    disabled={disabled_ui}
-                    title={disabled_ui ? '' : t('transfer-host')}
+                    disabled={disabled}
+                    title={
+                      disabled
+                        ? ''
+                        : player.isBot
+                          ? t('remove-bot')
+                          : t('transfer-host')
+                    }
                     onClick={() => {
+                      if (player.isBot) {
+                        handleRemoveBot(player.id);
+                        return;
+                      }
                       handleChangeHost(player.id, player.username);
                     }}
                     className='flex min-h-10 items-center justify-between gap-2 border px-3 py-2 text-left transition disabled:cursor-not-allowed disabled:opacity-60'
@@ -84,6 +99,7 @@ function PlayerTable(props: PlayerTableProps) {
                       >
                         {warringStatesMode ? WarringStates[player.color] : ''}
                         {player.username}
+                        {player.isBot ? ` · ${t('bot')}` : ''}
                       </span>
                     </span>
                   </button>

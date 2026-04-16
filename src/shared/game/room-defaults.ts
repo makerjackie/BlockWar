@@ -1,24 +1,24 @@
 import { Room } from './types';
 
-export function createDefaultRoom(roomId: string, roomName = 'Untitled') {
-  switch (roomId) {
-    case '1':
-      return Room.create({
-        id: '1',
-        roomName: 'BlockWar Bot Room / 方块战争机器人房',
-        keepAlive: true,
-      });
+export type RoomPreset = 'standard' | 'warring_state';
+
+export const LEGACY_SEED_ROOM_IDS = ['1', 'warring_state'] as const;
+
+export function createDefaultRoom(
+  roomId: string,
+  roomName = 'Untitled',
+  preset: RoomPreset = 'standard'
+) {
+  switch (preset) {
     case 'warring_state':
       return Room.create({
-        id: 'warring_state',
-        roomName: '方块战争·战国模式 Warring State',
+        id: roomId,
+        roomName: roomName === 'Untitled' ? 'Warring State' : roomName,
         warringStatesMode: true,
         revealKing: true,
-        keepAlive: true,
       });
+    case 'standard':
     default:
       return new Room(roomId, roomName);
   }
 }
-
-export const seedRoomIds = ['1', 'warring_state'];

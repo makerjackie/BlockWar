@@ -12,6 +12,7 @@ export type PlainPlayer = {
   forceStart?: boolean;
   isDead?: boolean;
   disconnected?: boolean;
+  isBot?: boolean;
 };
 
 export type PlainRoom = {
@@ -51,6 +52,10 @@ export function sanitizeRoomSummary(
   options: SanitizeRoomSummaryOptions = {}
 ): PlainRoom {
   const players = (room.players ?? []).filter((player) => {
+    if (player.isBot) {
+      return true;
+    }
+
     if (player.disconnected) {
       return false;
     }
@@ -60,7 +65,7 @@ export function sanitizeRoomSummary(
       : true;
   });
   const forceStartNum = players.reduce(
-    (count, player) => count + (player.forceStart ? 1 : 0),
+    (count, player) => count + (!player.isBot && player.forceStart ? 1 : 0),
     0
   );
   const hasPlayers = players.length > 0;
@@ -109,6 +114,7 @@ export function cloneRoomSummary(room: Room): PlainRoom {
       forceStart: player.forceStart,
       isDead: player.isDead,
       disconnected: player.disconnected,
+      isBot: player.isBot,
     })),
     generals: [],
     mapId: room.mapId,
@@ -169,7 +175,8 @@ export function hydrateRoomSummary(roomId: string, summary?: PlainRoom | null) {
         [],
         null,
         null,
-        player.disconnected ?? false
+        player.disconnected ?? false,
+        player.isBot ?? false
       )
   );
 

@@ -28,7 +28,7 @@
 ## Features
 
 - Real-time multiplayer rooms with native WebSocket transport.
-- Lobby, room creation, host transfer, teams, spectators, ready/force-start flow, and room chat.
+- Lobby, room creation, host transfer, teams, spectators, ready/force-start flow, on-demand bots, and room chat.
 - Classic generals.io-style gameplay with fog of war, generals/kings, cities, mountains, swamps, queued moves, surrender, and leaderboard updates.
 - Optional Warring States mode, reveal-king mode, death spectator mode, map size/terrain controls, and variable game speed.
 - Custom map editor, map publishing, map browsing, search, views, stars, and map ordering by new/hot/best.
@@ -50,7 +50,7 @@
 
 | Route | Purpose |
 | --- | --- |
-| `/` | Login, lobby, ping status, room list, and room creation. |
+| `/` | Login, lobby, ping status, active room list, and room creation. |
 | `/rooms/:roomId` | Real-time game room. |
 | `/mapcreator` | Custom map editor and publishing flow. |
 | `/maps/:mapId` | Custom map viewer/editor entry. |
@@ -61,8 +61,8 @@
 | Endpoint | Purpose |
 | --- | --- |
 | `GET /api/ping` | Health check used by the client. |
-| `GET /api/get_rooms` | List active and seeded rooms. |
-| `GET /api/create_room?name=...` | Create a room and return its room id. |
+| `GET /api/get_rooms` | List active rooms currently stored by the app coordinator. |
+| `GET /api/create_room?name=...&preset=warring_state` | Create a room and return its room id. |
 | `GET /api/get_replay/:replayId` | Load a saved replay. |
 | `GET /api/maps` / `POST /api/maps` | List or create custom maps. |
 | `GET /api/maps/:id` / `PUT /api/maps/:id` / `DELETE /api/maps/:id` | Read, update, or delete a custom map. |

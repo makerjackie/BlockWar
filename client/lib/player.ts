@@ -20,6 +20,7 @@ class Player {
     // when player disconnect, don't delete to keep game data
     // clear disconnect player when game ended
     public disconnected: boolean = false,
+    public isBot: boolean = false,
   ) { }
 
   setSpectate(): void { this.team = MaxTeamNum + 1; }

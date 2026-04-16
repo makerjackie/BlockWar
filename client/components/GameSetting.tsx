@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useTranslation } from 'next-i18next';
 import {
   ArrowLeft,
+  Bot,
   Castle,
   Mountain,
   Share2,
@@ -26,6 +27,23 @@ const tabLabels = ['team', 'game', 'map', 'terrain', 'modifiers'] as const;
 
 const tabButtonClass = (active: boolean) =>
   `bw-button min-h-10 px-3 text-xs ${active ? 'bw-button-primary' : 'bw-button-secondary'}`;
+
+function getForceStartTarget(room: { players: { team: number; isBot?: boolean }[] }) {
+  const activeHumans = room.players.filter(
+    (player) => !player.isBot && player.team !== MaxTeamNum + 1
+  ).length;
+  const activeBots = room.players.filter(
+    (player) => player.isBot && player.team !== MaxTeamNum + 1
+  ).length;
+
+  if (activeHumans === 0) {
+    return 0;
+  }
+
+  return activeBots > 0
+    ? activeHumans
+    : forceStartOK[activeHumans] ?? activeHumans;
+}
 
 function ToggleRow({
   label,
@@ -159,11 +177,22 @@ const GameSetting: React.FC<GameSettingProps> = () => {
     socketRef.current.emit('change_host', playerId);
   };
 
+  const handleAddBot = () => {
+    socketRef.current.emit('add_bot');
+  };
+
+  const handleRemoveBot = (playerId: string) => {
+    socketRef.current.emit('remove_bot', playerId);
+  };
+
   const handleLeaveRoom = () => {
     console.log('Leave Room');
     socketRef.current.disconnect();
     router.push(`/`);
   };
+
+  const canManageBots = !disabledUi && !room.gameStarted;
+  const forceStartTarget = getForceStartTarget(room);
 
   return (
     <div className='mx-auto w-[90vw] md:w-[55vw] lg:w-[45vw]'>
@@ -438,19 +467,32 @@ const GameSetting: React.FC<GameSettingProps> = () => {
       </section>
 
       <section className='menu-container mt-4 overflow-hidden'>
-        <div className='flex items-center gap-3 border-b border-zinc-800 px-4 py-4'>
-          <Users className='text-yellow-300' size={18} strokeWidth={2.25} />
-          <div>
-            <p className='bw-page-copy'>Roster</p>
-            <h3 className='text-lg font-black text-zinc-50'>{t('players')}</h3>
+        <div className='flex items-center justify-between gap-3 border-b border-zinc-800 px-4 py-4'>
+          <div className='flex items-center gap-3'>
+            <Users className='text-yellow-300' size={18} strokeWidth={2.25} />
+            <div>
+              <p className='bw-page-copy'>Roster</p>
+              <h3 className='text-lg font-black text-zinc-50'>{t('players')}</h3>
+            </div>
           </div>
+          <button
+            type='button'
+            className='bw-button bw-button-secondary min-h-10 px-3 text-xs'
+            disabled={!canManageBots || room.players.length >= room.maxPlayers}
+            onClick={handleAddBot}
+          >
+            <Bot size={16} strokeWidth={2.5} />
+            {t('add-bot')}
+          </button>
         </div>
         <div className='px-4 py-4'>
           <PlayerTable
             myPlayerId={myPlayerId}
             players={room.players}
             handleChangeHost={handleChangeHost}
+            handleRemoveBot={handleRemoveBot}
             disabled_ui={disabledUi}
+            canManageBots={canManageBots}
             warringStatesMode={room.warringStatesMode}
           />
         </div>
@@ -464,13 +506,7 @@ const GameSetting: React.FC<GameSettingProps> = () => {
         disabled={team === MaxTeamNum + 1}
         onClick={handleClickForceStart}
       >
-        {t('ready')}({room.forceStartNum}/
-        {
-          forceStartOK[
-            room.players.filter((player) => !player.spectating).length
-          ]
-        }
-        )
+        {t('ready')}({room.forceStartNum}/{forceStartTarget})
       </button>
     </div>
   );

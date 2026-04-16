@@ -7,6 +7,7 @@ import MapDiff from '@shared/game/map-diff';
 import Player from '@shared/game/player';
 import Point from '@shared/game/point';
 import { createDefaultRoom } from '@shared/game/room-defaults';
+import { TileType } from '@shared/game/types';
 import type {
   CustomMapData,
   LeaderBoardRow,
@@ -94,6 +95,51 @@ function pointFromPayload(value: unknown): Point | null {
 
 function isCardinalNeighbor(from: Point, to: Point) {
   return Math.abs(from.x - to.x) + Math.abs(from.y - to.y) === 1;
+}
+
+const botDirections = [
+  new Point(-1, 0),
+  new Point(1, 0),
+  new Point(0, -1),
+  new Point(0, 1),
+];
+
+function hasHumanPlayers(room: { players: Array<{ isBot?: boolean }> }) {
+  return room.players.some((player) => !player.isBot);
+}
+
+function isReadyParticipant(player: { team: number; isBot?: boolean }) {
+  return !player.isBot && player.team !== MaxTeamNum + 1;
+}
+
+function countReadyParticipants(room: Room) {
+  return room.players.reduce(
+    (count, player) => count + (isReadyParticipant(player) && player.forceStart ? 1 : 0),
+    0
+  );
+}
+
+function countActiveHumanPlayers(room: Room) {
+  return room.players.filter(isReadyParticipant).length;
+}
+
+function countActiveBotPlayers(room: Room) {
+  return room.players.filter(
+    (player) => player.isBot && player.team !== MaxTeamNum + 1
+  ).length;
+}
+
+function getForceStartTarget(room: Room) {
+  const activeHumans = countActiveHumanPlayers(room);
+  if (activeHumans === 0) {
+    return Number.POSITIVE_INFINITY;
+  }
+
+  if (countActiveBotPlayers(room) > 0) {
+    return activeHumans;
+  }
+
+  return forceStartOK[activeHumans] ?? activeHumans;
 }
 
 export class RoomDurableObject extends DurableObject<Env> {
@@ -223,7 +269,10 @@ export class RoomDurableObject extends DurableObject<Env> {
       { activeConnectionIds: this.getActiveConnectionIds() }
     );
 
-    if (hadPlayers && liveSummary.players.length === 0 && !liveSummary.keepAlive) {
+    if (
+      (hadPlayers && liveSummary.players.length === 0 && !liveSummary.keepAlive) ||
+      (liveSummary.players.length > 0 && !hasHumanPlayers(liveSummary))
+    ) {
       this.clearGameLoop();
       this.room = null;
       return null;
@@ -243,7 +292,10 @@ export class RoomDurableObject extends DurableObject<Env> {
 
     const summary = cloneRoomSummary(this.room);
 
-    if (summary.players.length === 0 && !summary.keepAlive) {
+    if (
+      (summary.players.length === 0 || !hasHumanPlayers(summary)) &&
+      !summary.keepAlive
+    ) {
       await this.app.deleteRoom(this.room.id);
       return;
     }
@@ -314,7 +366,11 @@ export class RoomDurableObject extends DurableObject<Env> {
   }
 
   private hasConnectedPlayers() {
-    return this.room?.players.some((player) => !player.disconnected) ?? false;
+    return (
+      this.room?.players.some(
+        (player) => !player.isBot && !player.disconnected
+      ) ?? false
+    );
   }
 
   private pruneRoomToActiveConnections() {
@@ -375,6 +431,120 @@ export class RoomDurableObject extends DurableObject<Env> {
     return allTeams.find((team) => !occupiedTeams.includes(team)) ?? 1;
   }
 
+  private createBotName(room: Room) {
+    const existingNames = new Set(room.players.map((player) => player.username));
+    let botIndex = room.players.filter((player) => player.isBot).length + 1;
+    let botName = `Bot ${botIndex}`;
+
+    while (existingNames.has(botName)) {
+      botIndex += 1;
+      botName = `Bot ${botIndex}`;
+    }
+
+    return botName;
+  }
+
+  private createBotPlayer(room: Room) {
+    const botId = randomPlayerId();
+    return new Player(
+      botId,
+      `bot:${botId}`,
+      this.createBotName(room),
+      this.pickPlayerColor(room),
+      this.pickPlayerTeam(room),
+      false,
+      false,
+      false,
+      0,
+      [],
+      null,
+      null,
+      false,
+      true
+    );
+  }
+
+  private scoreBotMove(player: Player, fromBlock: Block, toBlock: Block) {
+    if (toBlock.type === TileType.Mountain) {
+      return Number.NEGATIVE_INFINITY;
+    }
+
+    if (toBlock.player?.team === player.team) {
+      return Number.NEGATIVE_INFINITY;
+    }
+
+    let score = fromBlock.getMovableUnit() - toBlock.unit;
+
+    if (toBlock.player) {
+      score += toBlock.type === TileType.King ? 10000 : 1000;
+      if (fromBlock.getMovableUnit() > toBlock.unit) {
+        score += 250;
+      }
+    } else {
+      score += 200;
+    }
+
+    if (toBlock.type === TileType.City) {
+      score += 2000;
+    }
+    if (toBlock.type === TileType.Swamp) {
+      score -= 150;
+    }
+
+    return score;
+  }
+
+  private findBotMove(player: Player) {
+    if (!this.room?.map) {
+      return null;
+    }
+
+    let bestMove: { from: Point; to: Point; score: number } | null = null;
+
+    for (const block of player.land) {
+      if (block.getMovableUnit() <= 0) {
+        continue;
+      }
+
+      const from = new Point(block.x, block.y);
+      for (const direction of botDirections) {
+        const to = new Point(block.x + direction.x, block.y + direction.y);
+        if (!this.room.map.withinMap(to) || !this.room.map.commendable(player, from, to)) {
+          continue;
+        }
+
+        const targetBlock = this.room.map.getBlock(to);
+        const score = this.scoreBotMove(player, block, targetBlock);
+        if (!bestMove || score > bestMove.score) {
+          bestMove = { from, to, score };
+        }
+      }
+    }
+
+    return bestMove && bestMove.score > 0 ? bestMove : null;
+  }
+
+  private runBotTurn(player: Player) {
+    if (
+      !this.room?.map ||
+      !this.room.gameStarted ||
+      !player.isBot ||
+      player.isDead ||
+      player.spectating() ||
+      player.operatedTurn >= this.room.map.turn
+    ) {
+      return;
+    }
+
+    const move = this.findBotMove(player);
+    if (!move) {
+      return;
+    }
+
+    this.room.map.moveAllMovableUnit(player, move.from, move.to);
+    player.operatedTurn = this.room.map.turn;
+  }
+
   private handleNeutralized(room: Room, player: Player) {
     if (player.king && room.map) {
       room.map.getBlock(player.king).kingBeDominated();
@@ -425,7 +595,7 @@ export class RoomDurableObject extends DurableObject<Env> {
         this.pickPlayerTeam(room)
       );
 
-      if (room.players.length === 0) {
+      if (!hasHumanPlayers(room)) {
         player.setRoomHost(true);
       }
 
@@ -472,10 +642,7 @@ export class RoomDurableObject extends DurableObject<Env> {
       this.room.players = this.room.players.filter((item) => item.id !== player.id);
     }
 
-    this.room.forceStartNum = this.room.players.reduce(
-      (count, item) => count + (item.forceStart ? 1 : 0),
-      0
-    );
+    this.room.forceStartNum = countReadyParticipants(this.room);
 
     if (this.room.gameStarted && !this.hasConnectedPlayers()) {
       this.clearGameLoop();
@@ -483,9 +650,10 @@ export class RoomDurableObject extends DurableObject<Env> {
       return;
     }
 
-    if (this.room.players.length > 0) {
+    const nextHost = this.room.players.find((roomPlayer) => !roomPlayer.isBot);
+    if (nextHost) {
       this.room.players.forEach((roomPlayer) => roomPlayer.setRoomHost(false));
-      this.room.players[0].setRoomHost(true);
+      nextHost.setRoomHost(true);
       this.broadcast('update_room', this.room);
     }
 
@@ -498,8 +666,7 @@ export class RoomDurableObject extends DurableObject<Env> {
       return;
     }
 
-    const activePlayers = this.room.players.filter((player) => !player.spectating()).length;
-    const target = forceStartOK[activePlayers] ?? activePlayers;
+    const target = getForceStartTarget(this.room);
 
     if (!this.room.gameStarted && this.room.forceStartNum >= target) {
       await this.startGame();
@@ -645,6 +812,10 @@ export class RoomDurableObject extends DurableObject<Env> {
       }
     }
 
+    for (const player of this.room.players) {
+      this.runBotTurn(player);
+    }
+
     for (const [connectionId] of this.sockets.entries()) {
       await this.sendCurrentGameState(connectionId);
     }
@@ -698,7 +869,8 @@ export class RoomDurableObject extends DurableObject<Env> {
       this.room.players.length > 0 &&
       !this.room.players.some((player) => player.isRoomHost)
     ) {
-      this.room.players[0].setRoomHost(true);
+      const nextHost = this.room.players.find((player) => !player.isBot);
+      nextHost?.setRoomHost(true);
     }
     this.clearGameLoop();
     await this.syncRoomSummary();
@@ -747,8 +919,8 @@ export class RoomDurableObject extends DurableObject<Env> {
         player.team = team;
         if (player.spectating() && player.forceStart) {
           player.forceStart = false;
-          room.forceStartNum -= 1;
         }
+        room.forceStartNum = countReadyParticipants(room);
 
         this.broadcast('update_room', room);
         this.broadcast(
@@ -795,6 +967,88 @@ export class RoomDurableObject extends DurableObject<Env> {
         await this.syncRoomSummary();
         break;
       }
+      case 'add_bot': {
+        if (!player) return;
+        if (!player.isRoomHost) {
+          this.send(
+            connectionId,
+            'error',
+            'Unable to add bot',
+            'You are not the room host.'
+          );
+          return;
+        }
+        if (room.gameStarted) {
+          this.send(
+            connectionId,
+            'error',
+            'Unable to add bot',
+            'Bots can only be added before the game starts.'
+          );
+          return;
+        }
+        if (room.players.length >= room.maxPlayers) {
+          this.send(
+            connectionId,
+            'error',
+            'Unable to add bot',
+            'The room is full.'
+          );
+          return;
+        }
+
+        const bot = this.createBotPlayer(room);
+        room.players.push(bot);
+        room.forceStartNum = countReadyParticipants(room);
+        this.broadcast('update_room', room);
+        this.broadcast('room_message', bot.minify(), 'joined as a bot.');
+        await this.syncRoomSummary();
+        await this.checkForcedStart();
+        break;
+      }
+      case 'remove_bot': {
+        if (!player) return;
+        if (!player.isRoomHost) {
+          this.send(
+            connectionId,
+            'error',
+            'Unable to remove bot',
+            'You are not the room host.'
+          );
+          return;
+        }
+        if (room.gameStarted) {
+          this.send(
+            connectionId,
+            'error',
+            'Unable to remove bot',
+            'Bots can only be removed before the game starts.'
+          );
+          return;
+        }
+
+        const botId = String(arg1 ?? '');
+        const botIndex = room.players.findIndex(
+          (roomPlayer) => roomPlayer.id === botId && roomPlayer.isBot
+        );
+        if (botIndex === -1) {
+          this.send(
+            connectionId,
+            'error',
+            'Unable to remove bot',
+            'Bot not found.'
+          );
+          return;
+        }
+
+        const [bot] = room.players.splice(botIndex, 1);
+        room.forceStartNum = countReadyParticipants(room);
+        this.broadcast('update_room', room);
+        this.broadcast('room_message', bot.minify(), 'was removed.');
+        await this.syncRoomSummary();
+        await this.checkForcedStart();
+        break;
+      }
       case 'change_host': {
         if (!player) return;
         if (!player.isRoomHost) {
@@ -815,6 +1069,15 @@ export class RoomDurableObject extends DurableObject<Env> {
             'error',
             'Host modification failed',
             'Target player not found.'
+          );
+          return;
+        }
+        if (room.players[newHost].isBot) {
+          this.send(
+            connectionId,
+            'error',
+            'Host modification failed',
+            'Bots cannot become room hosts.'
           );
           return;
         }
@@ -995,7 +1258,7 @@ export class RoomDurableObject extends DurableObject<Env> {
         }
 
         player.forceStart = !player.forceStart;
-        room.forceStartNum += player.forceStart ? 1 : -1;
+        room.forceStartNum = countReadyParticipants(room);
         this.broadcast('update_room', room);
         await this.syncRoomSummary();
         await this.checkForcedStart();

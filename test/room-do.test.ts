@@ -75,6 +75,62 @@ describe('RoomDurableObject', () => {
     );
   });
 
+  it('lets a room host add a bot and start a bot match', async () => {
+    const roomId = `room-${crypto.randomUUID().slice(0, 8)}`;
+    const stub = env.ROOMS.getByName(roomId);
+
+    await runInDurableObject(
+      stub,
+      async (instance: RoomDurableObject) => {
+        const events = captureEvents(instance);
+        const room = await (instance as any).ensureRoom(roomId);
+        room.players.push(new Player('player-a', 'socket-a', 'Alice', 1, 1, true));
+
+        await (instance as any).handlePacket('socket-a', {
+          type: 'add_bot',
+          data: [],
+        });
+
+        expect(room.players).toHaveLength(2);
+        expect(room.players[1].isBot).toBe(true);
+        expect(events.some((item) => item.event === 'update_room')).toBe(true);
+
+        await (instance as any).handlePacket('socket-a', {
+          type: 'force_start',
+          data: [],
+        });
+
+        expect(room.gameStarted).toBe(true);
+        expect(room.players.every((player: Player) => player.king)).toBe(true);
+
+        (instance as any).clearGameLoop();
+      }
+    );
+  });
+
+  it('deletes bot-only rooms after the last human leaves', async () => {
+    const roomId = `room-${crypto.randomUUID().slice(0, 8)}`;
+    const stub = env.ROOMS.getByName(roomId);
+
+    await runInDurableObject(
+      stub,
+      async (instance: RoomDurableObject) => {
+        captureEvents(instance);
+        const room = await (instance as any).ensureRoom(roomId);
+        room.players.push(new Player('player-a', 'socket-a', 'Alice', 1, 1, true));
+
+        await (instance as any).syncRoomSummary();
+        await (instance as any).handlePacket('socket-a', {
+          type: 'add_bot',
+          data: [],
+        });
+        await (instance as any).handleDisconnect('socket-a');
+
+        expect(await (instance as any).app.getRoom(roomId)).toBeNull();
+      }
+    );
+  });
+
   it('rehydrates persisted room state before handling hibernated websocket messages', async () => {
     const roomId = `room-${crypto.randomUUID().slice(0, 8)}`;
     const stub = env.ROOMS.getByName(roomId);

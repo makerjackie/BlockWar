@@ -604,7 +604,7 @@ function MapEditor({ editMode }: { editMode: boolean }) {
   }, [mapRef, editMode, handleKeyDown]);
 
   const settingsDockClassName =
-    'menu-container absolute inset-x-2 top-[82px] z-[102] flex h-[26dvh] min-h-[168px] max-h-[198px] flex-row items-stretch gap-2 overflow-x-auto overflow-y-hidden p-2 pb-3 md:left-auto md:right-0 md:top-[70px] md:h-[calc(100dvh-140px)] md:min-h-0 md:max-h-none md:w-[min(360px,88vw)] md:flex-col md:gap-4 md:overflow-x-hidden md:overflow-y-auto md:p-4';
+    'menu-container absolute inset-x-2 top-[82px] z-[102] flex h-[188px] min-h-[188px] max-h-[188px] flex-col gap-2 overflow-hidden p-2 md:left-auto md:right-0 md:top-[70px] md:h-[calc(100dvh-140px)] md:min-h-0 md:max-h-none md:w-[min(360px,88vw)] md:gap-4 md:overflow-x-hidden md:overflow-y-auto md:p-4';
   const paletteDockClassName =
     'menu-container absolute inset-x-2 bottom-[calc(env(safe-area-inset-bottom)+8px)] z-[102] overflow-x-auto overflow-y-hidden p-2 md:bottom-[70px] md:left-0 md:right-auto md:top-[70px] md:h-[calc(100dvh-140px)] md:w-[96px] md:overflow-x-hidden md:overflow-y-auto';
   const paletteGridClassName =
@@ -615,10 +615,20 @@ function MapEditor({ editMode }: { editMode: boolean }) {
     'min-w-[252px] md:min-w-0';
   const editorActionRailClassName =
     'grid w-[190px] min-w-[190px] shrink-0 content-start self-start grid-cols-2 auto-rows-[56px] gap-2 md:w-auto md:min-w-0 md:auto-rows-auto md:shrink md:self-auto';
+  const compactActionStripClassName =
+    'grid shrink-0 grid-cols-3 gap-2';
+  const compactActionButtonClassName =
+    'bw-button bw-button-secondary h-11 min-h-11 w-full px-2.5 text-[10px] leading-tight tracking-[0.1em] whitespace-normal';
+  const compactPrimaryActionButtonClassName =
+    'bw-button bw-button-primary col-span-2 h-11 min-h-11 w-full px-3 text-[10px] leading-tight tracking-[0.1em] whitespace-normal';
+  const compactCardStripClassName =
+    'flex min-h-0 flex-1 items-stretch gap-2 overflow-x-auto overflow-y-hidden pb-1';
+  const compactCardClassName =
+    'h-full min-w-[min(262px,calc(100vw-2.75rem))] overflow-y-auto';
   const paletteIconSize = isCompactEditor ? 34 : 40;
   const palettePropertyIconSize = isCompactEditor ? 24 : 28;
   const mapCenterTop =
-    editMode && isCompactEditor ? 'calc(50% + 85px)' : '50%';
+    editMode && isCompactEditor ? 'calc(50% + 80px)' : '50%';
 
   return (
     <div
@@ -685,90 +695,183 @@ function MapEditor({ editMode }: { editMode: boolean }) {
 
       {editMode && (
         <aside className={settingsDockClassName}>
-          <button
-            type='button'
-            className='bw-button bw-button-primary order-1 w-[180px] min-w-[180px] max-w-[180px] shrink-0 self-stretch px-3 text-[11px] leading-snug tracking-[0.12em] whitespace-normal md:order-none md:w-full md:min-w-0 md:max-w-none md:self-auto md:text-xs md:leading-tight md:tracking-[0.18em]'
-            onClick={handleOpenMapExplorer}
-          >
-            <FolderOpen size={16} strokeWidth={2.5} />
-            {t('select-a-custom-map')}
-          </button>
+          {isCompactEditor ? (
+            <>
+              <div className={compactActionStripClassName}>
+                <button
+                  type='button'
+                  className={compactPrimaryActionButtonClassName}
+                  onClick={handleOpenMapExplorer}
+                >
+                  <FolderOpen size={15} strokeWidth={2.5} />
+                  {t('select-a-custom-map')}
+                </button>
+                <button
+                  type='button'
+                  className={compactActionButtonClassName}
+                  onClick={handleDownloadMap}
+                >
+                  <Download size={14} strokeWidth={2.5} />
+                  {t('download')}
+                </button>
+                <button
+                  type='button'
+                  className={compactActionButtonClassName}
+                  onClick={handleUploadMap}
+                >
+                  <Upload size={14} strokeWidth={2.5} />
+                  {t('upload')}
+                </button>
+                <button
+                  type='button'
+                  className={compactActionButtonClassName}
+                  onClick={handleSaveDraft}
+                >
+                  <Save size={14} strokeWidth={2.5} />
+                  {t('save-draft')}
+                </button>
+                <button
+                  type='button'
+                  className='bw-button bw-button-primary h-11 min-h-11 w-full px-2.5 text-[10px] leading-tight tracking-[0.1em] whitespace-normal'
+                  onClick={handlePublish}
+                >
+                  <Send size={14} strokeWidth={2.5} />
+                  {t('publish')}
+                </button>
+              </div>
 
-          <EditorCard
-            icon={<Info size={18} strokeWidth={2.25} />}
-            title={t('basic-info')}
-            className={`order-3 ${editorCardRailClassName} md:order-none`}
-          >
-            <EditorField
-              id='map-name'
-              label='Map Name'
-              value={mapName}
-              onChange={(e) => setMapName(e.target.value)}
-            />
-            <EditorField
-              id='map-desc'
-              label='Map Description'
-              value={mapDescription}
-              onChange={(e) => setMapDescription(e.target.value)}
-              multiline
-            />
-          </EditorCard>
-          <EditorCard
-            icon={<Scaling size={18} strokeWidth={2.25} />}
-            title={t('map-size')}
-            className={`order-4 ${editorCardRailClassName} md:order-none`}
-          >
-            <div className='grid gap-3 sm:grid-cols-2 md:grid-cols-1'>
-              <EditorField
-                id='map-width'
-                label='Map Width'
-                type='number'
-                value={mapWidth}
-                onChange={handleMapWidthChange}
-              />
-              <EditorField
-                id='map-height'
-                label='Map Height'
-                type='number'
-                value={mapHeight}
-                onChange={handleMapHeightChange}
-              />
-            </div>
-          </EditorCard>
-          <div className={`order-2 ${editorActionRailClassName} md:order-none`}>
-            <button
-              type='button'
-              className='bw-button bw-button-secondary h-14 min-h-14 w-full text-[10px] leading-tight tracking-[0.12em] whitespace-normal md:h-auto md:min-h-0 md:text-xs md:tracking-[0.18em]'
-              onClick={handleDownloadMap}
-            >
-              <Download size={15} strokeWidth={2.5} />
-              {t('download')}
-            </button>
-            <button
-              type='button'
-              className='bw-button bw-button-secondary h-14 min-h-14 w-full text-[10px] leading-tight tracking-[0.12em] whitespace-normal md:h-auto md:min-h-0 md:text-xs md:tracking-[0.18em]'
-              onClick={handleUploadMap}
-            >
-              <Upload size={15} strokeWidth={2.5} />
-              {t('upload')}
-            </button>
-            <button
-              type='button'
-              className='bw-button bw-button-secondary h-14 min-h-14 w-full text-[10px] leading-tight tracking-[0.12em] whitespace-normal md:h-auto md:min-h-0 md:text-xs md:tracking-[0.18em]'
-              onClick={handleSaveDraft}
-            >
-              <Save size={15} strokeWidth={2.5} />
-              {t('save-draft')}
-            </button>
-            <button
-              type='button'
-              className='bw-button bw-button-primary h-14 min-h-14 w-full text-[10px] leading-tight tracking-[0.12em] whitespace-normal md:h-auto md:min-h-0 md:text-xs md:tracking-[0.18em]'
-              onClick={handlePublish}
-            >
-              <Send size={15} strokeWidth={2.5} />
-              {t('publish')}
-            </button>
-          </div>
+              <div className={compactCardStripClassName}>
+                <EditorCard
+                  icon={<Info size={18} strokeWidth={2.25} />}
+                  title={t('basic-info')}
+                  className={compactCardClassName}
+                >
+                  <EditorField
+                    id='map-name'
+                    label='Map Name'
+                    value={mapName}
+                    onChange={(e) => setMapName(e.target.value)}
+                  />
+                  <EditorField
+                    id='map-desc'
+                    label='Map Description'
+                    value={mapDescription}
+                    onChange={(e) => setMapDescription(e.target.value)}
+                    multiline
+                  />
+                </EditorCard>
+                <EditorCard
+                  icon={<Scaling size={18} strokeWidth={2.25} />}
+                  title={t('map-size')}
+                  className={compactCardClassName}
+                >
+                  <div className='grid grid-cols-2 gap-3'>
+                    <EditorField
+                      id='map-width'
+                      label='Map Width'
+                      type='number'
+                      value={mapWidth}
+                      onChange={handleMapWidthChange}
+                    />
+                    <EditorField
+                      id='map-height'
+                      label='Map Height'
+                      type='number'
+                      value={mapHeight}
+                      onChange={handleMapHeightChange}
+                    />
+                  </div>
+                </EditorCard>
+              </div>
+            </>
+          ) : (
+            <>
+              <button
+                type='button'
+                className='bw-button bw-button-primary order-1 w-[180px] min-w-[180px] max-w-[180px] shrink-0 self-stretch px-3 text-[11px] leading-snug tracking-[0.12em] whitespace-normal md:order-none md:w-full md:min-w-0 md:max-w-none md:self-auto md:text-xs md:leading-tight md:tracking-[0.18em]'
+                onClick={handleOpenMapExplorer}
+              >
+                <FolderOpen size={16} strokeWidth={2.5} />
+                {t('select-a-custom-map')}
+              </button>
+
+              <EditorCard
+                icon={<Info size={18} strokeWidth={2.25} />}
+                title={t('basic-info')}
+                className={`order-3 ${editorCardRailClassName} md:order-none`}
+              >
+                <EditorField
+                  id='map-name'
+                  label='Map Name'
+                  value={mapName}
+                  onChange={(e) => setMapName(e.target.value)}
+                />
+                <EditorField
+                  id='map-desc'
+                  label='Map Description'
+                  value={mapDescription}
+                  onChange={(e) => setMapDescription(e.target.value)}
+                  multiline
+                />
+              </EditorCard>
+              <EditorCard
+                icon={<Scaling size={18} strokeWidth={2.25} />}
+                title={t('map-size')}
+                className={`order-4 ${editorCardRailClassName} md:order-none`}
+              >
+                <div className='grid gap-3 sm:grid-cols-2 md:grid-cols-1'>
+                  <EditorField
+                    id='map-width'
+                    label='Map Width'
+                    type='number'
+                    value={mapWidth}
+                    onChange={handleMapWidthChange}
+                  />
+                  <EditorField
+                    id='map-height'
+                    label='Map Height'
+                    type='number'
+                    value={mapHeight}
+                    onChange={handleMapHeightChange}
+                  />
+                </div>
+              </EditorCard>
+              <div className={`order-2 ${editorActionRailClassName} md:order-none`}>
+                <button
+                  type='button'
+                  className='bw-button bw-button-secondary h-14 min-h-14 w-full text-[10px] leading-tight tracking-[0.12em] whitespace-normal md:h-auto md:min-h-0 md:text-xs md:tracking-[0.18em]'
+                  onClick={handleDownloadMap}
+                >
+                  <Download size={15} strokeWidth={2.5} />
+                  {t('download')}
+                </button>
+                <button
+                  type='button'
+                  className='bw-button bw-button-secondary h-14 min-h-14 w-full text-[10px] leading-tight tracking-[0.12em] whitespace-normal md:h-auto md:min-h-0 md:text-xs md:tracking-[0.18em]'
+                  onClick={handleUploadMap}
+                >
+                  <Upload size={15} strokeWidth={2.5} />
+                  {t('upload')}
+                </button>
+                <button
+                  type='button'
+                  className='bw-button bw-button-secondary h-14 min-h-14 w-full text-[10px] leading-tight tracking-[0.12em] whitespace-normal md:h-auto md:min-h-0 md:text-xs md:tracking-[0.18em]'
+                  onClick={handleSaveDraft}
+                >
+                  <Save size={15} strokeWidth={2.5} />
+                  {t('save-draft')}
+                </button>
+                <button
+                  type='button'
+                  className='bw-button bw-button-primary h-14 min-h-14 w-full text-[10px] leading-tight tracking-[0.12em] whitespace-normal md:h-auto md:min-h-0 md:text-xs md:tracking-[0.18em]'
+                  onClick={handlePublish}
+                >
+                  <Send size={15} strokeWidth={2.5} />
+                  {t('publish')}
+                </button>
+              </div>
+            </>
+          )}
         </aside>
       )}
 

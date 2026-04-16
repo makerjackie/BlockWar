@@ -129,46 +129,101 @@ function CompactSettingsTrigger({
   icon,
   title,
   summary,
-  detail,
   onClick,
 }: {
   icon: ReactNode;
   title: string;
   summary: string;
-  detail: string;
   onClick: () => void;
 }) {
   return (
     <button
       type='button'
-      className='bw-panel-hard flex w-full items-start gap-3 px-3 py-3 text-left transition duration-200 ease-out hover:-translate-y-0.5 active:translate-y-0'
+      className='bw-panel-hard flex h-12 min-h-12 w-full items-center gap-2 overflow-hidden px-2.5 py-2 text-left transition duration-200 ease-out hover:-translate-y-0.5 active:translate-y-0'
       onClick={onClick}
     >
-      <span className='mt-0.5 shrink-0 text-[color:var(--bw-ember)]'>{icon}</span>
+      <span className='shrink-0 text-[color:var(--bw-ember)]'>{icon}</span>
       <span className='min-w-0 flex-1'>
         <span
-          className='block text-[10px] font-black uppercase tracking-[0.18em]'
+          className='block text-[9px] font-black uppercase leading-none tracking-[0.12em]'
           style={{ color: 'var(--bw-muted)' }}
         >
           {title}
         </span>
-        <span className='mt-1 block truncate text-sm font-black'>
+        <span className='mt-1 block truncate text-xs font-black leading-tight'>
           {summary}
-        </span>
-        <span
-          className='mt-1 block line-clamp-2 text-xs leading-relaxed'
-          style={{ color: 'var(--bw-ink-soft)' }}
-        >
-          {detail}
         </span>
       </span>
       <span
-        className='shrink-0 text-xs font-black uppercase tracking-[0.16em]'
+        className='shrink-0 text-[10px] font-black uppercase tracking-[0.16em]'
         style={{ color: 'var(--bw-muted)' }}
       >
         {`›`}
       </span>
     </button>
+  );
+}
+
+function MapBasicInfoFields({
+  mapName,
+  mapDescription,
+  onMapNameChange,
+  onMapDescriptionChange,
+}: {
+  mapName: string;
+  mapDescription: string;
+  onMapNameChange: (value: string) => void;
+  onMapDescriptionChange: (value: string) => void;
+}) {
+  return (
+    <>
+      <EditorField
+        id='map-name'
+        label='Map Name'
+        value={mapName}
+        onChange={(event) => onMapNameChange(event.target.value)}
+      />
+      <EditorField
+        id='map-desc'
+        label='Map Description'
+        value={mapDescription}
+        onChange={(event) => onMapDescriptionChange(event.target.value)}
+        multiline
+      />
+    </>
+  );
+}
+
+function MapSizeFields({
+  mapWidth,
+  mapHeight,
+  onMapWidthChange,
+  onMapHeightChange,
+  className = 'grid gap-3 sm:grid-cols-2 md:grid-cols-1',
+}: {
+  mapWidth: number;
+  mapHeight: number;
+  onMapWidthChange: (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
+  onMapHeightChange: (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
+  className?: string;
+}) {
+  return (
+    <div className={className}>
+      <EditorField
+        id='map-width'
+        label='Map Width'
+        type='number'
+        value={mapWidth}
+        onChange={onMapWidthChange}
+      />
+      <EditorField
+        id='map-height'
+        label='Map Height'
+        type='number'
+        value={mapHeight}
+        onChange={onMapHeightChange}
+      />
+    </div>
   );
 }
 
@@ -684,10 +739,8 @@ function MapEditor({ editMode }: { editMode: boolean }) {
   const paletteIconSize = isCompactEditor ? 34 : 40;
   const palettePropertyIconSize = isCompactEditor ? 24 : 28;
   const mapCenterTop =
-    editMode && isCompactEditor ? 'calc(50% + 56px)' : '50%';
+    editMode && isCompactEditor ? 'calc(50% + 42px)' : '50%';
   const compactMapNameSummary = mapName.trim() || t('untitled-map');
-  const compactMapDescriptionSummary =
-    mapDescription.trim() || t('edit-map-info');
 
   return (
     <div
@@ -770,18 +823,11 @@ function MapEditor({ editMode }: { editMode: boolean }) {
             }
           >
             <div className='space-y-4'>
-              <EditorField
-                id='map-name-dialog'
-                label='Map Name'
-                value={mapName}
-                onChange={(e) => setMapName(e.target.value)}
-              />
-              <EditorField
-                id='map-desc-dialog'
-                label='Map Description'
-                value={mapDescription}
-                onChange={(e) => setMapDescription(e.target.value)}
-                multiline
+              <MapBasicInfoFields
+                mapName={mapName}
+                mapDescription={mapDescription}
+                onMapNameChange={setMapName}
+                onMapDescriptionChange={setMapDescription}
               />
             </div>
           </ModalShell>
@@ -801,22 +847,13 @@ function MapEditor({ editMode }: { editMode: boolean }) {
               </button>
             }
           >
-            <div className='grid gap-4 sm:grid-cols-2'>
-              <EditorField
-                id='map-width-dialog'
-                label='Map Width'
-                type='number'
-                value={mapWidth}
-                onChange={handleMapWidthChange}
-              />
-              <EditorField
-                id='map-height-dialog'
-                label='Map Height'
-                type='number'
-                value={mapHeight}
-                onChange={handleMapHeightChange}
-              />
-            </div>
+            <MapSizeFields
+              mapWidth={mapWidth}
+              mapHeight={mapHeight}
+              onMapWidthChange={handleMapWidthChange}
+              onMapHeightChange={handleMapHeightChange}
+              className='grid gap-4 sm:grid-cols-2'
+            />
           </ModalShell>
         </>
       )}
@@ -868,19 +905,17 @@ function MapEditor({ editMode }: { editMode: boolean }) {
                 </button>
               </div>
 
-              <div className='grid gap-2'>
+              <div className='grid grid-cols-2 gap-2'>
                 <CompactSettingsTrigger
                   icon={<Info size={18} strokeWidth={2.25} />}
                   title={t('basic-info')}
                   summary={compactMapNameSummary}
-                  detail={compactMapDescriptionSummary}
                   onClick={() => setOpenCompactBasicInfoDialog(true)}
                 />
                 <CompactSettingsTrigger
                   icon={<Scaling size={18} strokeWidth={2.25} />}
                   title={t('map-size')}
                   summary={`${mapWidth} × ${mapHeight}`}
-                  detail={t('edit-map-size')}
                   onClick={() => setOpenCompactMapSizeDialog(true)}
                 />
               </div>
@@ -901,18 +936,11 @@ function MapEditor({ editMode }: { editMode: boolean }) {
                 title={t('basic-info')}
                 className={`order-3 ${editorCardRailClassName} md:order-none`}
               >
-                <EditorField
-                  id='map-name'
-                  label='Map Name'
-                  value={mapName}
-                  onChange={(e) => setMapName(e.target.value)}
-                />
-                <EditorField
-                  id='map-desc'
-                  label='Map Description'
-                  value={mapDescription}
-                  onChange={(e) => setMapDescription(e.target.value)}
-                  multiline
+                <MapBasicInfoFields
+                  mapName={mapName}
+                  mapDescription={mapDescription}
+                  onMapNameChange={setMapName}
+                  onMapDescriptionChange={setMapDescription}
                 />
               </EditorCard>
               <EditorCard
@@ -920,22 +948,12 @@ function MapEditor({ editMode }: { editMode: boolean }) {
                 title={t('map-size')}
                 className={`order-4 ${editorCardRailClassName} md:order-none`}
               >
-                <div className='grid gap-3 sm:grid-cols-2 md:grid-cols-1'>
-                  <EditorField
-                    id='map-width'
-                    label='Map Width'
-                    type='number'
-                    value={mapWidth}
-                    onChange={handleMapWidthChange}
-                  />
-                  <EditorField
-                    id='map-height'
-                    label='Map Height'
-                    type='number'
-                    value={mapHeight}
-                    onChange={handleMapHeightChange}
-                  />
-                </div>
+                <MapSizeFields
+                  mapWidth={mapWidth}
+                  mapHeight={mapHeight}
+                  onMapWidthChange={handleMapWidthChange}
+                  onMapHeightChange={handleMapHeightChange}
+                />
               </EditorCard>
               <div className={`order-2 ${editorActionRailClassName} md:order-none`}>
                 <button

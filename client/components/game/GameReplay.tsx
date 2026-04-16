@@ -263,13 +263,13 @@ export default function GameReplay() {
             </button>
             <button
               type='button'
-              className='grid size-12 place-items-center border border-zinc-100 bg-zinc-100 text-zinc-950 shadow-[4px_4px_0_#000]'
+              className='bw-button bw-button-primary size-12 px-0'
               onClick={() => setIsPlay((value) => !value)}
             >
               {isPlay ? (
                 <Pause size={18} strokeWidth={2.5} />
               ) : (
-                <Play size={18} strokeWidth={2.5} />
+                <Play size={18} strokeWidth={2.5} fill='currentColor' />
               )}
             </button>
             <button

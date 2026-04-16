@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import Image from 'next/image';
+import { Home } from 'lucide-react';
 import { TileType, TileProp, TileType2Image } from '@/lib/types';
 import {
   ColorArr,
@@ -14,6 +15,13 @@ import {
   revealedStroke,
 } from '@/lib/constants';
 
+const myKingGlowColor = 'rgba(250, 204, 21, 0.55)';
+const myKingRingColor = 'rgba(250, 204, 21, 0.95)';
+const myKingInnerRingColor = 'rgba(254, 249, 195, 0.95)';
+const myKingBadgeBackground = 'rgba(120, 53, 15, 0.95)';
+const myKingBadgeOutline = 'rgba(255, 255, 255, 0.75)';
+const myKingShadowColor = 'rgba(15, 23, 42, 0.72)';
+
 interface MapTileProps {
   zoom?: number;
   imageZoom?: number;
@@ -27,6 +35,7 @@ interface MapTileProps {
   tileHalf: boolean;
   isSelected: boolean;
   isNextPossibleMove: boolean;
+  isMyKing: boolean;
   warringStatesMode: boolean;
 }
 
@@ -44,6 +53,7 @@ export default React.memo(function MapTile(props: MapTileProps) {
     tileHalf,
     isSelected,
     isNextPossibleMove,
+    isMyKing,
     warringStatesMode = false,
   } = props;
   const resolvedZoom = zoom ?? 1;
@@ -84,6 +94,30 @@ export default React.memo(function MapTile(props: MapTileProps) {
     [zoomedSize, resolvedImageZoom]
   );
 
+  const myKingGlowInset = useMemo(
+    () => -Math.max(3, Math.round(zoomedSize * 0.12)),
+    [zoomedSize]
+  );
+  const myKingInnerInset = useMemo(
+    () => Math.max(2, Math.round(zoomedSize * 0.08)),
+    [zoomedSize]
+  );
+  const myKingRingWidth = useMemo(
+    () => Math.max(2, Math.round(zoomedSize * 0.08)),
+    [zoomedSize]
+  );
+  const myKingBadgeSize = useMemo(
+    () => Math.max(14, Math.round(zoomedSize * 0.34)),
+    [zoomedSize]
+  );
+  const myKingBadgeIconSize = useMemo(
+    () => Math.max(10, Math.round(myKingBadgeSize * 0.58)),
+    [myKingBadgeSize]
+  );
+  const myKingBadgeOffset = useMemo(
+    () => -Math.max(5, Math.round(zoomedSize * 0.14)),
+    [zoomedSize]
+  );
   const imageXY = useMemo(
     () => (zoomedSize - zoomedImageSize) / 2,
     [zoomedSize, zoomedImageSize]
@@ -138,6 +172,7 @@ export default React.memo(function MapTile(props: MapTileProps) {
         height: zoomedSize,
         cursor: canMove ? 'pointer' : 'default',
         backgroundColor: defaultBgcolor,
+        overflow: 'visible',
       }}
     >
       <div
@@ -156,6 +191,62 @@ export default React.memo(function MapTile(props: MapTileProps) {
       >
         {country}
       </div>
+      {isMyKing && (
+        <>
+          <div
+            data-highlight='my-king-glow'
+            aria-hidden='true'
+            style={{
+              position: 'absolute',
+              inset: myKingGlowInset,
+              border: `${myKingRingWidth}px solid ${myKingRingColor}`,
+              borderRadius: Math.max(8, Math.round(zoomedSize * 0.18)),
+              boxShadow: `0 0 0 2px ${myKingShadowColor}, 0 0 18px 6px ${myKingGlowColor}`,
+              pointerEvents: 'none',
+              zIndex: 2,
+            }}
+          />
+          <div
+            data-highlight='my-king-ring'
+            aria-hidden='true'
+            style={{
+              position: 'absolute',
+              inset: myKingInnerInset,
+              border: `${myKingRingWidth}px solid ${myKingInnerRingColor}`,
+              borderRadius: Math.max(6, Math.round(zoomedSize * 0.14)),
+              boxShadow: `0 0 0 1px ${myKingShadowColor} inset`,
+              pointerEvents: 'none',
+              zIndex: 3,
+            }}
+          />
+          <div
+            data-highlight='my-king-badge'
+            aria-hidden='true'
+            style={{
+              position: 'absolute',
+              top: myKingBadgeOffset,
+              right: myKingBadgeOffset,
+              width: myKingBadgeSize,
+              height: myKingBadgeSize,
+              borderRadius: '9999px',
+              backgroundColor: myKingBadgeBackground,
+              border: `1px solid ${myKingBadgeOutline}`,
+              boxShadow: `0 0 0 2px ${myKingRingColor}, 0 6px 12px rgba(15, 23, 42, 0.32)`,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              pointerEvents: 'none',
+              zIndex: 5,
+            }}
+          >
+            <Home
+              size={myKingBadgeIconSize}
+              strokeWidth={2.4}
+              color={myKingInnerRingColor}
+            />
+          </div>
+        </>
+      )}
       {image && (
         <Image
           src={image}

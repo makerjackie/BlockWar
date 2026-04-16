@@ -194,6 +194,7 @@ function GameMap() {
         const [, color] = tile;
         const queueItem = queueEmpty ? undefined : mapQueueData[x]?.[y];
         const isOwned = myPlayerColor !== null && color === myPlayerColor;
+        const isMyKing = isOwned && tile[0] === TileType.King;
         const isSelected =
           !!selectedMapTileInfo &&
           x === selectedMapTileInfo.x &&
@@ -208,6 +209,7 @@ function GameMap() {
           _className: queueItem?.className ?? '',
           tileHalf,
           isSelected,
+          isMyKing,
           isNextPossibleMove: testIfNextPossibleMove(tile[0], x, y),
         };
       });

@@ -2,7 +2,6 @@ import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import { useState, useEffect, StrictMode } from 'react';
 
 import Navbar from '../components/Navbar';
-import Footer from '../components/Footer';
 import Login from '../components/Login';
 
 import Lobby from '../components/Lobby';
@@ -36,7 +35,6 @@ export default function Home() {
         <Login username={username} handlePlayClick={handlePlayClick} />
       )}
       {username && <Lobby />}
-      <Footer />
     </StrictMode>
   );
 }

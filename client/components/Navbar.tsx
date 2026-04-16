@@ -1,13 +1,14 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import {
   BookOpen,
+  Check,
+  Languages,
   Menu,
   MessageSquareWarning,
   Moon,
   Sun,
   Users,
   ChevronDown,
-  Globe,
 } from 'lucide-react';
 
 import { useTranslation } from 'next-i18next';
@@ -21,9 +22,20 @@ import HowToPlay from './HowToPlay';
 
 import Link from 'next/link';
 
-const languageLabels: Record<string, string> = {
-  en: 'EN',
-  zh: '中',
+const languageLabels: Record<
+  string,
+  { shortLabel: string; label: string; description: string }
+> = {
+  en: {
+    shortLabel: 'EN',
+    label: 'English',
+    description: 'English interface',
+  },
+  zh: {
+    shortLabel: '中文',
+    label: '简体中文',
+    description: '中文界面',
+  },
 };
 
 function GitHubMarkIcon() {
@@ -83,19 +95,16 @@ const utilityNavItems: NavItem[] = [
 
 function Navbar() {
   const [isNavOpen, setIsNavOpen] = useState(false);
+  const [isLanguageMenuOpen, setIsLanguageMenuOpen] = useState(false);
   const [show, setShow] = useState(false);
   const { mode, toggleMode } = useThemeMode();
 
   const toggleShow = () => {
+    setIsLanguageMenuOpen(false);
     setShow(!show);
   };
 
   const router = useRouter();
-
-  const handleLanguageChange = async (lang: string) => {
-    await router.push(router.asPath, undefined, { locale: lang });
-  };
-
   const { t, i18n } = useTranslation();
   const locale =
     resolveSupportedLanguage(router.locale) ??
@@ -107,6 +116,12 @@ function Navbar() {
     router.locales && router.locales.length > 0
       ? router.locales
       : [fallbackLanguage];
+  const currentLanguage =
+    languageLabels[locale] ?? {
+      shortLabel: locale.toUpperCase(),
+      label: locale,
+      description: locale,
+    };
   const navLinkClass = `navbar-link navbar-link-primary ${
     isChinese ? 'navbar-link-zh' : 'navbar-link-en'
   }`;
@@ -117,32 +132,122 @@ function Navbar() {
   const themeToggleLabel =
     mode === 'dark' ? t('switch-to-light') : t('switch-to-dark');
   const mobileNavItems = [...primaryNavItems, ...utilityNavItems];
-  const renderLanguageSwitcher = (className: string) => (
-    <div className='relative flex items-center'>
-      <Globe
-        className='pointer-events-none absolute left-3 text-zinc-500'
-        size={14}
-        strokeWidth={2.4}
-      />
-      <select
-        className={className}
-        value={locale}
-        onChange={(event) => {
-          void handleLanguageChange(event.target.value);
-        }}
-        aria-label='Language'
+
+  useEffect(() => {
+    if (!isLanguageMenuOpen) {
+      return undefined;
+    }
+
+    const handlePointerDown = (event: Event) => {
+      if (
+        event.target instanceof Element &&
+        event.target.closest('[data-language-menu-root="true"]')
+      ) {
+        return;
+      }
+
+      setIsLanguageMenuOpen(false);
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsLanguageMenuOpen(false);
+      }
+    };
+
+    window.addEventListener('pointerdown', handlePointerDown);
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      window.removeEventListener('pointerdown', handlePointerDown);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isLanguageMenuOpen]);
+
+  const handleLanguageChange = async (lang: string) => {
+    setIsLanguageMenuOpen(false);
+
+    if (lang === locale) {
+      return;
+    }
+
+    await router.push(router.asPath, undefined, { locale: lang });
+  };
+
+  const renderLanguageSwitcher = (buttonClassName: string, menuClassName: string) => (
+    <div
+      className={`relative ${menuClassName}`}
+      data-language-menu-root='true'
+    >
+      <button
+        type='button'
+        className={buttonClassName}
+        aria-label='Select language'
+        aria-expanded={isLanguageMenuOpen}
+        aria-haspopup='menu'
+        title={currentLanguage.label}
+        onClick={() => setIsLanguageMenuOpen((value) => !value)}
       >
-        {languageOptions.map((lang) => (
-          <option key={lang} value={lang}>
-            {languageLabels[lang] ?? lang}
-          </option>
-        ))}
-      </select>
-      <ChevronDown
-        className='pointer-events-none absolute right-2 text-zinc-500'
-        size={14}
-        strokeWidth={2.4}
-      />
+        <Languages size={16} strokeWidth={2.35} className='shrink-0' />
+        <span className='truncate text-left font-black tracking-[0.08em]'>
+          {currentLanguage.shortLabel}
+        </span>
+        <ChevronDown
+          className={`shrink-0 transition duration-200 ease-out ${
+            isLanguageMenuOpen ? 'rotate-180 text-zinc-50' : 'text-zinc-500'
+          }`}
+          size={14}
+          strokeWidth={2.4}
+        />
+      </button>
+
+      {isLanguageMenuOpen && (
+        <div className='menu-container absolute right-0 top-[calc(100%+0.5rem)] z-[1300] w-[min(11.5rem,calc(100vw-2rem))] p-1.5'>
+          <div className='grid gap-1'>
+            {languageOptions.map((lang) => {
+              const language = languageLabels[lang] ?? {
+                shortLabel: lang.toUpperCase(),
+                label: lang,
+                description: lang,
+              };
+              const isActive = lang === locale;
+
+              return (
+                <button
+                  key={lang}
+                  type='button'
+                  className={`navbar-tool-button h-auto min-h-12 w-full justify-between px-3 py-2 text-left ${
+                    isActive ? 'navbar-tool-button-primary' : ''
+                  }`}
+                  aria-pressed={isActive}
+                  onClick={() => {
+                    void handleLanguageChange(lang);
+                  }}
+                >
+                  <span className='flex min-w-0 flex-col items-start gap-0.5'>
+                    <span className='text-sm font-black tracking-[0.08em]'>
+                      {language.label}
+                    </span>
+                    <span
+                      className={`text-[10px] font-semibold tracking-[0.08em] ${
+                        isActive ? 'opacity-80' : 'text-zinc-500'
+                      }`}
+                    >
+                      {language.description}
+                    </span>
+                  </span>
+                  <Check
+                    size={15}
+                    strokeWidth={2.6}
+                    className={isActive ? 'opacity-100' : 'opacity-0'}
+                    aria-hidden='true'
+                  />
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 
@@ -221,7 +326,8 @@ function Navbar() {
             {t('how-to-play')}
           </button>
           {renderLanguageSwitcher(
-            'navbar-language-switch pl-8 pr-7 text-sm font-black tracking-[0.08em]'
+            'navbar-tool-button min-w-[6.25rem] justify-between px-3 text-sm',
+            'shrink-0'
           )}
         </div>
 
@@ -240,7 +346,8 @@ function Navbar() {
             )}
           </button>
           {renderLanguageSwitcher(
-            'navbar-language-switch h-11 min-h-11 w-16 min-w-0 pl-7 pr-6 text-sm font-black tracking-[0.08em]'
+            'navbar-tool-button h-11 min-h-11 min-w-[6rem] justify-between px-2.5 text-xs',
+            'shrink-0'
           )}
         </div>
 
@@ -249,7 +356,10 @@ function Navbar() {
           aria-label='Open navigation menu'
           aria-expanded={isNavOpen}
           className='grid size-11 shrink-0 place-items-center border border-zinc-500/50 bg-zinc-950 text-zinc-50 md:hidden'
-          onClick={() => setIsNavOpen((value) => !value)}
+          onClick={() => {
+            setIsLanguageMenuOpen(false);
+            setIsNavOpen((value) => !value);
+          }}
         >
           <Menu size={18} strokeWidth={2.5} />
         </button>

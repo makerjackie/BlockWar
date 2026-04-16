@@ -13,9 +13,21 @@ interface PlayerTableProps {
   warringStatesMode: boolean;
 }
 
-function getPlayerAvatarLabel(username: string) {
-  const [firstCharacter] = Array.from(username.trim());
-  return firstCharacter?.toUpperCase() ?? '?';
+function comparePlayers(a: Player, b: Player, myPlayerId: string) {
+  if (a.isRoomHost !== b.isRoomHost) return a.isRoomHost ? -1 : 1;
+
+  const aIsMine = a.id === myPlayerId;
+  const bIsMine = b.id === myPlayerId;
+  if (aIsMine !== bIsMine) return aIsMine ? -1 : 1;
+
+  const aIsSpectator = a.team === MaxTeamNum + 1;
+  const bIsSpectator = b.team === MaxTeamNum + 1;
+  if (aIsSpectator !== bIsSpectator) return aIsSpectator ? 1 : -1;
+
+  if (a.team !== b.team) return a.team - b.team;
+  if (a.isBot !== b.isBot) return a.isBot ? 1 : -1;
+
+  return a.username.localeCompare(b.username, 'zh-Hans-CN');
 }
 
 function PlayerTable(props: PlayerTableProps) {
@@ -30,116 +42,122 @@ function PlayerTable(props: PlayerTableProps) {
   } = props;
   const { t } = useTranslation();
 
-  const teams: Player[][] = Array.from({ length: MaxTeamNum + 2 }, () => []);
-  players.forEach((player) => {
-    teams[player.team] ??= [];
-    teams[player.team].push(player);
-  });
+  const orderedPlayers = [...players].sort((a, b) => comparePlayers(a, b, myPlayerId));
+  const occupiedTeams = Array.from(
+    new Set(
+      players
+        .filter((player) => player.team <= MaxTeamNum)
+        .map((player) => player.team)
+        .sort((a, b) => a - b)
+    )
+  );
+  const teamGroups = occupiedTeams.map((teamNumber) => ({
+    key: `team-${teamNumber}`,
+    label: t('team-number', { number: teamNumber }),
+    players: orderedPlayers.filter((player) => player.team === teamNumber),
+  }));
+  const spectators = orderedPlayers.filter((player) => player.team === MaxTeamNum + 1);
+
+  if (spectators.length > 0) {
+    teamGroups.push({
+      key: 'spectators',
+      label: t('spectators'),
+      players: spectators,
+    });
+  }
 
   return (
-    <div className='grid grid-cols-[repeat(auto-fit,minmax(145px,1fr))] gap-2 sm:gap-3'>
-      {teams.map((teamPlayers, index) => {
-        if (!teamPlayers || teamPlayers.length === 0) return null;
-        const isSpectator = index > MaxTeamNum;
-        return (
-          <section
-            key={index}
-            className='min-w-0 border border-zinc-800 bg-zinc-950/60 p-2.5 sm:p-3'
-          >
-            <div className='mb-2 text-[10px] font-black uppercase tracking-[0.16em] text-zinc-500 sm:mb-3 sm:text-[11px] sm:tracking-[0.18em]'>
-              {isSpectator ? t('spectators') : t('team-number', { number: index })}
-            </div>
-            <div className='flex flex-col gap-1.5 sm:gap-2'>
-              {teamPlayers.map((player) => {
-                const isMine = player.id === myPlayerId;
-                const disabled = player.isBot ? !canManageBots : disabled_ui;
-                const playerColor = ColorArr[player.color];
-                const isSpectator = player.team === MaxTeamNum + 1;
-                const bgColor =
-                  isSpectator
-                    ? '#09090b'
-                    : isMine
-                      ? playerColor
-                      : 'transparent';
-                const textColor = isMine ? '#ffffff' : playerColor;
-                const avatarBackgroundColor = isSpectator ? '#09090b' : playerColor;
-                const avatarTextColor = isSpectator ? playerColor : '#ffffff';
+    <div className='grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-2 sm:gap-3'>
+      {teamGroups.map((group) => (
+        <section
+          key={group.key}
+          className='min-w-0 border border-zinc-800 bg-zinc-950/70 p-2.5 sm:p-3'
+        >
+          <div className='mb-2 flex items-center justify-between gap-2'>
+            <span className='text-[10px] font-black uppercase tracking-[0.16em] text-zinc-400 sm:text-[11px]'>
+              {group.label}
+            </span>
+            <span className='inline-flex min-h-6 min-w-6 items-center justify-center rounded-full border border-zinc-700 px-2 text-[10px] font-black text-zinc-300'>
+              {group.players.length}
+            </span>
+          </div>
 
-                return (
-                  <button
-                    type='button'
-                    key={player.id}
-                    disabled={disabled}
-                    title={
-                      disabled
-                        ? ''
-                        : player.isBot
-                          ? t('remove-bot')
-                          : t('transfer-host')
+          <div className='space-y-1.5'>
+            {group.players.map((player) => {
+              const isMine = player.id === myPlayerId;
+              const disabled = player.isBot ? !canManageBots : disabled_ui;
+              const playerColor = ColorArr[player.color];
+              const displayName = warringStatesMode
+                ? `${WarringStates[player.color]} ${player.username}`
+                : player.username;
+              const playerNameColor = isMine ? 'var(--bw-ink)' : 'var(--bw-ink-soft)';
+              const playerBackgroundColor = isMine
+                ? 'color-mix(in srgb, var(--bw-panel-strong) 76%, var(--bw-line-strong) 24%)'
+                : undefined;
+
+              return (
+                <button
+                  type='button'
+                  key={player.id}
+                  disabled={disabled}
+                  title={
+                    disabled
+                      ? ''
+                      : player.isBot
+                        ? t('remove-bot')
+                        : t('transfer-host')
+                  }
+                  onClick={() => {
+                    if (player.isBot) {
+                      handleRemoveBot(player.id);
+                      return;
                     }
-                    onClick={() => {
-                      if (player.isBot) {
-                        handleRemoveBot(player.id);
-                        return;
-                      }
-                      handleChangeHost(player.id, player.username);
-                    }}
-                    className='flex min-h-9 items-center justify-between gap-1.5 border px-2.5 py-1.5 text-left transition disabled:cursor-not-allowed disabled:opacity-60 sm:min-h-10 sm:gap-2 sm:px-3 sm:py-2'
-                    style={{
-                      borderColor: playerColor,
-                      backgroundColor: bgColor,
-                    }}
-                  >
-                    <span className='flex min-w-0 items-center gap-2.5 sm:gap-3'>
-                      <span
-                        className='relative grid size-10 shrink-0 overflow-hidden border sm:size-11'
-                        style={{
-                          borderColor: playerColor,
-                          backgroundColor: avatarBackgroundColor,
-                        }}
-                      >
-                        {player.isRoomHost ? (
-                          <span
-                            className='absolute inset-x-0 top-0 flex h-4 items-center justify-center bg-zinc-950/85 px-1 text-[7px] font-black tracking-[0.08em] sm:text-[8px]'
-                            style={{ color: playerColor }}
-                          >
-                            {t('room-role-host')}
-                          </span>
-                        ) : null}
-                        <span
-                          className={`grid h-full place-items-center font-black uppercase ${
-                            player.isRoomHost ? 'pt-3 text-sm sm:pt-3.5' : 'text-base'
-                          }`}
-                          style={{ color: avatarTextColor }}
-                        >
-                          {getPlayerAvatarLabel(player.username)}
-                        </span>
-                      </span>
-
-                      <span className='min-w-0'>
-                        <span
-                          className='block truncate text-[13px] font-black sm:text-sm'
-                          style={{
-                            color: textColor,
-                            textDecoration: player.forceStart ? 'underline' : 'none',
-                          }}
-                        >
-                          {warringStatesMode ? WarringStates[player.color] : ''}
-                          {player.username}
-                          {player.isBot ? ` · ${t('bot')}` : ''}
-                        </span>
-                        <span className='mt-0.5 block text-[10px] font-black uppercase tracking-[0.12em] text-zinc-500'>
-                          {isSpectator ? t('spectators') : t('team-number', { number: player.team })}
-                        </span>
-                      </span>
+                    handleChangeHost(player.id, player.username);
+                  }}
+                  className={`flex min-h-10 w-full items-center justify-between gap-3 border-l-2 bg-zinc-950/80 px-3 py-2 text-left transition disabled:cursor-default disabled:opacity-100 ${
+                    disabled ? '' : 'hover:bg-zinc-900'
+                  }`}
+                  style={{
+                    borderColor: playerColor,
+                    backgroundColor: playerBackgroundColor,
+                  }}
+                >
+                  <span className='min-w-0 flex items-center gap-2'>
+                    <span
+                      className='size-2 shrink-0 rounded-full'
+                      style={{ backgroundColor: playerColor }}
+                    />
+                    <span
+                      className='truncate text-sm font-black'
+                      style={{ color: playerNameColor }}
+                    >
+                      {displayName}
                     </span>
-                  </button>
-                );
-              })}
-            </div>
-          </section>
-        );
-      })}
+                  </span>
+
+                  <span className='flex shrink-0 flex-wrap items-center justify-end gap-1'>
+                    {player.isRoomHost ? (
+                      <span className='inline-flex min-h-5 items-center rounded-full bg-yellow-300 px-2 text-[10px] font-black uppercase tracking-[0.08em] text-zinc-950'>
+                        {t('room-role-host')}
+                      </span>
+                    ) : null}
+                    {player.isBot ? (
+                      <span className='inline-flex min-h-5 items-center rounded-full border border-zinc-700 px-2 text-[10px] font-black uppercase tracking-[0.08em] text-zinc-300'>
+                        {t('bot')}
+                      </span>
+                    ) : null}
+                    {player.forceStart ? (
+                      <span className='inline-flex min-h-5 items-center rounded-full border border-emerald-500/60 px-2 text-[10px] font-black uppercase tracking-[0.08em] text-emerald-300'>
+                        {t('ready')}
+                      </span>
+                    ) : null}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+      ))}
     </div>
   );
 }

@@ -21,6 +21,24 @@
 - `RoomDurableObject` owns per-room WebSocket connections, room state, game ticks, player actions, and replay capture.
 - `wrangler.jsonc` currently defines the `DB`, `APP`, `ROOMS`, `ASSETS`, custom domain route, and Durable Object migration settings.
 
+## Tech Stack Snapshot
+- Frontend app: React 18 + TypeScript + Vite 7 SPA, with routes defined through `react-router-dom` in `src/app/App.tsx`.
+- Styling system: Tailwind CSS v4 via `@tailwindcss/vite`; Tailwind is imported from `client/styles/globals.css` with `@import "tailwindcss";`.
+- UI foundations: shared theme tokens and component classes live in `client/styles/globals.css`, including `--bw-*` CSS variables plus reusable classes such as `bw-button`, `bw-input`, `bw-panel-hard`, `bw-page-copy`, `bw-title`, and `menu-container`.
+- Theme handling: light/dark mode is driven by `data-theme` on `document.documentElement`; both modes must be supported whenever UI colors, surfaces, borders, or text styles change.
+- Localization: `react-i18next`/`i18next` with locale files under `client/public/locales/`.
+- Backend/runtime: Cloudflare Workers + Wrangler + Hono, with Durable Objects for app/room state and D1 for persistence.
+- Realtime transport: room gameplay uses the WebSocket route `/ws/rooms/:roomId` through the compatibility shim in `src/compat/socket-io-client.ts`.
+- Testing/build tooling: Vitest with the Cloudflare Workers pool, `tsc` for type checks, and Vite for client builds.
+
+## UI & Tailwind Conventions
+- Keep new UI work in Tailwind utility classes and the existing shared component classes from `client/styles/globals.css`; do not introduce a second styling framework.
+- Prefer existing semantic design tokens (`var(--bw-ink)`, `var(--bw-panel-strong)`, `var(--bw-line)`, etc.) over hard-coded hex values or one-off inline colors, especially for text, borders, and panel backgrounds.
+- Reuse the established BlockWar visual language: uppercase labels, strong contrast, compact spacing, square corners, and the existing `bw-*` button/panel/input patterns before inventing new variants.
+- When a component needs custom styling beyond Tailwind utilities, extend the shared styles in `client/styles/globals.css` or use theme variables instead of scattering repeated inline styles across components.
+- Any visible UI change must be checked for both `data-theme='dark'` and `data-theme='light'`; avoid assumptions that `text-zinc-*` or `bg-zinc-*` classes will always remain readable without theme overrides.
+- Keep responsive behavior aligned with the current codebase: mobile-first Tailwind classes, then layer `sm:`, `md:`, and larger breakpoints only where needed.
+
 ## Build, Test, and Development Commands
 - `pnpm install` installs dependencies. Match CI with Node 20 and `pnpm` 10.
 - `pnpm dev` starts the local stack: Vite watches static assets and Wrangler runs the Worker.

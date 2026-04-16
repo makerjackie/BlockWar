@@ -6,6 +6,7 @@ import {
   ArrowLeft,
   Bot,
   Castle,
+  Crown,
   Mountain,
   Share2,
   Trash2,
@@ -193,6 +194,7 @@ const GameSetting: React.FC<GameSettingProps> = () => {
 
   const canManageBots = !disabledUi && !room.gameStarted;
   const forceStartTarget = getForceStartTarget(room);
+  const roleLabel = disabledUi ? t('room-role-member') : t('room-role-host');
 
   return (
     <div className='mx-auto w-full max-w-2xl'>
@@ -218,11 +220,10 @@ const GameSetting: React.FC<GameSettingProps> = () => {
             </button>
 
             <div className='min-w-0'>
-              <p className='bw-page-copy'>{t('room-settings')}</p>
               {!isNameFocused || disabledUi ? (
                 <button
                   type='button'
-                  className='mt-1 max-w-full truncate text-left text-2xl font-black text-zinc-50'
+                  className='max-w-full truncate text-left text-2xl font-black text-zinc-50'
                   onClick={() => {
                     if (!disabledUi) setIsNamedFocused(true);
                   }}
@@ -232,18 +233,34 @@ const GameSetting: React.FC<GameSettingProps> = () => {
               ) : (
                 <input
                   autoFocus
-                  className='bw-input mt-1 h-11 text-left text-xl'
+                  className='bw-input h-11 text-left text-xl'
                   value={room.roomName}
                   onChange={handleRoomNameChange}
                   onBlur={handleRoomNameBlur}
                   disabled={disabledUi}
                 />
               )}
-              <p className='mt-1 text-xs font-black uppercase tracking-[0.14em] text-zinc-500'>
-                {disabledUi
-                  ? t('room-settings-host-only')
-                  : t('room-settings-editable')}
-              </p>
+              <div className='mt-2 flex flex-wrap items-center gap-2'>
+                <span
+                  className={`inline-flex min-h-8 items-center gap-1.5 border px-3 text-[11px] font-black uppercase tracking-[0.16em] ${
+                    disabledUi
+                      ? 'border-zinc-700 bg-zinc-950/70 text-zinc-300'
+                      : 'border-yellow-300 bg-yellow-300 text-zinc-950'
+                  }`}
+                >
+                  {disabledUi ? (
+                    <Users size={13} strokeWidth={2.3} />
+                  ) : (
+                    <Crown size={13} strokeWidth={2.3} />
+                  )}
+                  {roleLabel}
+                </span>
+                {disabledUi ? (
+                  <span className='text-xs font-black uppercase tracking-[0.14em] text-zinc-500'>
+                    {t('room-settings-host-only')}
+                  </span>
+                ) : null}
+              </div>
             </div>
           </div>
 
@@ -267,6 +284,10 @@ const GameSetting: React.FC<GameSettingProps> = () => {
         </div>
 
         <div className='space-y-4 px-4 py-4 sm:px-5'>
+          <div className='flex items-center justify-between gap-3'>
+            <p className='bw-page-copy'>{t('room-settings')}</p>
+          </div>
+
           {room.mapName && (
             <div className='flex items-center justify-between gap-3 border border-zinc-800 bg-zinc-950/60 px-4 py-3'>
               <Link

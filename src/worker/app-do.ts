@@ -4,6 +4,7 @@ import {
   LEGACY_SEED_ROOM_IDS,
   type RoomPreset,
 } from '@shared/game/room-defaults';
+import { DEFAULT_ROOM_NAME } from '@shared/game/room-names';
 import type { CustomMapData, CustomMapInfo } from '@shared/game/types';
 import {
   cloneRoomSummary,
@@ -265,7 +266,7 @@ export class AppDurableObject extends DurableObject<Env> {
     await this.execute('DELETE FROM rooms WHERE id = ?', roomId);
   }
 
-  async createRoom(roomName = 'Untitled', preset: RoomPreset = 'standard') {
+  async createRoom(roomName = DEFAULT_ROOM_NAME, preset: RoomPreset = 'standard') {
     await this.ensureInitialized();
     const roomId = randomId();
     const room = createDefaultRoom(roomId, roomName, preset);

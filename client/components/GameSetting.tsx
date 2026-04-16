@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { useTranslation } from 'next-i18next';
+import { formatCreatorRoomName } from '@shared/game/room-names';
 import {
   ArrowLeft,
   Bot,
@@ -108,7 +109,7 @@ const GameSetting: React.FC<GameSettingProps> = () => {
 
     const regex = /^[\s\u200B]+$/;
     if (!name || name === '' || regex.test(name)) {
-      name = 'Untitled';
+      name = formatCreatorRoomName(myUserName);
       roomDispatch({
         type: 'update_property',
         payload: {

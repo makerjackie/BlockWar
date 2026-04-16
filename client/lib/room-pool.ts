@@ -7,7 +7,7 @@ var roomCount = 0;
 
 export async function createRoom(
   roomId: string = '',
-  roomName: string = 'Untitled'
+  roomName: string = '【玩家】的房间'
 ) {
   try {
     if (Object.keys(roomPool).length > MAX_ROOM_COUNT)

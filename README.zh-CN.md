@@ -61,7 +61,7 @@
 | --- | --- |
 | `GET /api/ping` | 客户端使用的健康检查。 |
 | `GET /api/get_rooms` | 获取当前由应用协调器保存的活跃房间。 |
-| `GET /api/create_room?name=...&preset=warring_state` | 创建房间并返回 room id。 |
+| `GET /api/create_room?name=...&creator=...&preset=warring_state` | 创建房间并返回 room id；当未传 `name` 时，会默认使用 `【creator】的房间`。 |
 | `GET /api/get_replay/:replayId` | 获取已保存的回放。 |
 | `GET /api/maps` / `POST /api/maps` | 获取或创建自定义地图。 |
 | `GET /api/maps/:id` / `PUT /api/maps/:id` / `DELETE /api/maps/:id` | 读取、更新或删除自定义地图。 |

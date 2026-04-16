@@ -57,7 +57,7 @@ export class Message {
 export class Room {
   constructor(
     public id: string,
-    public roomName: string = 'Untitled',
+    public roomName: string = '【玩家】的房间',
     public gameStarted: boolean = false,
     public forceStartNum: number = 0,
     public mapGenerated: boolean = false,

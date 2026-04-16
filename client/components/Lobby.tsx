@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { Room, RoomPool } from '@/lib/types';
+import { formatCreatorRoomName } from '@shared/game/room-names';
 import { useTranslation } from 'next-i18next';
 import { HardDrive, Plus, Map as MapIcon } from 'lucide-react';
 import Toast from '@/components/ui/Toast';
@@ -88,6 +89,8 @@ function Lobby() {
   const handleCreateRoomClick = async (preset: RoomPreset = 'standard') => {
     try {
       const params = new URLSearchParams();
+      params.set('name', formatCreatorRoomName(username));
+      params.set('creator', username);
       if (preset !== 'standard') {
         params.set('preset', preset);
       }

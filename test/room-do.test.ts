@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { env, runInDurableObject } from 'cloudflare:test';
+import { DEFAULT_ROOM_NAME, formatCreatorRoomName } from '@shared/game/room-names';
 import Player from '@shared/game/player';
 import type { RoomDurableObject } from '../src/worker/room-do';
 import { cloneRoomSummary } from '../src/worker/lib/room-summary';
@@ -104,6 +105,39 @@ describe('RoomDurableObject', () => {
         expect(room.players.every((player: Player) => player.king)).toBe(true);
 
         (instance as any).clearGameLoop();
+      }
+    );
+  });
+
+  it('moves a bot forward after a few real game ticks', async () => {
+    const roomId = `room-${crypto.randomUUID().slice(0, 8)}`;
+    const stub = env.ROOMS.getByName(roomId);
+
+    await runInDurableObject(
+      stub,
+      async (instance: RoomDurableObject) => {
+        captureEvents(instance);
+        const room = await (instance as any).ensureRoom(roomId);
+        room.players.push(new Player('player-a', 'socket-a', 'Alice', 1, 1, true));
+
+        await (instance as any).handlePacket('socket-a', {
+          type: 'add_bot',
+          data: [],
+        });
+        await (instance as any).handlePacket('socket-a', {
+          type: 'force_start',
+          data: [],
+        });
+
+        const bot = room.players.find((player: Player) => player.isBot);
+        expect(bot).toBeTruthy();
+
+        for (let index = 0; index < 6; index += 1) {
+          await (instance as any).runGameTick();
+        }
+
+        expect(bot!.operatedTurn).toBeGreaterThan(0);
+        expect(bot!.land.length).toBeGreaterThan(1);
       }
     );
   });
@@ -294,6 +328,25 @@ describe('RoomDurableObject', () => {
         expect(room.players).toHaveLength(1);
         expect(room.players[0].username).toBe('Carol');
         expect(events.some((item) => item.event === 'reject_join')).toBe(false);
+      }
+    );
+  });
+
+  it('replaces fallback room titles with the first host name on join', async () => {
+    const roomId = `room-${crypto.randomUUID().slice(0, 8)}`;
+    const stub = env.ROOMS.getByName(roomId);
+
+    await runInDurableObject(
+      stub,
+      async (instance: RoomDurableObject) => {
+        captureEvents(instance);
+        const room = await (instance as any).ensureRoom(roomId);
+        room.roomName = DEFAULT_ROOM_NAME;
+
+        await (instance as any).handleJoin('socket-a', roomId, 'Alice', '');
+
+        expect(room.roomName).toBe(formatCreatorRoomName('Alice'));
+        expect(room.players[0]?.isRoomHost).toBe(true);
       }
     );
   });

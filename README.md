@@ -62,7 +62,7 @@
 | --- | --- |
 | `GET /api/ping` | Health check used by the client. |
 | `GET /api/get_rooms` | List active rooms currently stored by the app coordinator. |
-| `GET /api/create_room?name=...&preset=warring_state` | Create a room and return its room id. |
+| `GET /api/create_room?name=...&creator=...&preset=warring_state` | Create a room and return its room id. If `name` is omitted, the API falls back to `【creator】的房间`. |
 | `GET /api/get_replay/:replayId` | Load a saved replay. |
 | `GET /api/maps` / `POST /api/maps` | List or create custom maps. |
 | `GET /api/maps/:id` / `PUT /api/maps/:id` / `DELETE /api/maps/:id` | Read, update, or delete a custom map. |

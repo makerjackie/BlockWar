@@ -1,18 +1,16 @@
 import { DurableObject } from 'cloudflare:workers';
-import Block from '@shared/game/block';
 import { ColorArr, MaxTeamNum, forceStartOK } from '@shared/game/constants';
 import GameRecord from '@shared/game/game-record';
 import GameMap from '@shared/game/map';
 import MapDiff from '@shared/game/map-diff';
+import { formatCreatorRoomName, isFallbackRoomName } from '@shared/game/room-names';
 import Player from '@shared/game/player';
 import Point from '@shared/game/point';
 import { createDefaultRoom } from '@shared/game/room-defaults';
-import { TileType } from '@shared/game/types';
 import type {
   CustomMapData,
   LeaderBoardRow,
   LeaderBoardTable,
-  MapDiffData,
   Message,
   Room,
   UserData,
@@ -26,6 +24,10 @@ import {
   sanitizeRoomSummary,
   type PlainRoom,
 } from './lib/room-summary';
+import {
+  createBotPlayer as createManagedBotPlayer,
+  planBotMove,
+} from './lib/bot-engine';
 
 type Env = Cloudflare.Env;
 
@@ -96,13 +98,6 @@ function pointFromPayload(value: unknown): Point | null {
 function isCardinalNeighbor(from: Point, to: Point) {
   return Math.abs(from.x - to.x) + Math.abs(from.y - to.y) === 1;
 }
-
-const botDirections = [
-  new Point(-1, 0),
-  new Point(1, 0),
-  new Point(0, -1),
-  new Point(0, 1),
-];
 
 function hasHumanPlayers(room: { players: Array<{ isBot?: boolean }> }) {
   return room.players.some((player) => !player.isBot);
@@ -431,120 +426,6 @@ export class RoomDurableObject extends DurableObject<Env> {
     return allTeams.find((team) => !occupiedTeams.includes(team)) ?? 1;
   }
 
-  private createBotName(room: Room) {
-    const existingNames = new Set(room.players.map((player) => player.username));
-    let botIndex = room.players.filter((player) => player.isBot).length + 1;
-    let botName = `Bot ${botIndex}`;
-
-    while (existingNames.has(botName)) {
-      botIndex += 1;
-      botName = `Bot ${botIndex}`;
-    }
-
-    return botName;
-  }
-
-  private createBotPlayer(room: Room) {
-    const botId = randomPlayerId();
-    return new Player(
-      botId,
-      `bot:${botId}`,
-      this.createBotName(room),
-      this.pickPlayerColor(room),
-      this.pickPlayerTeam(room),
-      false,
-      false,
-      false,
-      0,
-      [],
-      null,
-      null,
-      false,
-      true
-    );
-  }
-
-  private scoreBotMove(player: Player, fromBlock: Block, toBlock: Block) {
-    if (toBlock.type === TileType.Mountain) {
-      return Number.NEGATIVE_INFINITY;
-    }
-
-    if (toBlock.player?.team === player.team) {
-      return Number.NEGATIVE_INFINITY;
-    }
-
-    let score = fromBlock.getMovableUnit() - toBlock.unit;
-
-    if (toBlock.player) {
-      score += toBlock.type === TileType.King ? 10000 : 1000;
-      if (fromBlock.getMovableUnit() > toBlock.unit) {
-        score += 250;
-      }
-    } else {
-      score += 200;
-    }
-
-    if (toBlock.type === TileType.City) {
-      score += 2000;
-    }
-    if (toBlock.type === TileType.Swamp) {
-      score -= 150;
-    }
-
-    return score;
-  }
-
-  private findBotMove(player: Player) {
-    if (!this.room?.map) {
-      return null;
-    }
-
-    let bestMove: { from: Point; to: Point; score: number } | null = null;
-
-    for (const block of player.land) {
-      if (block.getMovableUnit() <= 0) {
-        continue;
-      }
-
-      const from = new Point(block.x, block.y);
-      for (const direction of botDirections) {
-        const to = new Point(block.x + direction.x, block.y + direction.y);
-        if (!this.room.map.withinMap(to) || !this.room.map.commendable(player, from, to)) {
-          continue;
-        }
-
-        const targetBlock = this.room.map.getBlock(to);
-        const score = this.scoreBotMove(player, block, targetBlock);
-        if (!bestMove || score > bestMove.score) {
-          bestMove = { from, to, score };
-        }
-      }
-    }
-
-    return bestMove && bestMove.score > 0 ? bestMove : null;
-  }
-
-  private runBotTurn(player: Player) {
-    if (
-      !this.room?.map ||
-      !this.room.gameStarted ||
-      !player.isBot ||
-      player.isDead ||
-      player.spectating() ||
-      player.operatedTurn >= this.room.map.turn
-    ) {
-      return;
-    }
-
-    const move = this.findBotMove(player);
-    if (!move) {
-      return;
-    }
-
-    this.room.map.moveAllMovableUnit(player, move.from, move.to);
-    player.operatedTurn = this.room.map.turn;
-  }
-
   private handleNeutralized(room: Room, player: Player) {
     if (player.king && room.map) {
       room.map.getBlock(player.king).kingBeDominated();
@@ -597,6 +478,9 @@ export class RoomDurableObject extends DurableObject<Env> {
 
       if (!hasHumanPlayers(room)) {
         player.setRoomHost(true);
+        if (isFallbackRoomName(room.roomName)) {
+          room.roomName = formatCreatorRoomName(username);
+        }
       }
 
       if (room.gameStarted) {
@@ -813,7 +697,23 @@ export class RoomDurableObject extends DurableObject<Env> {
     }
 
     for (const player of this.room.players) {
-      this.runBotTurn(player);
+      if (
+        !this.room.gameStarted ||
+        !player.isBot ||
+        player.isDead ||
+        player.spectating() ||
+        player.operatedTurn >= this.room.map.turn
+      ) {
+        continue;
+      }
+
+      const move = planBotMove(this.room, player);
+      if (!move) {
+        continue;
+      }
+
+      this.room.map.moveAllMovableUnit(player, move.from, move.to);
+      player.operatedTurn = this.room.map.turn;
     }
 
     for (const [connectionId] of this.sockets.entries()) {
@@ -997,7 +897,13 @@ export class RoomDurableObject extends DurableObject<Env> {
           return;
         }
 
-        const bot = this.createBotPlayer(room);
+        const botId = randomPlayerId();
+        const bot = createManagedBotPlayer({
+          room,
+          botId,
+          color: this.pickPlayerColor(room),
+          team: this.pickPlayerTeam(room),
+        });
         room.players.push(bot);
         room.forceStartNum = countReadyParticipants(room);
         this.broadcast('update_room', room);

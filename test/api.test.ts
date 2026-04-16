@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { SELF } from 'cloudflare:test';
+import { formatCreatorRoomName } from '@shared/game/room-names';
 
 declare module 'cloudflare:test' {
   interface ProvidedEnv extends Cloudflare.Env {}
@@ -58,6 +59,24 @@ describe('BlockWar API', () => {
       warringStatesMode: true,
       revealKing: true,
     });
+  });
+
+  it('uses the creator name for default room titles', async () => {
+    const createResponse = await SELF.fetch(
+      'http://example.com/api/create_room?creator=Alice'
+    );
+    expect(createResponse.ok).toBe(true);
+
+    const created = (await createResponse.json()) as {
+      success: boolean;
+      roomId: string;
+    };
+
+    const roomsResponse = await SELF.fetch('http://example.com/api/get_rooms');
+    const rooms = (await roomsResponse.json()) as Record<string, { roomName: string }>;
+
+    expect(created.success).toBe(true);
+    expect(rooms[created.roomId]?.roomName).toBe(formatCreatorRoomName('Alice'));
   });
 
   it('stores maps and star relationships', async () => {

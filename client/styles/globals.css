@@ -377,6 +377,18 @@ select {
     box-shadow: 4px 4px 0 color-mix(in srgb, var(--bw-shadow-solid) 78%, transparent);
   }
 
+  .bw-palette-selected {
+    border-color: var(--bw-ember) !important;
+    background: color-mix(in srgb, var(--bw-panel) 76%, var(--bw-ember) 24%);
+    color: var(--bw-ink);
+  }
+
+  .bw-palette-selected input {
+    border-color: color-mix(in srgb, var(--bw-ember) 42%, var(--bw-line-strong) 58%) !important;
+    background: color-mix(in srgb, var(--bw-input-bg) 82%, var(--bw-ember) 18%) !important;
+    color: var(--bw-ink) !important;
+  }
+
   .queue_up::before,
   .queue_down::before,
   .queue_right::before,

@@ -11,12 +11,14 @@ interface useMapProps {
   mapWidth: number;
   mapHeight: number;
   listenTouch?: boolean;
+  smallScreenZoom?: number;
 }
 
 export default function useMap({
   mapWidth,
   mapHeight,
   listenTouch = true,
+  smallScreenZoom = 0.7,
 }: useMapProps) {
   const [zoom, setZoom] = useState<number>(1.0);
   const [tileSize, setTileSize] = useState(40);
@@ -27,14 +29,14 @@ export default function useMap({
 
   const isSmallScreen = useMediaQuery('(max-width:600px)');
   useEffect(() => {
-    setZoom(isSmallScreen ? 0.7 : 1.0);
+    setZoom(isSmallScreen ? smallScreenZoom : 1.0);
 
     if (mapWidth > 40 || mapHeight > 40) {
       setZoom(0.5);
     } else if (mapWidth > 25 || mapHeight > 25) {
       setZoom(0.75);
     }
-  }, [isSmallScreen, mapWidth, mapHeight]);
+  }, [isSmallScreen, mapWidth, mapHeight, smallScreenZoom]);
 
   const mapBasePixelWidth = useMemo(
     () => tileSize * mapWidth,

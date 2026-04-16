@@ -22,6 +22,7 @@ import CustomMapTile from '@/components/game/CustomMapTile';
 import { useTranslation } from 'next-i18next';
 import { snackStateReducer } from '@/context/GameReducer';
 import useMap from '@/hooks/useMap';
+import useMediaQuery from '@/hooks/useMediaQuery';
 import MapExplorer from '@/components/game/MapExplorer';
 import Loading from '@/components/Loading';
 import PublishMapDialog from '@/components/PublishMapDialog';
@@ -53,14 +54,18 @@ function EditorCard({
   icon,
   title,
   children,
+  className = '',
 }: {
   icon: ReactNode;
   title: string;
   children: ReactNode;
+  className?: string;
 }) {
   return (
-    <section className='bw-panel-hard w-full p-3 md:p-4'>
-      <div className='mb-2 flex items-center gap-2 border-b border-zinc-800 pb-2 text-[11px] font-black uppercase tracking-[0.18em] text-zinc-400 md:mb-3 md:pb-3 md:text-xs'>
+    <section
+      className={`bw-panel-hard w-full shrink-0 overflow-y-auto p-2 md:shrink md:overflow-visible md:p-4 ${className}`}
+    >
+      <div className='mb-1 flex items-center gap-2 border-b border-zinc-800 pb-1.5 text-[10px] font-black uppercase tracking-[0.18em] text-zinc-400 md:mb-3 md:pb-3 md:text-xs'>
         {icon}
         {title}
       </div>
@@ -92,14 +97,14 @@ function EditorField({
       {multiline ? (
         <textarea
           id={id}
-          className='bw-input h-auto min-h-20 resize-y py-3 text-left md:min-h-24'
+          className='bw-input h-auto min-h-14 resize-y py-2 text-left md:min-h-24 md:py-3'
           value={value}
           onChange={onChange}
         />
       ) : (
         <input
           id={id}
-          className='bw-input h-11 text-left md:h-12'
+          className='bw-input h-10 text-left md:h-12'
           type={type}
           value={value}
           onChange={onChange}
@@ -145,6 +150,7 @@ function MapEditor({ editMode }: { editMode: boolean }) {
   const [openMapExplorer, setOpenMapExplorer] = useState(false);
   const [openPublishDialog, setOpenPublishDialog] = useState(false);
   const [publishMapId, setPublishMapId] = useState('');
+  const isCompactEditor = useMediaQuery('(max-width: 767px)');
 
   const router = useRouter();
   const mapId = router.query.mapId as string;
@@ -159,6 +165,7 @@ function MapEditor({ editMode }: { editMode: boolean }) {
   } = useMap({
     mapWidth,
     mapHeight,
+    smallScreenZoom: editMode ? 0.75 : 0.7,
   });
 
   const handleOpenMapExplorer = () => {
@@ -597,13 +604,21 @@ function MapEditor({ editMode }: { editMode: boolean }) {
   }, [mapRef, editMode, handleKeyDown]);
 
   const settingsDockClassName =
-    'menu-container absolute inset-x-2 top-[76px] z-[102] flex max-h-[30dvh] flex-col gap-3 overflow-y-auto p-3 pb-4 sm:max-h-[34dvh] md:left-auto md:right-0 md:top-[70px] md:h-[calc(100dvh-140px)] md:max-h-none md:w-[min(360px,88vw)] md:gap-4 md:p-4';
+    'menu-container absolute inset-x-2 top-[82px] z-[102] flex h-[26dvh] min-h-[168px] max-h-[198px] flex-row items-stretch gap-2 overflow-x-auto overflow-y-hidden p-2 pb-3 md:left-auto md:right-0 md:top-[70px] md:h-[calc(100dvh-140px)] md:min-h-0 md:max-h-none md:w-[min(360px,88vw)] md:flex-col md:gap-4 md:overflow-x-hidden md:overflow-y-auto md:p-4';
   const paletteDockClassName =
-    'menu-container absolute inset-x-2 bottom-2 z-[102] overflow-x-auto overflow-y-hidden p-2 md:bottom-[70px] md:left-0 md:right-auto md:top-[70px] md:h-[calc(100dvh-140px)] md:w-[96px] md:overflow-x-hidden md:overflow-y-auto';
+    'menu-container absolute inset-x-2 bottom-[calc(env(safe-area-inset-bottom)+8px)] z-[102] overflow-x-auto overflow-y-hidden p-2 md:bottom-[70px] md:left-0 md:right-auto md:top-[70px] md:h-[calc(100dvh-140px)] md:w-[96px] md:overflow-x-hidden md:overflow-y-auto';
   const paletteGridClassName =
-    'grid min-w-max grid-flow-col auto-cols-[minmax(76px,1fr)] gap-2 md:min-w-0 md:grid-flow-row md:auto-cols-auto';
+    'grid min-w-max grid-flow-col auto-cols-[70px] gap-2 md:min-w-0 md:grid-flow-row md:auto-cols-auto';
   const paletteItemClassName =
-    'icon-box my-0 min-h-[92px] min-w-[76px] px-2 py-2 md:min-h-0 md:min-w-0 md:px-1 md:py-1';
+    'icon-box my-0 h-[78px] min-w-[70px] justify-center px-1.5 py-1.5 md:h-auto md:min-h-0 md:min-w-0 md:px-1 md:py-1';
+  const editorCardRailClassName =
+    'min-w-[252px] md:min-w-0';
+  const editorActionRailClassName =
+    'grid w-[190px] min-w-[190px] shrink-0 content-start self-start grid-cols-2 auto-rows-[56px] gap-2 md:w-auto md:min-w-0 md:auto-rows-auto md:shrink md:self-auto';
+  const paletteIconSize = isCompactEditor ? 34 : 40;
+  const palettePropertyIconSize = isCompactEditor ? 24 : 28;
+  const mapCenterTop =
+    editMode && isCompactEditor ? 'calc(50% + 85px)' : '50%';
 
   return (
     <div
@@ -672,7 +687,7 @@ function MapEditor({ editMode }: { editMode: boolean }) {
         <aside className={settingsDockClassName}>
           <button
             type='button'
-            className='bw-button bw-button-primary w-full text-xs leading-tight whitespace-normal'
+            className='bw-button bw-button-primary order-1 w-[180px] min-w-[180px] max-w-[180px] shrink-0 self-stretch px-3 text-[11px] leading-snug tracking-[0.12em] whitespace-normal md:order-none md:w-full md:min-w-0 md:max-w-none md:self-auto md:text-xs md:leading-tight md:tracking-[0.18em]'
             onClick={handleOpenMapExplorer}
           >
             <FolderOpen size={16} strokeWidth={2.5} />
@@ -682,6 +697,7 @@ function MapEditor({ editMode }: { editMode: boolean }) {
           <EditorCard
             icon={<Info size={18} strokeWidth={2.25} />}
             title={t('basic-info')}
+            className={`order-3 ${editorCardRailClassName} md:order-none`}
           >
             <EditorField
               id='map-name'
@@ -700,6 +716,7 @@ function MapEditor({ editMode }: { editMode: boolean }) {
           <EditorCard
             icon={<Scaling size={18} strokeWidth={2.25} />}
             title={t('map-size')}
+            className={`order-4 ${editorCardRailClassName} md:order-none`}
           >
             <div className='grid gap-3 sm:grid-cols-2 md:grid-cols-1'>
               <EditorField
@@ -718,10 +735,10 @@ function MapEditor({ editMode }: { editMode: boolean }) {
               />
             </div>
           </EditorCard>
-          <div className='grid w-full grid-cols-2 gap-2'>
+          <div className={`order-2 ${editorActionRailClassName} md:order-none`}>
             <button
               type='button'
-              className='bw-button bw-button-secondary w-full text-xs leading-tight whitespace-normal'
+              className='bw-button bw-button-secondary h-14 min-h-14 w-full text-[10px] leading-tight tracking-[0.12em] whitespace-normal md:h-auto md:min-h-0 md:text-xs md:tracking-[0.18em]'
               onClick={handleDownloadMap}
             >
               <Download size={15} strokeWidth={2.5} />
@@ -729,17 +746,15 @@ function MapEditor({ editMode }: { editMode: boolean }) {
             </button>
             <button
               type='button'
-              className='bw-button bw-button-secondary w-full text-xs leading-tight whitespace-normal'
+              className='bw-button bw-button-secondary h-14 min-h-14 w-full text-[10px] leading-tight tracking-[0.12em] whitespace-normal md:h-auto md:min-h-0 md:text-xs md:tracking-[0.18em]'
               onClick={handleUploadMap}
             >
               <Upload size={15} strokeWidth={2.5} />
               {t('upload')}
             </button>
-          </div>
-          <div className='grid w-full grid-cols-2 gap-2'>
             <button
               type='button'
-              className='bw-button bw-button-secondary w-full text-xs leading-tight whitespace-normal'
+              className='bw-button bw-button-secondary h-14 min-h-14 w-full text-[10px] leading-tight tracking-[0.12em] whitespace-normal md:h-auto md:min-h-0 md:text-xs md:tracking-[0.18em]'
               onClick={handleSaveDraft}
             >
               <Save size={15} strokeWidth={2.5} />
@@ -747,7 +762,7 @@ function MapEditor({ editMode }: { editMode: boolean }) {
             </button>
             <button
               type='button'
-              className='bw-button bw-button-primary w-full text-xs leading-tight whitespace-normal'
+              className='bw-button bw-button-primary h-14 min-h-14 w-full text-[10px] leading-tight tracking-[0.12em] whitespace-normal md:h-auto md:min-h-0 md:text-xs md:tracking-[0.18em]'
               onClick={handlePublish}
             >
               <Send size={15} strokeWidth={2.5} />
@@ -765,7 +780,7 @@ function MapEditor({ editMode }: { editMode: boolean }) {
                 key={tileName}
                 className={`${paletteItemClassName} w-full ${
                   selectedTileType === name2TileType[tileName]
-                    ? 'border-yellow-300 bg-yellow-300/15 text-yellow-200'
+                    ? 'bw-palette-selected'
                     : ''
                 }`}
                 onClick={() => {
@@ -776,8 +791,8 @@ function MapEditor({ editMode }: { editMode: boolean }) {
                 {tileName === 'plain' ? (
                   <div
                     style={{
-                      width: 40,
-                      height: 40,
+                      height: paletteIconSize,
+                      width: paletteIconSize,
                       backgroundColor: '#808080',
                       border: '#000 solid 1px',
                     }}
@@ -786,12 +801,12 @@ function MapEditor({ editMode }: { editMode: boolean }) {
                   <Image
                     src={TileType2Image[name2TileType[tileName]]}
                     alt={tileName}
-                    width={40}
-                    height={40}
+                    width={paletteIconSize}
+                    height={paletteIconSize}
                     draggable={false}
                   />
                 )}
-                <span className='mt-1 text-center text-[10px] font-black uppercase tracking-[0.08em]'>
+                <span className='mt-1 text-center text-[9px] font-black uppercase tracking-[0.08em] md:text-[10px]'>
                   {t(tileName)}
                 </span>
               </div>
@@ -802,7 +817,7 @@ function MapEditor({ editMode }: { editMode: boolean }) {
                 key={property}
                 className={`${paletteItemClassName} w-full ${
                   selectedProperty === property
-                    ? 'border-yellow-300 bg-yellow-300/15 text-yellow-200'
+                    ? 'bw-palette-selected'
                     : ''
                 }`}
                 onClick={() => {
@@ -811,12 +826,12 @@ function MapEditor({ editMode }: { editMode: boolean }) {
                 }}
               >
                 {property === 'revealed' ? (
-                  <Lightbulb size={28} strokeWidth={2.25} className='text-white' />
+                  <Lightbulb size={palettePropertyIconSize} strokeWidth={2.25} className='text-white' />
                 ) : (
                   <input
                     id={property}
                     type='number'
-                    className='h-10 w-full border border-zinc-700 bg-zinc-950/90 px-1 py-1 text-center text-xs font-black text-zinc-100'
+                    className='h-9 w-full border border-zinc-700 bg-zinc-950/90 px-1 py-1 text-center text-xs font-black text-zinc-100 md:h-10'
                     min={property2min[property]}
                     max={property2max[property]}
                     value={property2var[property]}
@@ -825,7 +840,7 @@ function MapEditor({ editMode }: { editMode: boolean }) {
                     }
                   />
                 )}
-                <span className='mt-1 text-center text-[10px] font-black uppercase tracking-[0.08em]'>
+                <span className='mt-1 text-center text-[9px] font-black uppercase tracking-[0.08em] md:text-[10px]'>
                   {t(property)}
                 </span>
               </div>
@@ -838,8 +853,8 @@ function MapEditor({ editMode }: { editMode: boolean }) {
                 setMapData(getNewMapData());
               }}
             >
-              <Eraser size={28} strokeWidth={2.25} className='text-red-400' />
-              <span className='mt-1 text-center text-[10px] font-black uppercase tracking-[0.08em]'>
+              <Eraser size={palettePropertyIconSize} strokeWidth={2.25} className='text-red-400' />
+              <span className='mt-1 text-center text-[9px] font-black uppercase tracking-[0.08em] md:text-[10px]'>
                 {t('clear-all')}
               </span>
             </div>
@@ -850,7 +865,7 @@ function MapEditor({ editMode }: { editMode: boolean }) {
       <div
         style={{
           position: 'absolute',
-          top: '50%',
+          top: mapCenterTop,
           left: '50%',
           transform: `translate(-50%, -50%) translate(${position.x}px, ${position.y}px)`,
           width: mapBasePixelHeight, // game's width and height are swapped
@@ -871,6 +886,7 @@ function MapEditor({ editMode }: { editMode: boolean }) {
             transformOrigin: 'center center',
             willChange: 'transform',
             contain: 'layout paint style',
+            touchAction: 'none',
           }}
         >
           {mapData.map((tiles, x) => {

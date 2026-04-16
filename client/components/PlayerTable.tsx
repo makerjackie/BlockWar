@@ -1,5 +1,4 @@
 import { useTranslation } from 'next-i18next';
-import { Crown } from 'lucide-react';
 
 import { Player } from '@/lib/types';
 import { ColorArr, MaxTeamNum, WarringStates } from '@/lib/constants';
@@ -12,6 +11,11 @@ interface PlayerTableProps {
   disabled_ui: boolean;
   canManageBots: boolean;
   warringStatesMode: boolean;
+}
+
+function getPlayerAvatarLabel(username: string) {
+  const [firstCharacter] = Array.from(username.trim());
+  return firstCharacter?.toUpperCase() ?? '?';
 }
 
 function PlayerTable(props: PlayerTableProps) {
@@ -49,13 +53,17 @@ function PlayerTable(props: PlayerTableProps) {
               {teamPlayers.map((player) => {
                 const isMine = player.id === myPlayerId;
                 const disabled = player.isBot ? !canManageBots : disabled_ui;
+                const playerColor = ColorArr[player.color];
+                const isSpectator = player.team === MaxTeamNum + 1;
                 const bgColor =
-                  player.team === MaxTeamNum + 1
+                  isSpectator
                     ? '#09090b'
                     : isMine
-                      ? ColorArr[player.color]
+                      ? playerColor
                       : 'transparent';
-                const textColor = isMine ? '#ffffff' : ColorArr[player.color];
+                const textColor = isMine ? '#ffffff' : playerColor;
+                const avatarBackgroundColor = isSpectator ? '#09090b' : playerColor;
+                const avatarTextColor = isSpectator ? playerColor : '#ffffff';
 
                 return (
                   <button
@@ -78,28 +86,51 @@ function PlayerTable(props: PlayerTableProps) {
                     }}
                     className='flex min-h-9 items-center justify-between gap-1.5 border px-2.5 py-1.5 text-left transition disabled:cursor-not-allowed disabled:opacity-60 sm:min-h-10 sm:gap-2 sm:px-3 sm:py-2'
                     style={{
-                      borderColor: ColorArr[player.color],
+                      borderColor: playerColor,
                       backgroundColor: bgColor,
                     }}
                   >
-                    <span className='flex min-w-0 items-center gap-1.5 sm:gap-2'>
-                      {player.isRoomHost ? (
-                        <Crown
-                          size={14}
-                          strokeWidth={2.25}
-                          style={{ color: textColor }}
-                        />
-                      ) : null}
+                    <span className='flex min-w-0 items-center gap-2.5 sm:gap-3'>
                       <span
-                        className='truncate text-[13px] font-black sm:text-sm'
+                        className='relative grid size-10 shrink-0 overflow-hidden border sm:size-11'
                         style={{
-                          color: textColor,
-                          textDecoration: player.forceStart ? 'underline' : 'none',
+                          borderColor: playerColor,
+                          backgroundColor: avatarBackgroundColor,
                         }}
                       >
-                        {warringStatesMode ? WarringStates[player.color] : ''}
-                        {player.username}
-                        {player.isBot ? ` · ${t('bot')}` : ''}
+                        {player.isRoomHost ? (
+                          <span
+                            className='absolute inset-x-0 top-0 flex h-4 items-center justify-center bg-zinc-950/85 px-1 text-[7px] font-black tracking-[0.08em] sm:text-[8px]'
+                            style={{ color: playerColor }}
+                          >
+                            {t('room-role-host')}
+                          </span>
+                        ) : null}
+                        <span
+                          className={`grid h-full place-items-center font-black uppercase ${
+                            player.isRoomHost ? 'pt-3 text-sm sm:pt-3.5' : 'text-base'
+                          }`}
+                          style={{ color: avatarTextColor }}
+                        >
+                          {getPlayerAvatarLabel(player.username)}
+                        </span>
+                      </span>
+
+                      <span className='min-w-0'>
+                        <span
+                          className='block truncate text-[13px] font-black sm:text-sm'
+                          style={{
+                            color: textColor,
+                            textDecoration: player.forceStart ? 'underline' : 'none',
+                          }}
+                        >
+                          {warringStatesMode ? WarringStates[player.color] : ''}
+                          {player.username}
+                          {player.isBot ? ` · ${t('bot')}` : ''}
+                        </span>
+                        <span className='mt-0.5 block text-[10px] font-black uppercase tracking-[0.12em] text-zinc-500'>
+                          {isSpectator ? t('spectators') : t('team-number', { number: player.team })}
+                        </span>
                       </span>
                     </span>
                   </button>

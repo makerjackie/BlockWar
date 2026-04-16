@@ -25,7 +25,9 @@ import ModalShell from '@/components/ui/ModalShell';
 
 type GameSettingProps = Record<string, never>;
 
-const tabLabels = ['team', 'game', 'map', 'terrain', 'modifiers'] as const;
+const tabLabels = ['players-tab', 'map', 'terrain', 'rules'] as const;
+const sectionLabelClass =
+  'text-[11px] font-black uppercase tracking-[0.16em] text-zinc-500 sm:text-xs sm:tracking-[0.18em]';
 
 const tabButtonClass = (active: boolean) =>
   `bw-button min-h-10 px-2.5 text-[11px] tracking-[0.14em] sm:min-h-11 sm:px-3 sm:text-xs sm:tracking-[0.18em] ${
@@ -200,7 +202,6 @@ const GameSetting: React.FC<GameSettingProps> = () => {
 
   const canManageBots = !disabledUi && !room.gameStarted;
   const forceStartTarget = getForceStartTarget(room);
-  const roleLabel = disabledUi ? t('room-role-member') : t('room-role-host');
   const isTutorialRoom = room.preset === 'tutorial';
   const currentPlayer = room.players.find((player) => player.id === myPlayerId);
   const canStartTutorial =
@@ -287,27 +288,11 @@ const GameSetting: React.FC<GameSettingProps> = () => {
                   disabled={disabledUi}
                 />
               )}
-              <div className='mt-1.5 flex flex-wrap items-center gap-2 sm:mt-2'>
-                <span
-                  className={`inline-flex min-h-7 items-center gap-1.5 border px-2.5 text-[10px] font-black uppercase tracking-[0.14em] sm:min-h-8 sm:px-3 sm:text-[11px] sm:tracking-[0.16em] ${
-                    disabledUi
-                      ? 'border-zinc-700 bg-zinc-950/70 text-zinc-300'
-                      : 'border-yellow-300 bg-yellow-300 text-zinc-950'
-                  }`}
-                >
-                  {disabledUi ? (
-                    <Users size={13} strokeWidth={2.3} />
-                  ) : (
-                    <Crown size={13} strokeWidth={2.3} />
-                  )}
-                  {roleLabel}
-                </span>
-                {disabledUi ? (
-                  <span className='text-[11px] font-black uppercase tracking-[0.12em] text-zinc-500 sm:text-xs sm:tracking-[0.14em]'>
-                    {t('room-settings-host-only')}
-                  </span>
-                ) : null}
-              </div>
+              {disabledUi ? (
+                <p className='mt-1.5 text-[11px] font-black uppercase tracking-[0.12em] text-zinc-500 sm:mt-2 sm:text-xs sm:tracking-[0.14em]'>
+                  {t('room-settings-host-only')}
+                </p>
+              ) : null}
             </div>
           </div>
 
@@ -390,30 +375,7 @@ const GameSetting: React.FC<GameSettingProps> = () => {
                 <p className='bw-page-copy'>{t('room-settings')}</p>
               </div>
 
-              {room.mapName && (
-                <div className='flex items-center justify-between gap-2 border border-zinc-800 bg-zinc-950/60 px-3 py-2.5 sm:gap-3 sm:px-4 sm:py-3'>
-                  <Link
-                    href={`/maps/${room.mapId}`}
-                    target='_blank'
-                    rel='noopener noreferrer'
-                    className='truncate text-[11px] font-black uppercase tracking-[0.1em] text-yellow-300 sm:text-sm sm:tracking-[0.12em]'
-                  >
-                    {t('custom-map')}: {room.mapName}
-                  </Link>
-                  {!disabledUi && (
-                    <button
-                      type='button'
-                      className='grid size-8 place-items-center border border-zinc-700 bg-zinc-950 text-zinc-50 transition hover:bg-red-500 hover:text-zinc-950 sm:size-9'
-                      onClick={clearRoomMap}
-                      aria-label={t('clear-room-map')}
-                    >
-                      <Trash2 size={17} strokeWidth={2.5} />
-                    </button>
-                  )}
-                </div>
-              )}
-
-              <div className='grid grid-cols-3 gap-1.5 sm:flex sm:flex-wrap sm:gap-2'>
+              <div className='grid grid-cols-2 gap-1.5 sm:flex sm:flex-wrap sm:gap-2'>
                 {tabLabels.map((tab, index) => (
                   <button
                     key={tab}
@@ -427,84 +389,111 @@ const GameSetting: React.FC<GameSettingProps> = () => {
               </div>
 
               <TabPanel value={tabIndex} index={0}>
-                <div className='space-y-2.5 sm:space-y-3'>
-                  <p className='text-[11px] font-black uppercase tracking-[0.16em] text-zinc-500 sm:text-xs sm:tracking-[0.18em]'>
-                    {t('select-your-team')}
-                  </p>
-                  <div className='grid grid-cols-6 gap-1.5 sm:flex sm:flex-wrap sm:gap-2'>
-                    {Array.from({ length: MaxTeamNum }, (_, i) => i + 1).map((value) => (
+                <div className='space-y-3 sm:space-y-4'>
+                  <div className='space-y-2.5 sm:space-y-3'>
+                    <p className={sectionLabelClass}>
+                      {t('select-your-team')}
+                    </p>
+                    <div className='grid grid-cols-6 gap-1.5 sm:flex sm:flex-wrap sm:gap-2'>
+                      {Array.from({ length: MaxTeamNum }, (_, i) => i + 1).map((value) => (
+                        <button
+                          key={value}
+                          type='button'
+                          className={`${tabButtonClass(team === value)} w-full sm:w-auto`}
+                          onClick={() => handleTeamChange(null, value)}
+                        >
+                          {value}
+                        </button>
+                      ))}
                       <button
-                        key={value}
                         type='button'
-                        className={`${tabButtonClass(team === value)} w-full sm:w-auto`}
-                        onClick={() => handleTeamChange(null, value)}
+                        className={`${tabButtonClass(team === MaxTeamNum + 1)} col-span-3 w-full sm:w-auto`}
+                        onClick={() => handleTeamChange(null, MaxTeamNum + 1)}
                       >
-                        {value}
+                        {t('spectators')}
                       </button>
-                    ))}
-                    <button
-                      type='button'
-                      className={`${tabButtonClass(team === MaxTeamNum + 1)} col-span-3 w-full sm:w-auto`}
-                      onClick={() => handleTeamChange(null, MaxTeamNum + 1)}
-                    >
-                      {t('spectators')}
-                    </button>
+                    </div>
+                  </div>
+
+                  <div className='space-y-2.5 sm:space-y-3'>
+                    <p className={sectionLabelClass}>{t('max-player-num')}</p>
+                    <SliderBox
+                      label={t('max-player-num')}
+                      value={room.maxPlayers}
+                      disabled={disabledUi}
+                      min={2}
+                      max={12}
+                      step={1}
+                      marks={Array.from({ length: 11 }, (_, i) => ({
+                        value: i + 2,
+                        label: `${i + 2}`,
+                      }))}
+                      handleChange={handleSettingChange('maxPlayers')}
+                    />
                   </div>
                 </div>
               </TabPanel>
 
               <TabPanel value={tabIndex} index={1}>
                 <div className='space-y-3 sm:space-y-4'>
-                  <button
-                    type='button'
-                    className='bw-button bw-button-primary w-full'
-                    disabled={disabledUi}
-                    onClick={() => setOpenMapExplorer(true)}
-                  >
-                    {t('select-a-custom-map')}
-                  </button>
-
                   <div className='space-y-2.5 sm:space-y-3'>
-                    <p className='text-[11px] font-black uppercase tracking-[0.16em] text-zinc-500 sm:text-xs sm:tracking-[0.18em]'>
-                      {t('game-speed')}
+                    <p className={sectionLabelClass}>
+                      {t('select-a-custom-map')}
                     </p>
-                    <div className='grid grid-cols-5 gap-1.5 sm:flex sm:flex-wrap sm:gap-2'>
-                      {SpeedOptions.map((value) => (
-                        <button
-                          key={value}
-                          type='button'
-                          className={`${tabButtonClass(room.gameSpeed === value)} w-full sm:w-auto`}
-                          disabled={disabledUi}
-                          onClick={(event) =>
-                            handleSettingChange('gameSpeed')(event as unknown as Event, value)
-                          }
+                    <button
+                      type='button'
+                      className='bw-button bw-button-primary w-full'
+                      disabled={disabledUi}
+                      onClick={() => setOpenMapExplorer(true)}
+                    >
+                      {t('select-a-custom-map')}
+                    </button>
+
+                    {room.mapName ? (
+                      <div className='flex items-center justify-between gap-2 border border-zinc-800 bg-zinc-950/60 px-3 py-2.5 sm:gap-3 sm:px-4 sm:py-3'>
+                        <Link
+                          href={`/maps/${room.mapId}`}
+                          target='_blank'
+                          rel='noopener noreferrer'
+                          className='truncate text-[11px] font-black uppercase tracking-[0.1em] text-yellow-300 sm:text-sm sm:tracking-[0.12em]'
                         >
-                          {`${value}x`}
-                        </button>
-                      ))}
-                    </div>
+                          {t('custom-map')}: {room.mapName}
+                        </Link>
+                        {!disabledUi && (
+                          <button
+                            type='button'
+                            className='grid size-8 place-items-center border border-zinc-700 bg-zinc-950 text-zinc-50 transition hover:bg-red-500 hover:text-zinc-950 sm:size-9'
+                            onClick={clearRoomMap}
+                            aria-label={t('clear-room-map')}
+                          >
+                            <Trash2 size={17} strokeWidth={2.5} />
+                          </button>
+                        )}
+                      </div>
+                    ) : (
+                      <p className='text-sm text-zinc-500'>{t('map-random-default')}</p>
+                    )}
+                  </div>
+
+                  <div className='space-y-3 sm:space-y-4'>
+                    <p className={sectionLabelClass}>{t('map-size')}</p>
+                    <SliderBox
+                      label={t('height')}
+                      value={room.mapWidth}
+                      disabled={disabledUi}
+                      handleChange={handleSettingChange('mapWidth')}
+                    />
+                    <SliderBox
+                      label={t('width')}
+                      value={room.mapHeight}
+                      disabled={disabledUi}
+                      handleChange={handleSettingChange('mapHeight')}
+                    />
                   </div>
                 </div>
               </TabPanel>
 
               <TabPanel value={tabIndex} index={2}>
-                <div className='space-y-3 sm:space-y-4'>
-                  <SliderBox
-                    label={t('height')}
-                    value={room.mapWidth}
-                    disabled={disabledUi}
-                    handleChange={handleSettingChange('mapWidth')}
-                  />
-                  <SliderBox
-                    label={t('width')}
-                    value={room.mapHeight}
-                    disabled={disabledUi}
-                    handleChange={handleSettingChange('mapHeight')}
-                  />
-                </div>
-              </TabPanel>
-
-              <TabPanel value={tabIndex} index={3}>
                 <div className='space-y-3 sm:space-y-4'>
                   <SliderBox
                     label={t('mountain')}
@@ -530,21 +519,28 @@ const GameSetting: React.FC<GameSettingProps> = () => {
                 </div>
               </TabPanel>
 
-              <TabPanel value={tabIndex} index={4}>
+              <TabPanel value={tabIndex} index={3}>
                 <div className='space-y-3 sm:space-y-4'>
-                  <SliderBox
-                    label={t('max-player-num')}
-                    value={room.maxPlayers}
-                    disabled={disabledUi}
-                    min={2}
-                    max={12}
-                    step={1}
-                    marks={Array.from({ length: 11 }, (_, i) => ({
-                      value: i + 2,
-                      label: `${i + 2}`,
-                    }))}
-                    handleChange={handleSettingChange('maxPlayers')}
-                  />
+                  <div className='space-y-2.5 sm:space-y-3'>
+                    <p className={sectionLabelClass}>
+                      {t('game-speed')}
+                    </p>
+                    <div className='grid grid-cols-5 gap-1.5 sm:flex sm:flex-wrap sm:gap-2'>
+                      {SpeedOptions.map((value) => (
+                        <button
+                          key={value}
+                          type='button'
+                          className={`${tabButtonClass(room.gameSpeed === value)} w-full sm:w-auto`}
+                          disabled={disabledUi}
+                          onClick={(event) =>
+                            handleSettingChange('gameSpeed')(event as unknown as Event, value)
+                          }
+                        >
+                          {`${value}x`}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
 
                   <div className='grid gap-2.5 sm:gap-3'>
                     <ToggleRow

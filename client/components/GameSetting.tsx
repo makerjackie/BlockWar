@@ -132,6 +132,10 @@ const GameSetting: React.FC<GameSettingProps> = () => {
     socketRef.current.emit('set_team', newTeam);
   };
 
+  const handlePlayerTeamChange = (playerId: string, newTeam: number) => {
+    socketRef.current.emit('set_player_team', playerId, newTeam);
+  };
+
   const clearRoomMap = () => {
     socketRef.current.emit('change_room_setting', 'mapId', '');
   };
@@ -192,6 +196,10 @@ const GameSetting: React.FC<GameSettingProps> = () => {
 
   const handleRemoveBot = (playerId: string) => {
     socketRef.current.emit('remove_bot', playerId);
+  };
+
+  const handleKickPlayer = (playerId: string) => {
+    socketRef.current.emit('kick_player', playerId);
   };
 
   const handleLeaveRoom = () => {
@@ -608,6 +616,8 @@ const GameSetting: React.FC<GameSettingProps> = () => {
                 players={room.players}
                 handleChangeHost={handleChangeHost}
                 handleRemoveBot={handleRemoveBot}
+                handleKickPlayer={handleKickPlayer}
+                handlePlayerTeamChange={handlePlayerTeamChange}
                 disabled_ui={disabledUi}
                 canManageBots={canManageBots}
                 warringStatesMode={room.warringStatesMode}

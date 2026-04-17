@@ -441,4 +441,68 @@ describe('RoomDurableObject', () => {
       }
     );
   });
+
+  it('lets the host move a bot onto the same team as another player', async () => {
+    const roomId = `room-${crypto.randomUUID().slice(0, 8)}`;
+    const stub = env.ROOMS.getByName(roomId);
+
+    await runInDurableObject(
+      stub,
+      async (instance: RoomDurableObject) => {
+        captureEvents(instance);
+        const room = await (instance as any).ensureRoom(roomId);
+        room.players.push(new Player('player-a', 'socket-a', 'Alice', 1, 1, true));
+
+        await (instance as any).handlePacket('socket-a', {
+          type: 'add_bot',
+          data: [],
+        });
+
+        const bot = room.players.find((player: Player) => player.isBot);
+        expect(bot).toBeTruthy();
+
+        await (instance as any).handlePacket('socket-a', {
+          type: 'set_player_team',
+          data: [bot!.id, 1],
+        });
+
+        expect(bot!.team).toBe(1);
+      }
+    );
+  });
+
+  it('lets the host kick a human player before the game starts', async () => {
+    const roomId = `room-${crypto.randomUUID().slice(0, 8)}`;
+    const stub = env.ROOMS.getByName(roomId);
+
+    await runInDurableObject(
+      stub,
+      async (instance: RoomDurableObject) => {
+        const events = captureEvents(instance);
+        const room = await (instance as any).ensureRoom(roomId);
+        room.players.push(
+          new Player('player-a', 'socket-a', 'Alice', 1, 1, true),
+          new Player('player-b', 'socket-b', 'Bob', 2, 2)
+        );
+        (instance as any).sockets.set('socket-b', {
+          readyState: WebSocket.OPEN,
+          close: () => undefined,
+        });
+
+        await (instance as any).handlePacket('socket-a', {
+          type: 'kick_player',
+          data: ['player-b'],
+        });
+
+        expect(room.players.map((player: Player) => player.id)).toEqual(['player-a']);
+        expect(
+          events.some(
+            (item) =>
+              item.connectionId === 'socket-b' &&
+              item.event === 'kicked'
+          )
+        ).toBe(true);
+      }
+    );
+  });
 });

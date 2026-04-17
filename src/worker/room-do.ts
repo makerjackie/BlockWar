@@ -832,6 +832,66 @@ export class RoomDurableObject extends DurableObject<Env> {
         await this.checkForcedStart();
         break;
       }
+      case 'set_player_team': {
+        if (!player) return;
+        if (!player.isRoomHost) {
+          this.send(
+            connectionId,
+            'error',
+            'Unable to change team',
+            'You are not the room host.'
+          );
+          return;
+        }
+        if (room.gameStarted) {
+          this.send(
+            connectionId,
+            'error',
+            'Unable to change team',
+            'Team changes are locked after the game starts.'
+          );
+          return;
+        }
+
+        const targetPlayerId = String(arg1 ?? '');
+        const team = Number(arg2);
+        const targetPlayer = room.players.find((roomPlayer) => roomPlayer.id === targetPlayerId);
+
+        if (!targetPlayer) {
+          this.send(
+            connectionId,
+            'error',
+            'Unable to change team',
+            'Target player not found.'
+          );
+          return;
+        }
+        if (!Number.isInteger(team) || team <= 0 || team > MaxTeamNum + 1) {
+          this.send(
+            connectionId,
+            'error',
+            'Unable to change team',
+            `Team must be between 1 and ${MaxTeamNum} or spectators`
+          );
+          return;
+        }
+
+        targetPlayer.team = team;
+        if (targetPlayer.spectating() && targetPlayer.forceStart) {
+          targetPlayer.forceStart = false;
+        }
+        room.forceStartNum = countReadyParticipants(room);
+
+        this.broadcast('update_room', room);
+        this.broadcast(
+          'room_message',
+          player.minify(),
+          `${targetPlayer.username} ${targetPlayer.spectating() ? 'became a spectator.' : `moved to team ${team}.`}`
+        );
+        await this.syncRoomSummary();
+        await this.checkForcedStart();
+        break;
+      }
       case 'surrender': {
         if (!player) return;
         const playerId = String(arg1 ?? '');
@@ -1026,6 +1086,61 @@ export class RoomDurableObject extends DurableObject<Env> {
         room.forceStartNum = countReadyParticipants(room);
         this.broadcast('update_room', room);
         this.broadcast('room_message', bot.minify(), 'was removed.');
+        await this.syncRoomSummary();
+        await this.checkForcedStart();
+        break;
+      }
+      case 'kick_player': {
+        if (!player) return;
+        if (!player.isRoomHost) {
+          this.send(
+            connectionId,
+            'error',
+            'Unable to kick player',
+            'You are not the room host.'
+          );
+          return;
+        }
+        if (room.gameStarted) {
+          this.send(
+            connectionId,
+            'error',
+            'Unable to kick player',
+            'Players can only be kicked before the game starts.'
+          );
+          return;
+        }
+
+        const targetPlayerId = String(arg1 ?? '');
+        if (!targetPlayerId || targetPlayerId === player.id) {
+          this.send(
+            connectionId,
+            'error',
+            'Unable to kick player',
+            'You cannot kick yourself.'
+          );
+          return;
+        }
+
+        const targetIndex = room.players.findIndex(
+          (roomPlayer) => roomPlayer.id === targetPlayerId && !roomPlayer.isBot
+        );
+        if (targetIndex === -1) {
+          this.send(
+            connectionId,
+            'error',
+            'Unable to kick player',
+            'Target player not found.'
+          );
+          return;
+        }
+
+        const [targetPlayer] = room.players.splice(targetIndex, 1);
+        room.forceStartNum = countReadyParticipants(room);
+        this.broadcast('update_room', room);
+        this.broadcast('room_message', player.minify(), `kicked ${targetPlayer.username}.`);
+        this.send(targetPlayer.socket_id, 'kicked', room.id);
+        this.sockets.get(targetPlayer.socket_id)?.close(1000, 'Removed by host');
         await this.syncRoomSummary();
         await this.checkForcedStart();
         break;

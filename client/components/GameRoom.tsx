@@ -21,6 +21,7 @@ import Game from '@/components/game/Game';
 import { useGame, useGameDispatch } from '@/context/GameContext';
 import GameSetting from '@/components/GameSetting';
 import GameLoading from '@/components/GameLoading';
+import { soundEffects } from '@/lib/sound-effects';
 
 function GamingRoom() {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -74,6 +75,8 @@ function GamingRoom() {
     // Game Logic Init
     if (!roomId) return;
     if (!myUserName) return;
+    soundEffects.init();
+
     class AttackQueue {
       public items: Route[];
       public lastItem: Route | undefined;
@@ -175,8 +178,7 @@ function GamingRoom() {
     });
     socket.on('game_started', (initGameInfo: initGameInfo) => {
       console.log('Game started:', initGameInfo);
-      const audio = new Audio('/audio/fresh_snap.mp3');
-      audio.play(); // todo: fix safari NotAllowedError... the user denied permission.
+      soundEffects.play('gameStart');
       setInitGameInfo(initGameInfo);
       setIsSurrendered(false);
       setDialogContent([[null], '', null]);
@@ -231,6 +233,9 @@ function GamingRoom() {
       setMessages((messages: any) => [...messages, new Message(player, content)]);
     });
     socket.on('captured', (player1: UserData, player2: UserData) => {
+      if (player2.id !== myPlayerIdRef.current) {
+        soundEffects.play('capture');
+      }
       setMessages((messages: any) => [
         ...messages,
         new Message(player1, t('captured'), player2),
@@ -244,12 +249,16 @@ function GamingRoom() {
     });
     socket.on('game_over', (capturedBy: UserData) => {
       console.log(`game_over: ${capturedBy.username}`);
+      soundEffects.play('defeat');
       setOpenOverDialog(true);
       setRoomUiStatus(RoomUiStatus.gameOverConfirm);
       setDialogContent([[capturedBy], 'game_over', null]);
     });
     socket.on('game_ended', (winner: [UserData], replayLink: string | null) => {
       console.log(`game_ended: ${winner.map((x) => x.username)} ${replayLink}`);
+      if (winner.some((player) => player.id === myPlayerIdRef.current)) {
+        soundEffects.play('victory');
+      }
       setDialogContent([winner, 'game_ended', replayLink]);
       setOpenOverDialog(true);
       setRoomUiStatus(RoomUiStatus.gameOverConfirm);
@@ -321,6 +330,19 @@ function GamingRoom() {
         duration: null,
       });
       // router.push(`/`);
+    });
+
+    socket.on('kicked', () => {
+      localStorage.removeItem('playerId');
+      socket.disconnect();
+      snackStateDispatch({
+        type: 'update',
+        title: t('kicked-title'),
+        status: 'warning',
+        message: t('kicked-message'),
+        duration: 4000,
+      });
+      router.push('/');
     });
 
     socket.on('connect_error', (error: Error) => {

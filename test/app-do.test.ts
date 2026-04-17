@@ -158,13 +158,32 @@ describe('AppDurableObject', () => {
     });
   });
 
-  it('drops oversized replays', async () => {
+  it('stores replays that exceed the raw limit but compress below it', async () => {
     const stub = env.APP.getByName(`app-${crypto.randomUUID().slice(0, 8)}`);
 
     await runInDurableObject(stub, async (instance: AppDurableObject) => {
-      const replayId = await instance.saveReplay({
-        payload: 'x'.repeat(160 * 1024),
-      });
+      const replay = {
+        payload: 'x'.repeat(220 * 1024),
+      };
+
+      const replayId = await instance.saveReplay(replay);
+      expect(replayId).toHaveLength(10);
+      expect(await instance.getReplay(replayId!)).toEqual(replay);
+    });
+  });
+
+  it('drops replays that are still oversized after compression', async () => {
+    const stub = env.APP.getByName(`app-${crypto.randomUUID().slice(0, 8)}`);
+
+    await runInDurableObject(stub, async (instance: AppDurableObject) => {
+      const bytes = new Uint8Array(160 * 1024);
+      for (let offset = 0; offset < bytes.length; offset += 64 * 1024) {
+        crypto.getRandomValues(bytes.subarray(offset, offset + 64 * 1024));
+      }
+      const payload = Array.from(bytes, (value) =>
+        value.toString(16).padStart(2, '0')
+      ).join('');
+      const replayId = await instance.saveReplay({ payload });
 
       expect(replayId).toBeNull();
     });

@@ -46,6 +46,8 @@ type StarResult =
 
 const REPLAY_MAX_BYTES = 150 * 1024;
 const textEncoder = new TextEncoder();
+const textDecoder = new TextDecoder();
+const COMPRESSED_REPLAY_PREFIX = 'gz:';
 
 const APP_SCHEMA_STATEMENTS = [
   'CREATE TABLE IF NOT EXISTS rooms (id TEXT PRIMARY KEY, room_json TEXT NOT NULL, updated_at INTEGER NOT NULL)',
@@ -80,6 +82,45 @@ function mapRowToInfo(map: MapRow): CustomMapInfo {
 
 function byteLength(value: string) {
   return textEncoder.encode(value).byteLength;
+}
+
+function bytesToBase64(bytes: Uint8Array) {
+  let binary = '';
+  const chunkSize = 0x8000;
+
+  for (let index = 0; index < bytes.length; index += chunkSize) {
+    const chunk = bytes.subarray(index, index + chunkSize);
+    binary += String.fromCharCode(...chunk);
+  }
+
+  return btoa(binary);
+}
+
+function base64ToBytes(value: string) {
+  const binary = atob(value);
+  const bytes = new Uint8Array(binary.length);
+
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+
+  return bytes;
+}
+
+async function compressReplayJson(value: string) {
+  const stream = new CompressionStream('gzip');
+  const writer = stream.writable.getWriter();
+  await writer.write(textEncoder.encode(value));
+  await writer.close();
+  return new Uint8Array(await new Response(stream.readable).arrayBuffer());
+}
+
+async function decompressReplayJson(value: string) {
+  const stream = new DecompressionStream('gzip');
+  const writer = stream.writable.getWriter();
+  await writer.write(base64ToBytes(value));
+  await writer.close();
+  return textDecoder.decode(await new Response(stream.readable).arrayBuffer());
 }
 
 function hasPlayers(room: PlainRoom) {
@@ -468,15 +509,19 @@ export class AppDurableObject extends DurableObject<Env> {
   async saveReplay(replay: unknown): Promise<string | null> {
     await this.ensureInitialized();
     const replayJson = JSON.stringify(replay);
-    const sizeBytes = byteLength(replayJson);
+    const compressedReplay = await compressReplayJson(replayJson);
+    const sizeBytes = compressedReplay.byteLength;
 
     if (sizeBytes >= REPLAY_MAX_BYTES) {
       console.warn('Skipping oversized replay', {
+        rawSizeBytes: byteLength(replayJson),
         sizeBytes,
         limitBytes: REPLAY_MAX_BYTES,
       });
       return null;
     }
+
+    const replayPayload = `${COMPRESSED_REPLAY_PREFIX}${bytesToBase64(compressedReplay)}`;
 
     const replayId = randomId(10);
     await this.execute(
@@ -485,7 +530,7 @@ export class AppDurableObject extends DurableObject<Env> {
         VALUES (?, ?, ?, ?)
       `,
       replayId,
-      replayJson,
+      replayPayload,
       sizeBytes,
       new Date().toISOString()
     );
@@ -501,6 +546,13 @@ export class AppDurableObject extends DurableObject<Env> {
 
     if (!row) {
       return null;
+    }
+
+    if (row.replay_json.startsWith(COMPRESSED_REPLAY_PREFIX)) {
+      const replayJson = await decompressReplayJson(
+        row.replay_json.slice(COMPRESSED_REPLAY_PREFIX.length)
+      );
+      return JSON.parse(replayJson) as unknown;
     }
 
     return JSON.parse(row.replay_json) as unknown;

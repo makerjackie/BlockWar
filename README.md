@@ -47,6 +47,15 @@
 - **Shared game logic:** Core game types and engine code live in `src/shared/game/`.
 - **Assets:** Vite builds the SPA into `dist/client`; Wrangler serves it through the `ASSETS` binding with SPA fallback routing.
 
+## Recent Stability Improvements
+
+- Shared move validation now rejects non-cardinal moves centrally in `GameMap.commendable()`, which closes the gap for bots and any future callers.
+- `MapDiff` no longer relies on `flat()` plus `JSON.stringify()` on every tick; it now compares tile tuples directly.
+- Room ticks compute the leaderboard once and reuse it for per-player updates and replay capture.
+- Host reassignment and post-game lobby sync now avoid resetting the host because of unrelated disconnects and skip disconnected humans/bots when selecting a replacement host.
+- Mobile drag interactions now tolerate stray diagonal/skipped swipes better and clear gesture state on pinch start, `touchcancel`, and pointer exit.
+- High-frequency room debug logs are suppressed in production builds to reduce console noise.
+
 ## App Routes
 
 | Route | Purpose |
@@ -137,6 +146,7 @@ Before deploying:
 - API behavior is covered through `SELF.fetch(...)`.
 - Durable Object behavior is covered through the Cloudflare Workers Vitest pool and `runInDurableObject(...)`.
 - Room/WebSocket coverage currently includes joining players, forcing game start, receiving `game_started`, and advancing turns.
+- Recent regression coverage also checks bot king defense legality, host transfer persistence after disconnects, mobile leaderboard defaults, and touch-specific tutorial guidance.
 
 ## Contributing
 

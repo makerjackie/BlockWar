@@ -1,12 +1,25 @@
 import { describe, expect, it } from 'vitest';
+import enCommon from '@/public/locales/en/common.json';
+import zhCommon from '@/public/locales/zh/common.json';
 import {
   normalizeOnboardingStatus,
   shouldShowOnboardingPrompt,
 } from '@/lib/onboarding';
 import {
   advanceTutorialStage,
+  getTutorialStageTranslationKey,
   getTutorialStageIndex,
+  tutorialStages,
 } from '@/lib/tutorial-guide';
+
+function sentenceCount(text: string) {
+  if (!text.trim()) {
+    return 0;
+  }
+
+  const matches = text.match(/[.!?。！？]/g);
+  return matches ? matches.length : 1;
+}
 
 describe('onboarding helpers', () => {
   it('normalizes unknown onboarding storage values as new users', () => {
@@ -51,5 +64,49 @@ describe('tutorial guide progression', () => {
     });
     expect(stage).toBe('hunt-king');
     expect(getTutorialStageIndex(stage)).toBe(4);
+  });
+
+  it('keeps desktop and touch tutorial copy to a single sentence', () => {
+    const localizedGuides = [
+      { language: 'en', guide: enCommon.tutorialGuide },
+      { language: 'zh', guide: zhCommon.tutorialGuide },
+    ];
+
+    localizedGuides.forEach(({ language, guide }) => {
+      tutorialStages.forEach((stage) => {
+        const translationKey = getTutorialStageTranslationKey(stage);
+        const step = guide.steps[translationKey as keyof typeof guide.steps];
+
+        expect(typeof step.copy, `${language}:${stage}:copy`).toBe('string');
+        expect(typeof step.copyTouch, `${language}:${stage}:copyTouch`).toBe('string');
+        expect(sentenceCount(step.copy), `${language}:${stage}:copy`).toBeLessThanOrEqual(1);
+        expect(
+          sentenceCount(step.copyTouch),
+          `${language}:${stage}:copyTouch`
+        ).toBeLessThanOrEqual(1);
+      });
+    });
+  });
+
+  it('uses touch-first wording without directional words in mobile tutorial copy', () => {
+    const localizedGuides = [
+      { language: 'en', guide: enCommon.tutorialGuide, touchCue: /\b(touch|drag|tap)\b/i },
+      { language: 'zh', guide: zhCommon.tutorialGuide, touchCue: /[点滑]/ },
+    ];
+
+    localizedGuides.forEach(({ language, guide, touchCue }) => {
+      tutorialStages.forEach((stage) => {
+        const translationKey = getTutorialStageTranslationKey(stage);
+        const step = guide.steps[translationKey as keyof typeof guide.steps];
+
+        expect(step.copyTouch, `${language}:${stage}:touch cue`).toMatch(touchCue);
+        expect(step.copyTouch, `${language}:${stage}:english directions`).not.toMatch(
+          /\b(up|down|left|right)\b/i
+        );
+        expect(step.copyTouch, `${language}:${stage}:chinese directions`).not.toMatch(
+          /(向上|向下|向左|向右|往上|往下|往左|往右|上滑|下滑|左滑|右滑)/
+        );
+      });
+    });
   });
 });

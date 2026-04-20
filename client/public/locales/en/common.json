@@ -170,19 +170,23 @@
     "steps": {
       "first_move": {
         "title": "Learn the basic move",
-        "copy": "Your capital is already selected. Move into a neighboring tile now. You can only move from your own land, and a tile needs at least 2 units because 1 unit always stays behind."
+        "copy": "Move from your capital into a neighboring tile to learn the basic attack flow.",
+        "copyTouch": "Touch the selected tile and drag into a neighboring tile to make your first move."
       },
       "grow_income": {
         "title": "Spread out to grow faster",
-        "copy": "Plains produce 1 unit every 25 turns, so more land means faster growth. Expand first, then pick stronger fights."
+        "copy": "Expand first because more land means your army grows faster over time.",
+        "copyTouch": "Drag outward from your land to claim more tiles because more land grows your army faster."
       },
       "split_army": {
         "title": "Try a half-army move",
-        "copy": "Press Z to send half your army, then move again. It helps you expand without emptying the tile behind you."
+        "copy": "Press Z before moving to split your army and keep more units behind.",
+        "copyTouch": "Double-tap the selected tile to send half, then drag one tile to keep more units behind."
       },
       "hunt_king": {
         "title": "Capture enemy capitals",
-        "copy": "Your goal is to capture every enemy capital. When one falls, all of that player's land and army become yours, but the army is halved."
+        "copy": "Push through your own land and capture one enemy capital next.",
+        "copyTouch": "Select your front tile, then drag along the front line toward an enemy capital."
       }
     }
   },
@@ -204,11 +208,11 @@
     "centerGeneral": "Center on general",
     "centerMap": "Center Map",
     "toggle50": "Toggle 50%",
-    "how-to-toggle-50": "Z / Click Twice / Mobile: Quick Double Touch",
+    "how-to-toggle-50": "Z / Click Twice / Mobile: Double-tap the selected tile",
     "setZoom": "Set Zoom to Preset",
     "zoomInOut": "Zoom in / out",
     "mouse-wheel": "Mouse Wheel",
-    "wsad": "WSAD / ArrowKey / MouseClick / TouchDrag on Mobile",
+    "wsad": "WSAD / ArrowKey / MouseClick / Mobile: Select then drag to a neighboring tile",
     "enter": "Enter",
     "surrender": "Surrender",
     "beginnerTutorial": "If this is your first match, start Tutorial from the lobby and learn step by step in-game."

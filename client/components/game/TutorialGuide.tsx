@@ -1,16 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import { useGame } from '@/context/GameContext';
+import useMediaQuery from '@/hooks/useMediaQuery';
 import {
   advanceTutorialStage,
   getTutorialStageIndex,
+  getTutorialStageTranslationKey,
+  getTutorialStepCopyField,
   tutorialStages,
   type TutorialStage,
 } from '@/lib/tutorial-guide';
-
-function stageTranslationKey(stage: TutorialStage) {
-  return stage.replace(/-/g, '_');
-}
 
 export default function TutorialGuide() {
   const {
@@ -21,6 +20,7 @@ export default function TutorialGuide() {
     selectedMapTileInfo,
   } = useGame();
   const { t } = useTranslation();
+  const isMobileGuide = useMediaQuery('(max-width: 767px)');
   const [stage, setStage] = useState<TutorialStage>('first-move');
   const [visible, setVisible] = useState(true);
 
@@ -86,12 +86,13 @@ export default function TutorialGuide() {
     );
   }
 
-  const translationKey = stageTranslationKey(stage);
+  const translationKey = getTutorialStageTranslationKey(stage);
+  const copyField = getTutorialStepCopyField(isMobileGuide);
   const stageNumber = getTutorialStageIndex(stage);
 
   return (
     <section
-      className='fixed inset-x-4 top-16 z-[120] mx-auto max-w-xl border p-4 backdrop-blur md:top-20'
+      className='fixed inset-x-3 top-16 z-[120] mx-auto max-w-lg border p-3 backdrop-blur sm:inset-x-4 sm:p-4 md:top-20'
       style={{
         borderColor: 'color-mix(in srgb, var(--bw-ember) 40%, transparent)',
         backgroundColor: 'var(--bw-panel-strong)',
@@ -107,7 +108,7 @@ export default function TutorialGuide() {
               total: tutorialStages.length,
             })}
           </p>
-          <h2 className='mt-1 text-xl font-black'>
+          <h2 className='mt-1 text-lg font-black sm:text-xl'>
             {t(`tutorialGuide.steps.${translationKey}.title`)}
           </h2>
         </div>
@@ -121,42 +122,9 @@ export default function TutorialGuide() {
         </button>
       </div>
 
-      <p className='mt-3 text-sm leading-6' style={{ color: 'var(--bw-ink-soft)' }}>
-        {t(`tutorialGuide.steps.${translationKey}.copy`)}
+      <p className='mt-2 text-sm leading-5 sm:mt-3 sm:leading-6' style={{ color: 'var(--bw-ink-soft)' }}>
+        {t(`tutorialGuide.steps.${translationKey}.${copyField}`)}
       </p>
-      {stage === 'first-move' && (
-        <div
-          className='mt-3 border-l pl-3 text-sm'
-          style={{ borderColor: 'var(--bw-line)', color: 'var(--bw-muted)' }}
-        >
-          {t('tutorialGuide.moveHint')}
-        </div>
-      )}
-      {stage === 'grow-income' && (
-        <div
-          className='mt-3 flex items-center gap-2 border-l pl-3 text-sm'
-          style={{ borderColor: 'var(--bw-line)', color: 'var(--bw-muted)' }}
-        >
-          <img
-            src='/img/city.png'
-            alt=''
-            width={18}
-            height={18}
-            className='border bg-white'
-            style={{ borderColor: 'var(--bw-line)' }}
-            draggable={false}
-          />
-          <span>{t('tutorialGuide.cityHint')}</span>
-        </div>
-      )}
-      {stage === 'hunt-king' && (
-        <div
-          className='mt-3 border-l pl-3 text-sm'
-          style={{ borderColor: 'var(--bw-line)', color: 'var(--bw-muted)' }}
-        >
-          {t('tutorialGuide.captureHint')}
-        </div>
-      )}
     </section>
   );
 }

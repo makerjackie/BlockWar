@@ -11,6 +11,14 @@ export const tutorialStages: TutorialStage[] = [
   'hunt-king',
 ];
 
+export function getTutorialStageTranslationKey(stage: TutorialStage) {
+  return stage.replace(/-/g, '_');
+}
+
+export function getTutorialStepCopyField(useTouchCopy: boolean) {
+  return useTouchCopy ? 'copyTouch' : 'copy';
+}
+
 export type TutorialSnapshot = {
   ownedLandCount: number;
   halfArmySelected: boolean;

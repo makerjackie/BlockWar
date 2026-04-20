@@ -1,7 +1,8 @@
 import { useTranslation } from 'next-i18next';
-import { type MouseEvent, useState } from 'react';
+import { type MouseEvent, useEffect, useState } from 'react';
 import { Player, LeaderBoardTable, UserData } from '@/lib/types';
 import { ColorArr, WarringStates } from '@/lib/constants';
+import useMediaQuery from '@/hooks/useMediaQuery';
 
 interface LeaderBoardProps {
   players: Player[];
@@ -33,8 +34,13 @@ export default function LeaderBoard(props: LeaderBoardProps) {
     setCheckedPlayers,
     warringStatesMode = false,
   } = props;
-  const [gameDockExpand, setGameDockExpand] = useState(true);
+  const isMobileDock = useMediaQuery('(max-width: 767px)');
+  const [gameDockExpand, setGameDockExpand] = useState(() => !isMobileDock);
   const { t } = useTranslation();
+
+  useEffect(() => {
+    setGameDockExpand(!isMobileDock);
+  }, [isMobileDock]);
 
   if (!leaderBoardTable) return null;
 
@@ -73,6 +79,13 @@ export default function LeaderBoard(props: LeaderBoardProps) {
   const allTeamsHaveSinglePlayer =
     teams.length > 0 && teams.every((team) => team.players.length === 1);
   const isCompact = !gameDockExpand;
+  const dockWidthClass = gameDockExpand
+    ? isMobileDock
+      ? 'min-w-[188px]'
+      : 'min-w-[220px]'
+    : isMobileDock
+      ? 'min-w-[116px]'
+      : 'min-w-[132px]';
 
   const renderPlayerBadge = (player: PlayerSummary, compact = false) => (
     <span
@@ -127,9 +140,7 @@ export default function LeaderBoard(props: LeaderBoardProps) {
 
   return (
     <section
-      className={`bw-side-dock absolute right-0 top-0 z-[110] cursor-pointer overflow-hidden border-l border-b ${
-        gameDockExpand ? 'min-w-[220px]' : 'min-w-[132px]'
-      }`}
+      className={`bw-side-dock absolute right-0 top-0 z-[110] cursor-pointer overflow-hidden border-l border-b ${dockWidthClass}`}
       onClick={handleDockClick}
     >
       <button
@@ -150,12 +161,14 @@ export default function LeaderBoard(props: LeaderBoardProps) {
         </span>
       </button>
 
-      <div className='max-h-[45vh] overflow-auto'>
+      <div className={`${isMobileDock ? 'max-h-[36vh]' : 'max-h-[45vh]'} overflow-auto`}>
         <div
           className={`grid grid-cols-[auto_1fr_auto_auto] border-b border-zinc-800 font-black uppercase text-zinc-500 ${
             isCompact
               ? 'gap-x-1.5 px-2 py-1 text-[9px] tracking-[0.12em]'
-              : 'gap-x-3 px-4 py-2 text-[10px] tracking-[0.18em]'
+              : isMobileDock
+                ? 'gap-x-2 px-3 py-2 text-[10px] tracking-[0.16em]'
+                : 'gap-x-3 px-4 py-2 text-[10px] tracking-[0.18em]'
           }`}
         >
           {gameDockExpand && checkedPlayers && setCheckedPlayers ? <span>{t('view')}</span> : <span />}
@@ -170,7 +183,9 @@ export default function LeaderBoard(props: LeaderBoardProps) {
               className={`grid grid-cols-[auto_1fr_auto_auto] items-center bg-zinc-950/80 font-black text-zinc-100 ${
                 isCompact
                   ? 'gap-x-1.5 px-2 py-1 text-xs leading-none'
-                  : 'gap-x-3 px-4 py-2 text-sm'
+                  : isMobileDock
+                    ? 'gap-x-2 px-3 py-2 text-sm'
+                    : 'gap-x-3 px-4 py-2 text-sm'
               }`}
             >
               {gameDockExpand && checkedPlayers && setCheckedPlayers ? (
@@ -202,7 +217,9 @@ export default function LeaderBoard(props: LeaderBoardProps) {
               team.players.map((player) => (
                 <div
                   key={`${team.id}-${player.color}`}
-                  className='grid grid-cols-[auto_1fr_auto_auto] items-center gap-x-3 px-4 py-2 text-sm'
+                  className={`grid grid-cols-[auto_1fr_auto_auto] items-center text-sm ${
+                    isMobileDock ? 'gap-x-2 px-3 py-2' : 'gap-x-3 px-4 py-2'
+                  }`}
                 >
                   {checkedPlayers && setCheckedPlayers ? <span /> : <span />}
                   {renderPlayerBadge(player)}

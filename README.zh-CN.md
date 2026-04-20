@@ -46,6 +46,15 @@
 - **共享游戏逻辑：** 核心游戏类型和引擎代码位于 `src/shared/game/`。
 - **静态资源：** Vite 将 SPA 构建到 `dist/client`；Wrangler 通过 `ASSETS` binding 提供资源，并支持 SPA fallback。
 
+## 近期稳定性优化
+
+- 在 `GameMap.commendable()` 中统一拒绝非四方向相邻移动，玩家、bot 和后续调用方都走同一套合法性约束。
+- `MapDiff` 不再在每个 tick 里依赖 `flat()` 和 `JSON.stringify()` 做逐格比较，改为直接比较 tile 三元组。
+- 房间 tick 内的排行榜现在只计算一次，并复用给逐玩家下发和回放记录。
+- 房主转移和对局结束后的 lobby 同步更稳，不会因为无关玩家断线而误重置房主，补位时也会跳过已断线玩家和 bot。
+- 移动端拖拽/滑动攻击对误触更容错，并在双指缩放开始、`touchcancel`、指针离开等场景及时清理手势状态。
+- 生产环境默认压掉高频房间调试日志，减少控制台噪音。
+
 ## 页面路由
 
 | 路由 | 用途 |
@@ -136,6 +145,7 @@ pnpm deploy
 - API 行为通过 `SELF.fetch(...)` 覆盖。
 - Durable Object 行为通过 Cloudflare Workers Vitest pool 和 `runInDurableObject(...)` 覆盖。
 - 房间/WebSocket 测试当前覆盖双玩家加入、强制开局、收到 `game_started`、回合推进等行为。
+- 近期新增的回归覆盖还包括：bot 护王移动合法性、房主转移后断线稳定性、移动端排行榜默认折叠，以及触屏教程文案。
 
 ## 贡献约定
 

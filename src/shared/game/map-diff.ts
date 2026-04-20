@@ -1,6 +1,22 @@
 import Block from './block';
 import { TileProp, TilesProp, MapDiffData } from './types';
 
+function flattenBlockViews(blockMap: Block[][]): TilesProp {
+  const tiles: TilesProp = [];
+
+  for (let x = 0; x < blockMap.length; x += 1) {
+    for (let y = 0; y < blockMap[x].length; y += 1) {
+      tiles.push(blockMap[x][y].getView());
+    }
+  }
+
+  return tiles;
+}
+
+function isSameTile(left: TileProp | undefined, right: TileProp | undefined) {
+  return !!left && !!right && left[0] === right[0] && left[1] === right[1] && left[2] === right[2];
+}
+
 class MapDiff {
   data: MapDiffData = [];
   prevMap: TilesProp | null = null;
@@ -25,13 +41,13 @@ class MapDiff {
   }
 
   patch(blockMap: Block[][]): Promise<void> {
-    let curMap = blockMap.flat().map((b) => b.getView());
-    if (!this.prevMap) {
+    const curMap = flattenBlockViews(blockMap);
+    if (!this.prevMap || this.prevMap.length !== curMap.length) {
       this.data = curMap;
     } else {
       this.data = [];
       for (let i = 0; i < curMap.length; ++i) {
-        if (JSON.stringify(this.prevMap[i]) === JSON.stringify(curMap[i])) {
+        if (isSameTile(this.prevMap[i], curMap[i])) {
           this.addSame();
         } else {
           this.endSame();
@@ -41,7 +57,7 @@ class MapDiff {
       this.endSame();
     }
     this.prevMap = curMap;
-    return new Promise((resolve) => {resolve()});
+    return Promise.resolve();
   }
 }
 

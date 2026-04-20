@@ -442,6 +442,33 @@ describe('RoomDurableObject', () => {
     );
   });
 
+  it('keeps the transferred host when another player disconnects', async () => {
+    const roomId = `room-${crypto.randomUUID().slice(0, 8)}`;
+    const stub = env.ROOMS.getByName(roomId);
+
+    await runInDurableObject(
+      stub,
+      async (instance: RoomDurableObject) => {
+        captureEvents(instance);
+        const room = await (instance as any).ensureRoom(roomId);
+        room.players.push(
+          new Player('player-a', 'socket-a', 'Alice', 1, 1, true),
+          new Player('player-b', 'socket-b', 'Bob', 2, 2),
+          new Player('player-c', 'socket-c', 'Carol', 3, 3)
+        );
+
+        await (instance as any).handlePacket('socket-a', {
+          type: 'change_host',
+          data: ['player-b'],
+        });
+        await (instance as any).handleDisconnect('socket-c');
+
+        expect(room.players.find((player: Player) => player.id === 'player-b')?.isRoomHost).toBe(true);
+        expect(room.players.find((player: Player) => player.id === 'player-a')?.isRoomHost).toBe(false);
+      }
+    );
+  });
+
   it('lets the host move a bot onto the same team as another player', async () => {
     const roomId = `room-${crypto.randomUUID().slice(0, 8)}`;
     const stub = env.ROOMS.getByName(roomId);

@@ -137,6 +137,12 @@ function getForceStartTarget(room: Room) {
   return forceStartOK[activeHumans] ?? activeHumans;
 }
 
+function pickNextConnectedHumanHost(room: Room) {
+  return room.players.find(
+    (player) => !player.isBot && !player.disconnected
+  );
+}
+
 export class RoomDurableObject extends DurableObject<Env> {
   private room: Room | null = null;
   private sockets = new Map<string, WebSocket>();
@@ -380,7 +386,10 @@ export class RoomDurableObject extends DurableObject<Env> {
     this.room = hydrateRoomSummary(this.room.id, liveSummary);
   }
 
-  private async sendCurrentGameState(connectionId: string) {
+  private async sendCurrentGameState(
+    connectionId: string,
+    leaderBoard: LeaderBoardTable = this.computeLeaderBoard()
+  ) {
     if (!this.room?.map) {
       return;
     }
@@ -409,7 +418,7 @@ export class RoomDurableObject extends DurableObject<Env> {
       'game_update',
       player.patchView.data,
       this.room.map.turn,
-      this.computeLeaderBoard()
+      leaderBoard
     );
   }
 
@@ -534,13 +543,17 @@ export class RoomDurableObject extends DurableObject<Env> {
       return;
     }
 
-    const nextHost = this.room.players.find((roomPlayer) => !roomPlayer.isBot);
-    if (nextHost) {
+    const disconnectedWasHost = player.isRoomHost;
+    const hasConnectedHumanHost = this.room.players.some(
+      (roomPlayer) => roomPlayer.isRoomHost && !roomPlayer.isBot && !roomPlayer.disconnected
+    );
+
+    if (disconnectedWasHost || !hasConnectedHumanHost) {
       this.room.players.forEach((roomPlayer) => roomPlayer.setRoomHost(false));
-      nextHost.setRoomHost(true);
-      this.broadcast('update_room', this.room);
+      pickNextConnectedHumanHost(this.room)?.setRoomHost(true);
     }
 
+    this.broadcast('update_room', this.room);
     await this.syncRoomSummary();
     await this.checkForcedStart();
   }
@@ -716,15 +729,17 @@ export class RoomDurableObject extends DurableObject<Env> {
       player.operatedTurn = this.room.map.turn;
     }
 
+    const leaderBoard = this.computeLeaderBoard();
+
     for (const [connectionId] of this.sockets.entries()) {
-      await this.sendCurrentGameState(connectionId);
+      await this.sendCurrentGameState(connectionId, leaderBoard);
     }
 
     await this.room.globalMapDiff.patch(this.room.map.map);
     this.room.gameRecord.addGameUpdate(
       this.room.globalMapDiff.data,
       this.room.map.turn,
-      this.computeLeaderBoard()
+      leaderBoard
     );
     this.room.map.updateTurn();
     this.room.map.updateUnit();
@@ -760,7 +775,6 @@ export class RoomDurableObject extends DurableObject<Env> {
 
     this.room.gameStarted = false;
     this.room.forceStartNum = 0;
-    this.broadcast('update_room', this.room);
     this.room.players.forEach((player) => {
       player.reset();
     });
@@ -769,9 +783,10 @@ export class RoomDurableObject extends DurableObject<Env> {
       this.room.players.length > 0 &&
       !this.room.players.some((player) => player.isRoomHost)
     ) {
-      const nextHost = this.room.players.find((player) => !player.isBot);
-      nextHost?.setRoomHost(true);
+      this.room.players.forEach((player) => player.setRoomHost(false));
+      pickNextConnectedHumanHost(this.room)?.setRoomHost(true);
     }
+    this.broadcast('update_room', this.room);
     this.clearGameLoop();
     await this.syncRoomSummary();
   }

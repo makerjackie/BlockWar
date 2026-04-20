@@ -300,6 +300,8 @@ function GameMap() {
           }
         }
       } else if (event.touches.length === 2) {
+        touchAttacking.current = false;
+        touchDragging.current = false;
         // zoom
         const touch1 = event.touches[0];
         const touch2 = event.touches[1];
@@ -367,8 +369,7 @@ function GameMap() {
           } else if (dy === 0 && dx === -1) {
             direction = 'up';
           } else {
-            // not valid move
-            touchAttacking.current = false;
+            // Ignore diagonal or skipped tiles and wait for the next valid adjacent move.
             return;
           }
           // console.log('valid touch move attack', x, y, className);
@@ -394,9 +395,10 @@ function GameMap() {
     [mapRef, setPosition, tileSize, zoom, selectedMapTileInfo, mapData, handlePositionChange, setZoom]
   );
 
-  const handleTouchEnd = useCallback((event: TouchEvent) => {
+  const handleTouchEnd = useCallback(() => {
     touchAttacking.current = false;
     touchDragging.current = false;
+    initialDistance.current = 0;
   }, []);
 
   useEffect(() => {
@@ -428,10 +430,12 @@ function GameMap() {
         passive: false,
       });
       mapNode.addEventListener('touchend', handleTouchEnd);
+      mapNode.addEventListener('touchcancel', handleTouchEnd);
       return () => {
         mapNode.removeEventListener('touchstart', handleTouchStart);
         mapNode.removeEventListener('touchmove', handleTouchMove);
         mapNode.removeEventListener('touchend', handleTouchEnd);
+        mapNode.removeEventListener('touchcancel', handleTouchEnd);
       };
     }
     return () => { };

@@ -163,6 +163,26 @@ describe('bot-engine', () => {
     });
   });
 
+  it('never defends the king with a non-adjacent teleport move', () => {
+    const { room, bot, enemy } = createScenario({
+      botKing: new Point(2, 2),
+      enemyKing: new Point(5, 5),
+    });
+
+    assignOwnedBlock(room, bot, new Point(0, 0), 20);
+    assignOwnedBlock(room, bot, new Point(2, 1), 6);
+    assignOwnedBlock(room, enemy, new Point(3, 2), 8);
+    room.map!.getBlock(new Point(2, 2)).setUnit(1);
+
+    const decision = planBotMove(room, bot);
+
+    expect(decision).toMatchObject({
+      from: { x: 2, y: 1 },
+      to: { x: 2, y: 2 },
+      reason: 'defend_king',
+    });
+  });
+
   it('reinforces its king when an adjacent enemy threatens it', () => {
     const { room, bot, enemy } = createScenario({
       botKing: new Point(1, 1),

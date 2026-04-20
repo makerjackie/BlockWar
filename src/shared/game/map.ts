@@ -19,6 +19,10 @@ function calcDistance(a: Point, b: Point): number {
   return Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
 }
 
+function isCardinalNeighbor(a: Point, b: Point): boolean {
+  return Math.abs(a.x - b.x) + Math.abs(a.y - b.y) === 1;
+}
+
 function getRandomInt(min: number, max: number): number {
   const minInt = Math.ceil(min);
   const maxInt = Math.floor(max);
@@ -391,6 +395,10 @@ class GameMap {
 
   commendable(player: any, focus: Point, newFocus: Point): boolean {
     if (!this.withinMap(focus) || !this.withinMap(newFocus)) {
+      return false;
+    }
+
+    if (!isCardinalNeighbor(focus, newFocus)) {
       return false;
     }
 

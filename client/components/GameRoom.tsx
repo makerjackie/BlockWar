@@ -23,6 +23,12 @@ import GameSetting from '@/components/GameSetting';
 import GameLoading from '@/components/GameLoading';
 import { soundEffects } from '@/lib/sound-effects';
 
+const debugLog = (...args: unknown[]) => {
+  if (process.env.NODE_ENV !== 'production') {
+    console.log(...args);
+  }
+};
+
 function GamingRoom() {
   const [messages, setMessages] = useState<Message[]>([]);
   const myPlayerIdRef = useRef<string>(''); // fix useEffect don't get newest myPlayerId
@@ -89,7 +95,7 @@ function GamingRoom() {
       }
 
       insert(item: Route): void {
-        console.log('Item queued: ', item.to.x, item.to.y);
+        debugLog('Item queued: ', item.to.x, item.to.y);
         this.items.push(item);
       }
 
@@ -167,17 +173,17 @@ function GamingRoom() {
 
     // set up socket event listeners
     socket.on('connect', () => {
-      console.log(`socket client connect to server: ${socket.id}`);
+      debugLog(`socket client connect to server: ${socket.id}`);
     });
     // get player id when first connect
     socket.on('set_player_id', (playerId: string) => {
-      console.log(`set_player_id: ${playerId}`);
+      debugLog(`set_player_id: ${playerId}`);
       setMyPlayerId(playerId);
       myPlayerIdRef.current = playerId;
       localStorage.setItem('playerId', playerId);
     });
     socket.on('game_started', (initGameInfo: initGameInfo) => {
-      console.log('Game started:', initGameInfo);
+      debugLog('Game started:', initGameInfo);
       soundEffects.play('gameStart');
       setInitGameInfo(initGameInfo);
       setIsSurrendered(false);
@@ -204,9 +210,9 @@ function GamingRoom() {
       });
     });
     socket.on('update_room', (room: Room) => {
-      console.log('update_room');
-      console.log(room);
-      console.log(myPlayerIdRef.current);
+      debugLog('update_room');
+      debugLog(room);
+      debugLog(myPlayerIdRef.current);
       // if my player id  equal to room's one of player ,setSpectating from room player
       if (myPlayerIdRef.current && room.players) {
         let player = room.players.find(
@@ -214,7 +220,7 @@ function GamingRoom() {
         );
         if (player) {
           setTeam(player.team);
-          console.log('set team', player.team);
+          debugLog('set team', player.team);
         }
       }
       roomDispatch({ type: 'update', payload: room });
@@ -248,14 +254,14 @@ function GamingRoom() {
       ]);
     });
     socket.on('game_over', (capturedBy: UserData) => {
-      console.log(`game_over: ${capturedBy.username}`);
+      debugLog(`game_over: ${capturedBy.username}`);
       soundEffects.play('defeat');
       setOpenOverDialog(true);
       setRoomUiStatus(RoomUiStatus.gameOverConfirm);
       setDialogContent([[capturedBy], 'game_over', null]);
     });
     socket.on('game_ended', (winner: [UserData], replayLink: string | null) => {
-      console.log(`game_ended: ${winner.map((x) => x.username)} ${replayLink}`);
+      debugLog(`game_ended: ${winner.map((x) => x.username)} ${replayLink}`);
       if (winner.some((player) => player.id === myPlayerIdRef.current)) {
         soundEffects.play('victory');
       }
@@ -267,7 +273,7 @@ function GamingRoom() {
     socket.on(
       'attack_success',
       (from: Position, to: Position, turn: number) => {
-        console.log('attach success: ', from, to, turn);
+        debugLog('attach success: ', from, to, turn);
       }
     );
 
@@ -279,7 +285,7 @@ function GamingRoom() {
         leaderBoardData: LeaderBoardTable
       ) => {
         // console.log(`game_update: ${turnsCount}`, new Date().toISOString());
-        console.log(`game_update: ${turnsCount}`);
+        debugLog(`game_update: ${turnsCount}`);
 
         attackQueueRef.current.allowAttackThisTurn = true;
         setRoomUiStatus(RoomUiStatus.gameRealStarted);
@@ -291,7 +297,7 @@ function GamingRoom() {
           let item = attackQueueRef.current.pop();
           socket.emit('attack', item.from, item.to, item.half);
           attackQueueRef.current.allowAttackThisTurn = false;
-          console.log(
+          debugLog(
             `emit attack: `,
             item.from,
             item.to,
@@ -307,7 +313,7 @@ function GamingRoom() {
     socket.on(
       'attack_failure',
       (from: Position, to: Position, message: string) => {
-        console.log('attack_failure: ', from, to, message);
+        debugLog('attack_failure: ', from, to, message);
         attackQueueRef.current.clearLastItem();
         while (!attackQueueRef.current.isEmpty()) {
           let route = attackQueueRef.current.front();
@@ -346,7 +352,7 @@ function GamingRoom() {
     });
 
     socket.on('connect_error', (error: Error) => {
-      console.log('\nConnection Failed: ' + error);
+      debugLog('\nConnection Failed: ' + error);
       socket.disconnect();
 
       snackStateDispatch({
@@ -359,7 +365,7 @@ function GamingRoom() {
     });
 
     socket.on('disconnect', () => {
-      console.log('Disconnected from server.');
+      debugLog('Disconnected from server.');
 
       snackStateDispatch({
         type: 'update',
@@ -371,7 +377,7 @@ function GamingRoom() {
     });
 
     socket.on('reconnect', () => {
-      console.log('Reconnected to server.');
+      debugLog('Reconnected to server.');
       if (room.gameStarted && myPlayerIdRef.current) {
         socket.emit('reconnect', myPlayerIdRef.current);
       } else {

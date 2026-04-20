@@ -120,7 +120,9 @@ const useMapDrag = (
   );
 
   const handleTouchEnd = useCallback(() => {
+    mouseDragging.current = false;
     touchDragging.current = false;
+    initialDistance.current = 0;
   }, []);
 
   const handleWheel = useCallback(
@@ -146,12 +148,14 @@ const useMapDrag = (
       mapNode.addEventListener('mousedown', handleMouseDown);
       mapNode.addEventListener('mousemove', handleMouseMove);
       mapNode.addEventListener('mouseup', handleMouseUp);
+      mapNode.addEventListener('mouseleave', handleMouseUp);
       if (listenTouch) {
         mapNode.addEventListener('touchstart', handleTouchStart);
         mapNode.addEventListener('touchmove', handleTouchMove, {
           passive: false,
         });
         mapNode.addEventListener('touchend', handleTouchEnd);
+        mapNode.addEventListener('touchcancel', handleTouchEnd);
       }
 
       return () => {
@@ -159,10 +163,12 @@ const useMapDrag = (
         mapNode.removeEventListener('mousedown', handleMouseDown);
         mapNode.removeEventListener('mousemove', handleMouseMove);
         mapNode.removeEventListener('mouseup', handleMouseUp);
+        mapNode.removeEventListener('mouseleave', handleMouseUp);
         if (listenTouch) {
           mapNode.removeEventListener('touchstart', handleTouchStart);
           mapNode.removeEventListener('touchmove', handleTouchMove);
           mapNode.removeEventListener('touchend', handleTouchEnd);
+          mapNode.removeEventListener('touchcancel', handleTouchEnd);
         }
       };
     }

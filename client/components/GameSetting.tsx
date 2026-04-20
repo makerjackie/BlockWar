@@ -253,7 +253,7 @@ const GameSetting: React.FC<GameSettingProps> = () => {
   }, [disabledUi, isNameFocused]);
 
   return (
-    <div className='mx-auto w-full max-w-2xl'>
+    <div className='mx-auto w-full max-w-6xl'>
       <ModalShell
         open={openMapExplorer}
         onClose={() => setOpenMapExplorer(false)}
@@ -263,7 +263,14 @@ const GameSetting: React.FC<GameSettingProps> = () => {
         <MapExplorer userId={myUserName} onSelect={handleMapSelect} />
       </ModalShell>
 
-      <section className='menu-container overflow-hidden'>
+      <div
+        className={
+          isTutorialRoom
+            ? ''
+            : 'grid gap-4 lg:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.95fr)] lg:items-start'
+        }
+      >
+        <section className='menu-container overflow-hidden'>
         <div className='grid grid-cols-[2.5rem_minmax(0,1fr)_2.5rem] items-center gap-2 border-b border-zinc-800 px-3 py-3 sm:grid-cols-[2.75rem_minmax(0,1fr)_2.75rem] sm:gap-3 sm:px-5 sm:py-4'>
           <button
             type='button'
@@ -590,14 +597,16 @@ const GameSetting: React.FC<GameSettingProps> = () => {
       </section>
 
       {!isTutorialRoom && (
-        <>
-          <section className='menu-container mt-4 overflow-hidden'>
-            <div className='flex flex-wrap items-center justify-between gap-2.5 border-b border-zinc-800 px-3 py-3 sm:gap-3 sm:px-5 sm:py-4'>
+        <aside className='mt-4 space-y-3 lg:mt-0 lg:sticky lg:top-6'>
+          <section className='menu-container overflow-hidden'>
+            <div className='flex flex-wrap items-center justify-between gap-2.5 border-b border-zinc-800 px-3 py-3 sm:gap-3 sm:px-4 sm:py-4'>
               <div className='flex items-center gap-2.5 sm:gap-3'>
                 <Users className='text-yellow-300' size={16} strokeWidth={2.25} />
-                <div>
-                  <p className='bw-page-copy'>{t('roster')}</p>
+                <div className='flex items-center gap-2'>
                   <h3 className='text-base font-black text-zinc-50 sm:text-lg'>{t('players')}</h3>
+                  <span className='inline-flex min-h-6 items-center rounded-full border border-zinc-700 px-2 text-[11px] font-black text-zinc-300'>
+                    {room.players.length}/{room.maxPlayers}
+                  </span>
                 </div>
               </div>
               <button
@@ -610,7 +619,7 @@ const GameSetting: React.FC<GameSettingProps> = () => {
                 {t('add-bot')}
               </button>
             </div>
-            <div className='px-3 py-3 sm:px-5 sm:py-4'>
+            <div className='px-3 py-3 sm:px-4 sm:py-4'>
               <PlayerTable
                 myPlayerId={myPlayerId}
                 players={room.players}
@@ -625,21 +634,24 @@ const GameSetting: React.FC<GameSettingProps> = () => {
             </div>
           </section>
 
-          <button
-            type='button'
-            className={`bw-button mt-3 min-h-10 w-full justify-center text-sm sm:mt-4 sm:min-h-11 sm:text-base ${
-              tutorialStarting || forceStart || !!currentPlayer?.forceStart
-                ? 'bw-button-primary'
-                : 'bw-button-secondary'
-            }`}
-            disabled={team === MaxTeamNum + 1}
-            onClick={handleClickForceStart}
-          >
-            {`${t('ready')}(${room.forceStartNum}/${forceStartTarget})`}
-          </button>
-        </>
+          <div className='sticky bottom-3 z-10 border border-zinc-800 bg-zinc-950/95 p-2 backdrop-blur lg:static lg:border-0 lg:bg-transparent lg:p-0'>
+            <button
+              type='button'
+              className={`bw-button min-h-11 w-full justify-center text-sm sm:text-base ${
+                tutorialStarting || forceStart || !!currentPlayer?.forceStart
+                  ? 'bw-button-primary'
+                  : 'bw-button-secondary'
+              }`}
+              disabled={team === MaxTeamNum + 1}
+              onClick={handleClickForceStart}
+            >
+              {`${t('ready')}(${room.forceStartNum}/${forceStartTarget})`}
+            </button>
+          </div>
+        </aside>
       )}
     </div>
+  </div>
   );
 };
 

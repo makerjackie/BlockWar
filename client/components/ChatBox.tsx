@@ -46,9 +46,14 @@ const ChatBoxMessage = ({ message }: { message: Message }) => {
 interface ChatBoxProp {
   socket: Socket | null;
   messages: Message[];
+  defaultExpanded?: boolean;
 }
 
-export default React.memo(function ChatBox({ socket, messages }: ChatBoxProp) {
+export default React.memo(function ChatBox({
+  socket,
+  messages,
+  defaultExpanded,
+}: ChatBoxProp) {
   const [inputValue, setInputValue] = useState('');
   const [isExpand, setIsExpand] = useState(false);
   const textFieldRef = useRef<HTMLInputElement | null>(null);
@@ -61,8 +66,8 @@ export default React.memo(function ChatBox({ socket, messages }: ChatBoxProp) {
   }, [messages, isExpand]);
 
   useEffect(() => {
-    setIsExpand(!isSmallScreen);
-  }, [isSmallScreen]);
+    setIsExpand(defaultExpanded ?? !isSmallScreen);
+  }, [defaultExpanded, isSmallScreen]);
 
   const { t } = useTranslation();
 

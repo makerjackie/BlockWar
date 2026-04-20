@@ -16,11 +16,9 @@ export default function usePossibleNextMapPositions({
     if (selectedMapTileInfo) {
       const { x, y } = selectedMapTileInfo;
       return x !== -1 && y !== -1;
-    } else {
-      return false;
     }
+    return false;
   }, [selectedMapTileInfo]);
-
 
   const topMovePosition = useMemo(() => {
     if (!isMapSelected) {
@@ -45,7 +43,7 @@ export default function usePossibleNextMapPositions({
     const { x, y: bottomColumnIndex } = selectedMapTileInfo!;
     const bottomRowIndex = x + 1;
 
-    if (bottomRowIndex > height) {
+    if (bottomRowIndex >= height) {
       return;
     }
 
@@ -81,7 +79,7 @@ export default function usePossibleNextMapPositions({
     const { x: rightRowIndex, y } = selectedMapTileInfo!;
     const rightColumnIndex = y + 1;
 
-    if (rightColumnIndex > width) {
+    if (rightColumnIndex >= width) {
       return;
     }
 

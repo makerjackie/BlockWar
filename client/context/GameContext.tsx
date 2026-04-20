@@ -185,20 +185,52 @@ const GameProvider: React.FC<GameProviderProp> = ({ children }) => {
   }, [attackQueueRef, selectedMapTileInfo, setSelectedMapTileInfo]);
 
   const possibleNextMapPositions = usePossibleNextMapPositions({
-    width: room.map ? room.map.width : 0,
-    height: room.map ? room.map.height : 0,
-    selectedMapTileInfo: selectedMapTileInfo ? { x: selectedMapTileInfo.x, y: selectedMapTileInfo.y } : undefined,
+    width: initGameInfo ? initGameInfo.mapHeight : room.map ? room.map.width : 0,
+    height: initGameInfo ? initGameInfo.mapWidth : room.map ? room.map.height : 0,
+    selectedMapTileInfo: selectedMapTileInfo
+      ? { x: selectedMapTileInfo.x, y: selectedMapTileInfo.y }
+      : undefined,
   });
 
-  const testIfNextPossibleMove = useCallback((tileType: TileType, x: number, y: number) => {
-    const isNextPossibleMapPosition = Object.values(
-      possibleNextMapPositions
-    ).some((p) => {
-      return p && p.x === x && p.y === y;
-    });
+  const isBlockedTileType = useCallback(
+    (tileType: TileType) =>
+      tileType === TileType.Mountain || tileType === TileType.Obstacle,
+    []
+  );
 
-    return isNextPossibleMapPosition && tileType !== TileType.Mountain;
-  }, [possibleNextMapPositions])
+  const isNextPossibleMapPosition = useCallback(
+    (point: Position) => {
+      return Object.values(possibleNextMapPositions).some((p) => {
+        return p && p.x === point.x && p.y === point.y;
+      });
+    },
+    [possibleNextMapPositions]
+  );
+
+  const showBlockedMoveFeedback = useCallback(
+    (tileType: TileType) => {
+      snackStateDispatch({
+        type: 'update',
+        title: '',
+        status: 'warning',
+        message:
+          tileType === TileType.Mountain
+            ? 'Mountains block movement.'
+            : 'That tile is blocked.',
+        duration: 1200,
+      });
+    },
+    [snackStateDispatch]
+  );
+
+  const testIfNextPossibleMove = useCallback(
+    (tileType: TileType, x: number, y: number) => {
+      return (
+        isNextPossibleMapPosition({ x, y }) && !isBlockedTileType(tileType)
+      );
+    },
+    [isBlockedTileType, isNextPossibleMapPosition]
+  );
 
   const withinMap = useCallback(
     (point: Position) => {
@@ -215,49 +247,65 @@ const GameProvider: React.FC<GameProviderProp> = ({ children }) => {
 
   const handlePositionChange = useCallback(
     (selectPos: SelectedMapTileInfo, newPoint: Position, className: string) => {
-      if (withinMap(newPoint)) {
-        attackQueueRef.current.insert({
-          from: selectPos,
-          to: newPoint,
-          half: selectPos.half,
-        });
-        setSelectedMapTileInfo({
-          // ...selectPos,
-          x: newPoint.x,
-          y: newPoint.y,
-          half: false,
-          unitsCount: 0,
-        });
-        mapQueueDataDispatch({
-          type: 'change',
-          x: selectPos.x,
-          y: selectPos.y,
-          className: className,
-        });
-        // todo: Higher latency can result in attacks from one turn not being responded to by the server until the next turn,
-        // resulting in two attack requests in one turn, causing the 2nd attack to fail
-        //
-        // if (attackQueueRef.current.allowAttackThisTurn) {
-        //   let item = attackQueueRef.current.pop();
-        //   socketRef.current.emit('attack', item.from, item.to, item.half);
-        //   attackQueueRef.current.allowAttackThisTurn = false;
-        //   console.log(
-        //     `emit attack: `,
-        //     item.from,
-        //     item.to,
-        //     item.half,
-        //     turnsCount
-        //   );
-        // }
-      } else {
-        console.log("new point not within map", newPoint)
+      if (!withinMap(newPoint)) {
+        console.log('new point not within map', newPoint);
+        return;
       }
+
+      if (!isNextPossibleMapPosition(newPoint)) {
+        return;
+      }
+
+      const nextTile = mapData[newPoint.x]?.[newPoint.y];
+      const nextTileType = nextTile?.[0];
+
+      if (nextTileType !== undefined && isBlockedTileType(nextTileType)) {
+        showBlockedMoveFeedback(nextTileType);
+        return;
+      }
+
+      attackQueueRef.current.insert({
+        from: selectPos,
+        to: newPoint,
+        half: selectPos.half,
+      });
+      setSelectedMapTileInfo({
+        x: newPoint.x,
+        y: newPoint.y,
+        half: false,
+        unitsCount: 0,
+      });
+      mapQueueDataDispatch({
+        type: 'change',
+        x: selectPos.x,
+        y: selectPos.y,
+        className: className,
+      });
+      // todo: Higher latency can result in attacks from one turn not being responded to by the server until the next turn,
+      // resulting in two attack requests in one turn, causing the 2nd attack to fail
+      //
+      // if (attackQueueRef.current.allowAttackThisTurn) {
+      //   let item = attackQueueRef.current.pop();
+      //   socketRef.current.emit('attack', item.from, item.to, item.half);
+      //   attackQueueRef.current.allowAttackThisTurn = false;
+      //   console.log(
+      //     `emit attack: `,
+      //     item.from,
+      //     item.to,
+      //     item.half,
+      //     turnsCount
+      //   );
+      // }
     },
     [
       withinMap,
+      isNextPossibleMapPosition,
+      mapData,
       attackQueueRef,
       mapQueueDataDispatch,
       setSelectedMapTileInfo,
+      isBlockedTileType,
+      showBlockedMoveFeedback,
     ]
   );
 
@@ -275,7 +323,8 @@ const GameProvider: React.FC<GameProviderProp> = ({ children }) => {
       tileHalf = false;
     }
 
-    const isNextPossibleMove = testIfNextPossibleMove(tileType, x, y)
+    const isAdjacentMove = isNextPossibleMapPosition({ x, y });
+    const isNextPossibleMove = isAdjacentMove && !isBlockedTileType(tileType);
 
     const getPossibleMoveDirection = () => {
       if (isNextPossibleMove) {
@@ -291,6 +340,8 @@ const GameProvider: React.FC<GameProviderProp> = ({ children }) => {
 
     if (isNextPossibleMove) {
       handlePositionChange(selectedMapTileInfo, { x, y }, `queue_${moveDirection}`);
+    } else if (isAdjacentMove && isBlockedTileType(tileType)) {
+      showBlockedMoveFeedback(tileType);
     } else if (isOwned) {
       if (selectedMapTileInfo.x === x && selectedMapTileInfo.y === y) {
         console.log(
@@ -316,7 +367,7 @@ const GameProvider: React.FC<GameProviderProp> = ({ children }) => {
         half: false,
       });
     }
-  }, [room.players, selectedMapTileInfo, mapQueueData, testIfNextPossibleMove, possibleNextMapPositions, handlePositionChange, setSelectedMapTileInfo, mapQueueDataDispatch]);
+  }, [room.players, selectedMapTileInfo, mapQueueData, possibleNextMapPositions, isNextPossibleMapPosition, isBlockedTileType, handlePositionChange, showBlockedMoveFeedback, setSelectedMapTileInfo, mapQueueDataDispatch]);
 
   const attackUp = useCallback((selectPos?: SelectedMapTileInfo) => {
     if (selectPos) {

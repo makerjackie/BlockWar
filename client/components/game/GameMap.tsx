@@ -471,6 +471,10 @@ function GameMap() {
             transformOrigin: 'center center',
             willChange: 'transform',
             contain: 'layout paint style',
+            outline: 'none',
+            touchAction: 'none',
+            userSelect: 'none',
+            WebkitUserSelect: 'none',
           }}
         >
           {displayMapData.map((tiles, x) => {

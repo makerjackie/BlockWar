@@ -2,23 +2,23 @@ import React, {
   useCallback,
   useState,
   useEffect,
-  useMemo,
   useRef,
   useReducer,
 } from 'react';
 import { useRouter } from 'next/router';
 
 import {
+  LocateFixed,
   Pause,
   Play,
   SkipBack,
   SkipForward,
+  ZoomIn,
+  ZoomOut,
 } from 'lucide-react';
 import { mapDataReducer } from '@/context/GameReducer';
-import CustomMapTile from '@/components/game/CustomMapTile';
 import { ReplaySpeedOptions } from '@/lib/constants';
 import {
-  DisplayCustomMapTileData,
   LeaderBoardTable,
   Message,
   UserData,
@@ -27,6 +27,7 @@ import {
 } from '@/lib/types';
 import TurnsCount from './TurnsCount';
 import LeaderBoard from './LeaderBoard';
+import MapTile from './MapTile';
 import { useTranslation } from 'next-i18next';
 import GameLoading from '@/components/GameLoading';
 import GameRecord from '@/lib/game-record';
@@ -58,6 +59,8 @@ export default function GameReplay() {
     mapBasePixelWidth,
     mapBasePixelHeight,
     zoom,
+    setPosition,
+    setZoom,
     handleZoomOption,
   } = useMap({ mapWidth, mapHeight });
 
@@ -222,14 +225,6 @@ export default function GameReplay() {
     }
   };
 
-  const replayTiles = useMemo(() => {
-    return limitedView.map((tiles) =>
-      tiles.map(
-        (tile) => [...tile, false, 0] as DisplayCustomMapTileData
-      )
-    );
-  }, [limitedView]);
-
   if (notFoundError) {
     return (
       <div className='center-layout'>
@@ -251,7 +246,7 @@ export default function GameReplay() {
   return (
     <div className='app-container'>
       <div className='Game'>
-        <div className='menu-container absolute bottom-[5px] left-1/2 z-[1002] flex w-[min(92vw,520px)] -translate-x-1/2 flex-col gap-3 px-4 py-3 md:bottom-5'>
+        <div className='menu-container absolute left-1/2 top-3 z-[1004] flex w-[min(96vw,560px)] -translate-x-1/2 flex-col gap-3 px-3 py-3 md:top-5 md:w-[min(78vw,560px)]'>
           <div className='flex items-center justify-between gap-2'>
             <button
               type='button'
@@ -319,6 +314,40 @@ export default function GameReplay() {
               </button>
             ))}
           </div>
+
+          <div className='flex flex-wrap justify-center gap-2'>
+            <button
+              type='button'
+              className='bw-button bw-button-secondary min-h-10 px-3 text-xs'
+              onClick={() =>
+                setZoom((currentZoom: number) => Math.max(currentZoom - 0.2, 0.2))
+              }
+            >
+              <ZoomOut size={16} strokeWidth={2.5} />
+              Zoom out
+            </button>
+            <button
+              type='button'
+              className='bw-button bw-button-secondary min-h-10 px-3 text-xs'
+              onClick={() =>
+                setZoom((currentZoom: number) => Math.min(currentZoom + 0.2, 4))
+              }
+            >
+              <ZoomIn size={16} strokeWidth={2.5} />
+              Zoom in
+            </button>
+            <button
+              type='button'
+              className='bw-button bw-button-secondary min-h-10 px-3 text-xs'
+              onClick={() => {
+                setZoom(1);
+                setPosition({ x: 0, y: 0 });
+              }}
+            >
+              <LocateFixed size={16} strokeWidth={2.5} />
+              Reset view
+            </button>
+          </div>
         </div>
 
         <TurnsCount
@@ -334,7 +363,7 @@ export default function GameReplay() {
           checkedPlayers={checkedPlayers}
           setCheckedPlayers={setCheckedPlayers}
         />
-        <ChatBox socket={null} messages={messages} />
+        <ChatBox socket={null} messages={messages} defaultExpanded={false} />
         <div
           style={{
             position: 'absolute',
@@ -357,17 +386,28 @@ export default function GameReplay() {
               transformOrigin: 'center center',
               willChange: 'transform',
               contain: 'layout paint style',
+              outline: 'none',
+              touchAction: 'none',
+              userSelect: 'none',
+              WebkitUserSelect: 'none',
             }}
           >
-            {replayTiles.map((tiles: DisplayCustomMapTileData[], x: number) => {
-              return tiles.map((tile: DisplayCustomMapTileData, y: number) => {
+            {limitedView.map((tiles: TileProp[], x: number) => {
+              return tiles.map((tile: TileProp, y: number) => {
                 return (
-                  <CustomMapTile
+                  <MapTile
                     key={`${x}/${y}`}
                     size={tileSize}
                     x={x}
                     y={y}
                     tile={tile}
+                    isOwned={false}
+                    _className=''
+                    tileHalf={false}
+                    isSelected={false}
+                    isNextPossibleMove={false}
+                    showMyKingHighlight={false}
+                    warringStatesMode={false}
                   />
                 );
               });

@@ -6,6 +6,7 @@ import TurnsCount from './TurnsCount';
 import OverDialog from './OverDialog';
 import { useGame, useGameDispatch } from '@/context/GameContext';
 import TutorialGuide from './TutorialGuide';
+import StrategistHint from './StrategistHint';
 
 export default function Game() {
   const { room, socketRef, myPlayerId, turnsCount, leaderBoardData } =
@@ -29,6 +30,7 @@ export default function Game() {
   return (
     <div className='Game'>
       <TurnsCount count={turnsCount} handleReturnClick={handleReturnClick} />
+      <StrategistHint />
       <LeaderBoard
         leaderBoardTable={leaderBoardData}
         players={room.players}

@@ -160,6 +160,14 @@
     "startButton": "Enter now",
     "startingButton": "Entering..."
   },
+  "strategist": {
+    "title": "Strategist",
+    "messages": {
+      "enemyInTerritory": "{{player}} has pushed {{units}} troops into your territory.",
+      "enemyNearCapital": "{{player}} is only {{distance}} tiles from your capital.",
+      "frontlinePressure": "{{player}} is pressing the line with {{count}} active border threats."
+    }
+  },
   "tutorialGuide": {
     "progress": "Tutorial {{current}} / {{total}}",
     "hide": "Hide",

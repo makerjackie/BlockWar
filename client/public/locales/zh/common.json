@@ -161,6 +161,14 @@
     "startButton": "立即进入",
     "startingButton": "正在进入..."
   },
+  "strategist": {
+    "title": "参谋",
+    "messages": {
+      "enemyInTerritory": "{{player}} 带着 {{units}} 兵攻入你的领地",
+      "enemyNearCapital": "{{player}} 的军队离你的国都仅有 {{distance}} 格",
+      "frontlinePressure": "{{player}} 正在施压，你的前线已有 {{count}} 处接敌"
+    }
+  },
   "tutorialGuide": {
     "progress": "教程 {{current}} / {{total}}",
     "hide": "隐藏",

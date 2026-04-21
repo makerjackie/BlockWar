@@ -2,12 +2,11 @@ import { useEffect, useState, type ReactNode } from 'react';
 import {
   BookOpen,
   Check,
+  ChevronDown,
   Languages,
-  Menu,
   MessageSquareWarning,
   Moon,
   Sun,
-  ChevronDown,
 } from 'lucide-react';
 
 import { useTranslation } from 'next-i18next';
@@ -108,7 +107,6 @@ const utilityNavItems: NavItem[] = [
 ];
 
 function Navbar() {
-  const [isNavOpen, setIsNavOpen] = useState(false);
   const [isLanguageMenuOpen, setIsLanguageMenuOpen] = useState(false);
   const [show, setShow] = useState(false);
   const { mode, toggleMode } = useThemeMode();
@@ -139,13 +137,11 @@ function Navbar() {
   const navLinkClass = `navbar-link navbar-link-primary ${
     isChinese ? 'navbar-link-zh' : 'navbar-link-en'
   }`;
-  const mobileNavLinkClass = `${navLinkClass} navbar-link-mobile`;
   const utilityNavLinkClass = `navbar-utility-link ${
     isChinese ? 'navbar-link-zh' : 'navbar-link-en'
   }`;
   const themeToggleLabel =
     mode === 'dark' ? t('switch-to-light') : t('switch-to-dark');
-  const mobileNavItems = [...primaryNavItems, ...utilityNavItems];
 
   useEffect(() => {
     if (!isLanguageMenuOpen) {
@@ -188,7 +184,11 @@ function Navbar() {
     await router.push(router.asPath, undefined, { locale: lang });
   };
 
-  const renderLanguageSwitcher = (buttonClassName: string, menuClassName: string) => (
+  const renderLanguageSwitcher = (
+    buttonClassName: string,
+    menuClassName: string,
+    compact = false
+  ) => (
     <div
       className={`relative ${menuClassName}`}
       data-language-menu-root='true'
@@ -203,16 +203,20 @@ function Navbar() {
         onClick={() => setIsLanguageMenuOpen((value) => !value)}
       >
         <Languages size={16} strokeWidth={2.35} className='shrink-0' />
-        <span className='truncate text-left font-black tracking-[0.08em]'>
-          {currentLanguage.shortLabel}
-        </span>
-        <ChevronDown
-          className={`shrink-0 transition duration-200 ease-out ${
-            isLanguageMenuOpen ? 'rotate-180 text-zinc-50' : 'text-zinc-500'
-          }`}
-          size={14}
-          strokeWidth={2.4}
-        />
+        {!compact ? (
+          <>
+            <span className='truncate text-left font-black tracking-[0.08em]'>
+              {currentLanguage.shortLabel}
+            </span>
+            <ChevronDown
+              className={`shrink-0 transition duration-200 ease-out ${
+                isLanguageMenuOpen ? 'rotate-180 text-zinc-50' : 'text-zinc-500'
+              }`}
+              size={14}
+              strokeWidth={2.4}
+            />
+          </>
+        ) : null}
       </button>
 
       {isLanguageMenuOpen && (
@@ -270,7 +274,7 @@ function Navbar() {
       <div className='dock'>
         <Link
           href='/'
-          className='bw-navbar-brand group flex min-w-0 items-center gap-3'
+          className='bw-navbar-brand group flex min-w-0 items-center gap-2 sm:gap-3'
           aria-label='BlockWar home'
         >
           <div className='bw-brand-mark'>
@@ -345,71 +349,13 @@ function Navbar() {
           )}
         </div>
 
-        <div className='ml-auto flex shrink-0 items-center gap-1.5 md:hidden'>
-          <button
-            type='button'
-            className='navbar-tool-icon size-11 min-h-11 shrink-0'
-            onClick={toggleMode}
-            aria-label={themeToggleLabel}
-            title={themeToggleLabel}
-          >
-            {mode === 'dark' ? (
-              <Sun size={16} strokeWidth={2.4} />
-            ) : (
-              <Moon size={16} strokeWidth={2.4} />
-            )}
-          </button>
+        <div className='flex shrink-0 items-center md:hidden'>
           {renderLanguageSwitcher(
-            'navbar-tool-button h-11 min-h-11 min-w-[6rem] justify-between px-2.5 text-xs',
+            'navbar-tool-button h-11 min-h-11 min-w-[5rem] justify-between px-2.5 text-xs',
             'shrink-0'
           )}
         </div>
-
-        <button
-          type='button'
-          aria-label='Open navigation menu'
-          aria-expanded={isNavOpen}
-          className='grid size-11 shrink-0 place-items-center border border-zinc-500/50 bg-zinc-950 text-zinc-50 md:hidden'
-          onClick={() => {
-            setIsLanguageMenuOpen(false);
-            setIsNavOpen((value) => !value);
-          }}
-        >
-          <Menu size={18} strokeWidth={2.5} />
-        </button>
       </div>
-
-      {isNavOpen && (
-        <div className='menu-container mx-auto mt-2 w-[calc(100%-2rem)] max-w-6xl p-2 md:hidden pointer-events-auto'>
-          <nav className='grid gap-1'>
-            {mobileNavItems.map((item) => (
-              <Link
-                href={item.href}
-                key={item.href}
-                className={mobileNavLinkClass}
-                target={item.external ? '_blank' : undefined}
-                rel={item.external ? 'noreferrer' : undefined}
-                onClick={() => setIsNavOpen(false)}
-              >
-                {item.icon}
-                {t(item.label)}
-              </Link>
-            ))}
-          </nav>
-          <div className='mt-2 border-t border-zinc-800 pt-2'>
-            <button
-              type='button'
-              className='bw-button bw-button-primary h-11 w-full text-xs'
-              onClick={() => {
-                setIsNavOpen(false);
-                toggleShow();
-              }}
-            >
-              {t('how-to-play')}
-            </button>
-          </div>
-        </div>
-      )}
       <HowToPlay show={show} toggleShow={toggleShow} />
     </header>
   );

@@ -118,6 +118,8 @@
   "are-you-sure-to-surrender": "Are you sure you want to surrender?",
   "are-you-sure-to-exit": "Are you sure you want to exit?",
   "type-a-message": "Click to Chat, Enter to send",
+  "movement-blocked": "That route is blocked.",
+  "mountain-blocked": "Mountains can't be crossed.",
   "download": "Download",
   "upload": "Upload",
   "save-draft": "Save Draft",

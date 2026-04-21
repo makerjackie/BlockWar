@@ -411,7 +411,7 @@ function GamingRoom() {
       {roomUiStatus === RoomUiStatus.gameSetting && (
         <div>
           <Navbar />
-          <div className='flex min-h-dvh w-full flex-col items-center justify-start px-3 pb-16 pt-16 sm:px-4 sm:pb-20 sm:pt-20 lg:px-6 lg:pb-10 lg:pt-10'>
+          <div className='flex min-h-dvh w-full flex-col items-center justify-start px-3 pb-20 pt-[5.75rem] sm:px-4 sm:pb-24 sm:pt-24 lg:justify-center lg:px-6 lg:pb-20 lg:pt-24'>
             <GameSetting />
           </div>
         </div>
@@ -423,7 +423,13 @@ function GamingRoom() {
       )}
       {(roomUiStatus === RoomUiStatus.gameRealStarted ||
         roomUiStatus === RoomUiStatus.gameOverConfirm) && <Game />}
-      <ChatBox socket={socketRef.current} messages={messages} />
+      <ChatBox
+        socket={socketRef.current}
+        messages={messages}
+        defaultExpanded={
+          roomUiStatus === RoomUiStatus.gameSetting ? false : undefined
+        }
+      />
     </div>
   );
 }

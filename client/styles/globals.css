@@ -317,16 +317,40 @@ select {
   }
 
   .navbar {
-    @apply pointer-events-none fixed inset-x-0 top-0 z-[1200] h-[68px] bg-transparent shadow-none;
+    @apply pointer-events-none fixed inset-x-0 top-0 z-[1200] bg-transparent shadow-none;
   }
 
   .dock {
-    @apply pointer-events-auto mx-auto mt-4 flex h-[60px] w-[calc(100%-2rem)] max-w-6xl items-center gap-3 border px-3 backdrop-blur-xl md:gap-4 md:px-5;
+    @apply pointer-events-auto mt-3 flex min-h-[3.25rem] items-center justify-between gap-2 border px-2 py-2 backdrop-blur-xl;
+    margin-left: 0.75rem;
+    margin-right: 0.75rem;
+    width: calc(100% - 1.5rem);
+    max-width: none;
     background: var(--bw-panel);
     color: var(--bw-ink);
     border-color: var(--bw-line);
     border-radius: 0;
     box-shadow: var(--bw-shadow-dock);
+  }
+
+  @media (min-width: 768px) {
+    .navbar {
+      height: 68px;
+    }
+
+    .dock {
+      margin-right: auto;
+      margin-left: auto;
+      margin-top: 1rem;
+      height: 60px;
+      width: calc(100% - 2rem);
+      max-width: 72rem;
+      gap: 1rem;
+      padding-top: 0;
+      padding-bottom: 0;
+      padding-left: 1.25rem;
+      padding-right: 1.25rem;
+    }
   }
 
   .navbar-language-switch {

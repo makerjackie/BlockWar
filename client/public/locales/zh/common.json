@@ -119,6 +119,8 @@
   "are-you-sure-to-surrender": "你确定要投降？",
   "are-you-sure-to-exit": "你确定要退出？",
   "type-a-message": "开始聊天，回车发送",
+  "movement-blocked": "此路线无法通过",
+  "mountain-blocked": "山地不可穿越",
   "download": "下载文件",
   "upload": "上传文件",
   "save-draft": "保存草稿",

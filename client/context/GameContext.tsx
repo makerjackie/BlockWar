@@ -29,6 +29,7 @@ import {
   snackStateReducer,
 } from './GameReducer';
 import usePossibleNextMapPositions from '@/lib/use-possible-next-map-positions';
+import { useTranslation } from 'next-i18next';
 
 // userData, game_status, replay_link
 type DialogContentData = [[UserData | null], string, string | null];
@@ -77,6 +78,7 @@ interface GameDispatch {
   attackRight: (info: SelectedMapTileInfo) => void
   handlePositionChange: (selectPos: SelectedMapTileInfo, newPoint: Position, className: string) => void
   testIfNextPossibleMove: (tileType: TileType, x: number, y: number) => boolean
+  testIfBlockedAdjacentMove: (tileType: TileType, x: number, y: number) => boolean
   handleClick: (tile: TileProp, x: number, y: number, myPlayerIndex: number) => void
   halfArmy: (touchHalf: MutableRefObject<boolean>) => void
   clearQueue: () => void
@@ -92,6 +94,7 @@ interface GameProviderProp {
 }
 
 const GameProvider: React.FC<GameProviderProp> = ({ children }) => {
+  const { t } = useTranslation();
   const [room, roomDispatch] = useReducer(roomReducer, new Room(''));
   const [mapData, mapDataDispatch] = useReducer(mapDataReducer, [[]]);
   const [mapQueueData, mapQueueDataDispatch] = useReducer(
@@ -100,6 +103,13 @@ const GameProvider: React.FC<GameProviderProp> = ({ children }) => {
   );
   const socketRef = useRef<any>();
   const attackQueueRef = useRef<any>();
+  const blockedMoveFeedbackRef = useRef<{
+    tileType: TileType | null;
+    timestamp: number;
+  }>({
+    tileType: null,
+    timestamp: 0,
+  });
   const [roomUiStatus, setRoomUiStatus] = useState(RoomUiStatus.gameSetting);
   const [snackState, snackStateDispatch] = useReducer(snackStateReducer, {
     open: false,
@@ -209,24 +219,46 @@ const GameProvider: React.FC<GameProviderProp> = ({ children }) => {
 
   const showBlockedMoveFeedback = useCallback(
     (tileType: TileType) => {
+      const now = Date.now();
+      const { tileType: previousTileType, timestamp } =
+        blockedMoveFeedbackRef.current;
+
+      if (previousTileType === tileType && now - timestamp < 4000) {
+        return;
+      }
+
+      blockedMoveFeedbackRef.current = {
+        tileType,
+        timestamp: now,
+      };
+
       snackStateDispatch({
         type: 'update',
         title: '',
-        status: 'warning',
+        status: 'info',
         message:
           tileType === TileType.Mountain
-            ? 'Mountains block movement.'
-            : 'That tile is blocked.',
-        duration: 1200,
+            ? t('mountain-blocked')
+            : t('movement-blocked'),
+        duration: 900,
       });
     },
-    [snackStateDispatch]
+    [snackStateDispatch, t]
   );
 
   const testIfNextPossibleMove = useCallback(
     (tileType: TileType, x: number, y: number) => {
       return (
         isNextPossibleMapPosition({ x, y }) && !isBlockedTileType(tileType)
+      );
+    },
+    [isBlockedTileType, isNextPossibleMapPosition]
+  );
+
+  const testIfBlockedAdjacentMove = useCallback(
+    (tileType: TileType, x: number, y: number) => {
+      return (
+        isNextPossibleMapPosition({ x, y }) && isBlockedTileType(tileType)
       );
     },
     [isBlockedTileType, isNextPossibleMapPosition]
@@ -452,6 +484,7 @@ const GameProvider: React.FC<GameProviderProp> = ({ children }) => {
           attackRight,
           handlePositionChange,
           testIfNextPossibleMove,
+          testIfBlockedAdjacentMove,
           handleClick,
           halfArmy,
           clearQueue,

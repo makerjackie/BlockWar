@@ -1,6 +1,7 @@
 import { useCallback, useState, useRef, useMemo, useEffect } from 'react';
 import useMediaQuery from './useMediaQuery';
 import useMapDrag from './useMapDrag';
+import { clampMapZoom, MAP_ZOOM_STEP } from '@/lib/map-view';
 
 interface Position {
   x: number;
@@ -77,6 +78,19 @@ export default function useMap({
     }
   }, [mapWidth, mapHeight]);
 
+  const zoomIn = useCallback(() => {
+    setZoom((currentZoom) => clampMapZoom(currentZoom + MAP_ZOOM_STEP));
+  }, []);
+
+  const zoomOut = useCallback(() => {
+    setZoom((currentZoom) => clampMapZoom(currentZoom - MAP_ZOOM_STEP));
+  }, []);
+
+  const resetView = useCallback(() => {
+    setZoom(1);
+    setPosition({ x: 0, y: 0 });
+  }, []);
+
   return {
     tileSize,
     position,
@@ -88,6 +102,9 @@ export default function useMap({
     zoom,
     setZoom,
     handleZoomOption,
+    zoomIn,
+    zoomOut,
+    resetView,
     setPosition,
     setTileSize,
   };

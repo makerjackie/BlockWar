@@ -240,7 +240,7 @@ const GameProvider: React.FC<GameProviderProp> = ({ children }) => {
           tileType === TileType.Mountain
             ? t('mountain-blocked')
             : t('movement-blocked'),
-        duration: 900,
+        duration: tileType === TileType.Mountain ? 2000 : 900,
       });
     },
     [snackStateDispatch, t]

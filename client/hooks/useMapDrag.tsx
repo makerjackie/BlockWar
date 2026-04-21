@@ -1,12 +1,6 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { Position } from '@/lib/types';
-
-const MIN_ZOOM = 0.2;
-const MAX_ZOOM = 4.0;
-
-function clampZoom(value: number) {
-  return Math.min(Math.max(value, MIN_ZOOM), MAX_ZOOM);
-}
+import { clampMapZoom } from '@/lib/map-view';
 
 const useMapDrag = (
   mapRef: any,
@@ -127,7 +121,7 @@ const useMapDrag = (
         const delta = distance - initialDistance.current;
         initialDistance.current = distance;
         setZoom((currentZoom: number) =>
-          clampZoom(currentZoom + delta * 0.0002)
+          clampMapZoom(currentZoom + delta * 0.0002)
         );
       }
     },
@@ -151,7 +145,7 @@ const useMapDrag = (
         const delta = pendingWheelDelta.current;
         pendingWheelDelta.current = 0;
         setZoom((currentZoom: number) =>
-          clampZoom(currentZoom + delta * -0.0008)
+          clampMapZoom(currentZoom + delta * -0.0008)
         );
         wheelFrame.current = undefined;
       });
@@ -159,8 +153,10 @@ const useMapDrag = (
     [setZoom]
   );
 
+  const currentMapNode = mapRef.current as HTMLDivElement | null;
+
   useEffect(() => {
-    const mapNode = mapRef.current;
+    const mapNode = currentMapNode;
     if (!mapNode) return () => {};
 
     const previousTouchAction = mapNode.style.touchAction;
@@ -197,7 +193,7 @@ const useMapDrag = (
       restoreBodySelection();
     };
   }, [
-    mapRef,
+    currentMapNode,
     handleWheel,
     handleMouseDown,
     handleMouseMove,

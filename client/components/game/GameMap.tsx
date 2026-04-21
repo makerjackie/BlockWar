@@ -75,6 +75,7 @@ function GameMap() {
 
   const touchAttacking = useRef(false);
   const lastTouchPosition = useRef({ x: -1, y: -1 });
+  const lastBlockedTouchPosition = useRef({ x: -1, y: -1 });
 
   const touchDragging = useRef(false);
   const touchStartPosition = useRef({ x: 0, y: 0 });
@@ -88,11 +89,21 @@ function GameMap() {
     setShowDirections(!showDirections);
   };
 
-  const { setSelectedMapTileInfo, halfArmy, clearQueue, popQueue, selectGeneral,
-
-    handlePositionChange, testIfNextPossibleMove,
+  const {
+    setSelectedMapTileInfo,
+    halfArmy,
+    clearQueue,
+    popQueue,
+    selectGeneral,
+    handlePositionChange,
+    testIfNextPossibleMove,
+    testIfBlockedAdjacentMove,
     handleClick,
-    attackUp, attackDown, attackLeft, attackRight } = useGameDispatch();
+    attackUp,
+    attackDown,
+    attackLeft,
+    attackRight,
+  } = useGameDispatch();
 
   const {
     tileSize,
@@ -111,6 +122,12 @@ function GameMap() {
     mapHeight: initGameInfo ? initGameInfo.mapHeight : 0,
     listenTouch: false, // implement touch later
   });
+
+  const restoreMapFocus = useCallback(() => {
+    // Chat and other docks can steal focus; restore it as soon as the player
+    // interacts with the map so keyboard movement keeps working.
+    mapRef.current?.focus({ preventScroll: true });
+  }, [mapRef]);
 
   const centerGeneral = useCallback(() => {
     if (initGameInfo) {
@@ -230,6 +247,7 @@ function GameMap() {
           isSelected,
           showMyKingHighlight: isMyKing && showMyKingStartHighlight,
           isNextPossibleMove: testIfNextPossibleMove(tile[0], x, y),
+          isBlockedMoveTarget: testIfBlockedAdjacentMove(tile[0], x, y),
         };
       });
     });
@@ -241,9 +259,11 @@ function GameMap() {
     selectedMapTileInfo,
     showMyKingStartHighlight,
     testIfNextPossibleMove,
+    testIfBlockedAdjacentMove,
   ]);
 
   const handleMapClick = useCallback((event: ReactMouseEvent<HTMLDivElement>) => {
+    restoreMapFocus();
     if (myPlayerIndex < 0) return;
     const rect = event.currentTarget.getBoundingClientRect();
     const scaledTileSize = tileSize * zoom;
@@ -255,7 +275,7 @@ function GameMap() {
     if (!tile) return;
 
     handleClick(tile, x, y, myPlayerIndex);
-  }, [handleClick, mapData, myPlayerIndex, tileSize, zoom]);
+  }, [handleClick, mapData, myPlayerIndex, restoreMapFocus, tileSize, zoom]);
 
   const handleTouchStart = useCallback(
     (event: TouchEvent) => {
@@ -296,6 +316,7 @@ function GameMap() {
               unitsCount: 0,
             });
             lastTouchPosition.current = { x, y };
+            lastBlockedTouchPosition.current = { x: -1, y: -1 };
             lastTouchTime.current = currentTime;
           }
         }
@@ -351,13 +372,6 @@ function GameMap() {
           const tile = mapData[x]?.[y];
           if (!tile) return;
           const [tileType] = tile;
-          // check tileType
-          if (
-            tileType === TileType.Mountain ||
-            tileType === TileType.Obstacle
-          ) {
-            return;
-          }
           // check neighbor
           let direction = '';
           if (dy === 1 && dx === 0) {
@@ -375,8 +389,25 @@ function GameMap() {
           // console.log('valid touch move attack', x, y, className);
           touchHalf.current = false;
           const newPoint = { x, y };
+          const isBlockedTile =
+            tileType === TileType.Mountain || tileType === TileType.Obstacle;
+
+          if (isBlockedTile) {
+            if (
+              lastBlockedTouchPosition.current.x === x &&
+              lastBlockedTouchPosition.current.y === y
+            ) {
+              return;
+            }
+            lastBlockedTouchPosition.current = newPoint;
+          } else {
+            lastBlockedTouchPosition.current = { x: -1, y: -1 };
+          }
+
           handlePositionChange(selectedMapTileInfo, newPoint, `queue_${direction}`);
-          lastTouchPosition.current = newPoint;
+          if (!isBlockedTile) {
+            lastTouchPosition.current = newPoint;
+          }
         }
       } else if (event.touches.length === 2) {
         const touch1 = event.touches[0];
@@ -399,6 +430,7 @@ function GameMap() {
     touchAttacking.current = false;
     touchDragging.current = false;
     initialDistance.current = 0;
+    lastBlockedTouchPosition.current = { x: -1, y: -1 };
   }, []);
 
   useEffect(() => {
@@ -462,6 +494,7 @@ function GameMap() {
           ref={mapRef}
           tabIndex={0}
           onClick={handleMapClick}
+          onPointerDown={restoreMapFocus}
           style={{
             position: 'absolute',
             inset: 0,

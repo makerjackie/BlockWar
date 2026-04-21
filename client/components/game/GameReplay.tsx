@@ -8,7 +8,6 @@ import React, {
 import { useRouter } from 'next/router';
 
 import {
-  LocateFixed,
   Pause,
   Play,
   SkipBack,
@@ -59,8 +58,8 @@ export default function GameReplay() {
     mapBasePixelWidth,
     mapBasePixelHeight,
     zoom,
-    setPosition,
-    setZoom,
+    zoomIn,
+    zoomOut,
     handleZoomOption,
   } = useMap({ mapWidth, mapHeight });
 
@@ -246,20 +245,24 @@ export default function GameReplay() {
   return (
     <div className='app-container'>
       <div className='Game'>
-        <div className='menu-container absolute left-1/2 top-3 z-[1004] flex w-[min(96vw,560px)] -translate-x-1/2 flex-col gap-3 px-3 py-3 md:top-5 md:w-[min(78vw,560px)]'>
-          <div className='flex items-center justify-between gap-2'>
+        <div className='menu-container absolute bottom-[calc(env(safe-area-inset-bottom)+4.5rem)] left-1/2 z-[1004] flex w-[min(96vw,540px)] -translate-x-1/2 flex-col gap-2 px-2.5 py-2 md:bottom-[calc(env(safe-area-inset-bottom)+0.75rem)] md:w-[min(72vw,520px)]'>
+          <div className='flex items-center gap-2'>
             <button
               type='button'
-              className='grid size-11 place-items-center border border-zinc-700 bg-zinc-950 text-zinc-50 disabled:opacity-40'
+              className='bw-button bw-button-secondary grid size-10 min-h-0 place-items-center px-0 disabled:opacity-40'
               disabled={turnsCount === 1}
               onClick={() => changeTurn(turnsCount > 1 ? turnsCount - 1 : 1)}
+              title='Previous turn'
+              aria-label='Previous turn'
             >
               <SkipBack size={18} strokeWidth={2.5} />
             </button>
             <button
               type='button'
-              className='bw-button bw-button-primary size-12 px-0'
+              className='bw-button bw-button-primary size-11 min-h-0 px-0'
               onClick={() => setIsPlay((value) => !value)}
+              title={isPlay ? 'Pause replay' : 'Play replay'}
+              aria-label={isPlay ? 'Pause replay' : 'Play replay'}
             >
               {isPlay ? (
                 <Pause size={18} strokeWidth={2.5} />
@@ -269,23 +272,45 @@ export default function GameReplay() {
             </button>
             <button
               type='button'
-              className='grid size-11 place-items-center border border-zinc-700 bg-zinc-950 text-zinc-50 disabled:opacity-40'
+              className='bw-button bw-button-secondary grid size-10 min-h-0 place-items-center px-0 disabled:opacity-40'
               disabled={turnsCount === maxTurn}
               onClick={() =>
                 changeTurn(turnsCount < maxTurn ? turnsCount + 1 : maxTurn)
               }
+              title='Next turn'
+              aria-label='Next turn'
             >
               <SkipForward size={18} strokeWidth={2.5} />
             </button>
+            <div className='ml-auto flex items-center gap-1.5'>
+              <div className='hidden text-[10px] font-black uppercase tracking-[0.16em] text-zinc-500 sm:block'>
+                {t('turn')}
+              </div>
+              <div className='rounded-none border border-zinc-700/80 bg-zinc-950/80 px-2 py-1 text-[11px] font-black uppercase tracking-[0.14em] text-yellow-300'>
+                {turnsCount}/{maxTurn}
+              </div>
+            </div>
+            <button
+              type='button'
+              className='bw-button bw-button-secondary size-10 min-h-0 px-0'
+              onClick={zoomOut}
+              title='Zoom out'
+              aria-label='Zoom out'
+            >
+              <ZoomOut size={16} strokeWidth={2.5} />
+            </button>
+            <button
+              type='button'
+              className='bw-button bw-button-secondary size-10 min-h-0 px-0'
+              onClick={zoomIn}
+              title='Zoom in'
+              aria-label='Zoom in'
+            >
+              <ZoomIn size={16} strokeWidth={2.5} />
+            </button>
           </div>
 
-          <div className='space-y-2'>
-            <div className='flex items-center justify-between text-[11px] font-black uppercase tracking-[0.18em] text-zinc-500'>
-              <span>Turn</span>
-              <span className='text-yellow-300'>
-                {turnsCount}/{maxTurn}
-              </span>
-            </div>
+          <div className='space-y-1.5'>
             <input
               type='range'
               min={1}
@@ -293,60 +318,30 @@ export default function GameReplay() {
               max={maxTurn}
               value={turnsCount}
               onChange={(event) => changeTurn(Number(event.target.value))}
-              className='h-2 w-full cursor-pointer appearance-none bg-zinc-800 accent-yellow-300'
+              className='h-1.5 w-full cursor-pointer appearance-none bg-zinc-800 accent-yellow-300'
             />
-          </div>
-
-          <div className='flex flex-wrap justify-center gap-2'>
-            {ReplaySpeedOptions.map((value) => (
-              <button
-                key={value}
-                type='button'
-                className={`bw-button min-h-10 px-3 text-xs ${
-                  playSpeed === value ? 'bw-button-primary' : 'bw-button-secondary'
-                }`}
-                onClick={() => {
-                  setIsPlay(false);
-                  setPlaySpeed(value);
-                }}
-              >
-                {`${value}x`}
-              </button>
-            ))}
-          </div>
-
-          <div className='flex flex-wrap justify-center gap-2'>
-            <button
-              type='button'
-              className='bw-button bw-button-secondary min-h-10 px-3 text-xs'
-              onClick={() =>
-                setZoom((currentZoom: number) => Math.max(currentZoom - 0.2, 0.2))
-              }
-            >
-              <ZoomOut size={16} strokeWidth={2.5} />
-              Zoom out
-            </button>
-            <button
-              type='button'
-              className='bw-button bw-button-secondary min-h-10 px-3 text-xs'
-              onClick={() =>
-                setZoom((currentZoom: number) => Math.min(currentZoom + 0.2, 4))
-              }
-            >
-              <ZoomIn size={16} strokeWidth={2.5} />
-              Zoom in
-            </button>
-            <button
-              type='button'
-              className='bw-button bw-button-secondary min-h-10 px-3 text-xs'
-              onClick={() => {
-                setZoom(1);
-                setPosition({ x: 0, y: 0 });
-              }}
-            >
-              <LocateFixed size={16} strokeWidth={2.5} />
-              Reset view
-            </button>
+            <div className='flex flex-wrap items-center justify-between gap-2'>
+              <div className='text-[10px] font-black uppercase tracking-[0.16em] text-zinc-500'>
+                {t('game-speed')}
+              </div>
+              <div className='flex flex-wrap justify-end gap-1.5'>
+                {ReplaySpeedOptions.map((value) => (
+                  <button
+                    key={value}
+                    type='button'
+                    className={`bw-button min-h-8 px-2.5 text-[11px] tracking-[0.14em] ${
+                      playSpeed === value ? 'bw-button-primary' : 'bw-button-secondary'
+                    }`}
+                    onClick={() => {
+                      setIsPlay(false);
+                      setPlaySpeed(value);
+                    }}
+                  >
+                    {`${value}x`}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
 
@@ -406,6 +401,7 @@ export default function GameReplay() {
                     tileHalf={false}
                     isSelected={false}
                     isNextPossibleMove={false}
+                    isBlockedMoveTarget={false}
                     showMyKingHighlight={false}
                     warringStatesMode={false}
                   />

@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import Image from 'next/image';
 import { Home } from 'lucide-react';
-import { TileType, TileProp, TileType2Image } from '@/lib/types';
+import { TileProp, TileType, TileType2Image } from '@/lib/types';
 import {
   ColorArr,
   WarringStates,
@@ -20,6 +20,10 @@ const myKingHaloColor = 'rgba(250, 204, 21, 0.22)';
 const myKingBadgeBackground = 'rgba(24, 24, 27, 0.92)';
 const myKingBadgeBorder = 'rgba(250, 204, 21, 0.55)';
 const myKingBadgeIconColor = 'rgba(254, 249, 195, 0.95)';
+const moveHintFill = 'rgba(250, 204, 21, 0.16)';
+const moveHintBorder = 'rgba(250, 204, 21, 0.78)';
+const blockedHintFill = 'rgba(239, 68, 68, 0.14)';
+const blockedHintBorder = 'rgba(248, 113, 113, 0.85)';
 
 interface MapTileProps {
   zoom?: number;
@@ -34,6 +38,7 @@ interface MapTileProps {
   tileHalf: boolean;
   isSelected: boolean;
   isNextPossibleMove: boolean;
+  isBlockedMoveTarget: boolean;
   showMyKingHighlight: boolean;
   warringStatesMode: boolean;
 }
@@ -52,6 +57,7 @@ export default React.memo(function MapTile(props: MapTileProps) {
     tileHalf,
     isSelected,
     isNextPossibleMove,
+    isBlockedMoveTarget,
     showMyKingHighlight,
     warringStatesMode = false,
   } = props;
@@ -126,20 +132,16 @@ export default React.memo(function MapTile(props: MapTileProps) {
   }, [color, warringStatesMode]);
 
   const bgcolor = useMemo(() => {
-    // 战争迷雾
     if (!isRevealed) {
       return notRevealedFill;
     }
-    // 山
     if (tileType === TileType.Mountain) {
       return MountainFill;
     }
 
-    // 玩家单位
     if (color !== null) {
       return ColorArr[color];
     }
-    // 中立单位
     if (color === null) {
       if (tileType === TileType.City) {
         return notOwnedCityFill;
@@ -152,7 +154,6 @@ export default React.memo(function MapTile(props: MapTileProps) {
       }
     }
 
-    // 空白单位
     return blankFill;
   }, [tileType, color, unitsCount, isRevealed]);
 
@@ -165,7 +166,7 @@ export default React.memo(function MapTile(props: MapTileProps) {
         top: tileY,
         width: zoomedSize,
         height: zoomedSize,
-        cursor: canMove ? 'pointer' : 'default',
+        cursor: isBlockedMoveTarget ? 'not-allowed' : canMove ? 'pointer' : 'default',
         backgroundColor: defaultBgcolor,
         overflow: 'visible',
       }}
@@ -186,6 +187,26 @@ export default React.memo(function MapTile(props: MapTileProps) {
       >
         {country}
       </div>
+      {(isNextPossibleMove || isBlockedMoveTarget) && (
+        <div
+          aria-hidden='true'
+          style={{
+            position: 'absolute',
+            inset: 0,
+            border: `2px solid ${
+              isBlockedMoveTarget ? blockedHintBorder : moveHintBorder
+            }`,
+            background: isBlockedMoveTarget
+              ? `repeating-linear-gradient(135deg, ${blockedHintFill}, ${blockedHintFill} 5px, transparent 5px, transparent 10px)`
+              : moveHintFill,
+            boxShadow: `inset 0 0 0 1px ${
+              isBlockedMoveTarget ? 'rgba(127, 29, 29, 0.35)' : 'rgba(24, 24, 27, 0.28)'
+            }`,
+            pointerEvents: 'none',
+            zIndex: 1,
+          }}
+        />
+      )}
       {showMyKingHighlight && (
         <>
           <div
@@ -261,28 +282,11 @@ export default React.memo(function MapTile(props: MapTileProps) {
             textShadow: '0 0 2px #000',
             userSelect: 'none',
             WebkitUserSelect: 'none',
+            zIndex: 2,
           }}
         >
-          {/* 50% */}
-          {/* {tileHalf ? '50%' : unitsCount} */}
-
           {tileHalf ? '50%' : unitsCount}
         </div>
-      )}
-
-      {/* highlight when select*/}
-      {isNextPossibleMove && (
-        <div
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            width: zoomedSize,
-            height: zoomedSize,
-            backgroundColor: '#000',
-            opacity: 0.5,
-          }}
-        />
       )}
     </div>
   );

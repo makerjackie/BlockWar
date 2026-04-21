@@ -16,7 +16,7 @@ describe('strategist panel position helpers', () => {
       )
     ).toEqual({
       x: 440,
-      y: 16,
+      y: 24,
     });
 
     expect(
@@ -27,7 +27,7 @@ describe('strategist panel position helpers', () => {
       )
     ).toEqual({
       x: 55,
-      y: 64,
+      y: 72,
     });
   });
 

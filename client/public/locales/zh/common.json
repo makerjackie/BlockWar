@@ -165,6 +165,9 @@
   },
   "strategist": {
     "title": "参谋",
+    "idle": {
+      "greeting": "嗨，{{player}}，我是你的参谋，我会告诉你战场上的关键信息。"
+    },
     "messages": {
       "enemyInTerritory": "{{player}} 带着 {{units}} 兵攻入你的领地",
       "enemyNearCapital": "{{player}} 的军队离你的国都仅有 {{distance}} 格",

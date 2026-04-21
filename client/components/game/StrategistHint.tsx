@@ -2,11 +2,13 @@ import {
   type PointerEvent as ReactPointerEvent,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
 } from 'react';
 import { useTranslation } from 'next-i18next';
+import { GripHorizontal, Radar } from 'lucide-react';
 import { useGame } from '@/context/GameContext';
 import useMediaQuery from '@/hooks/useMediaQuery';
 import { getStrategistHints } from '@/lib/strategist-hints';
@@ -18,18 +20,30 @@ import {
   writeStrategistPanelPosition,
 } from '@/lib/strategist-panel-position';
 
+const useSafeLayoutEffect =
+  typeof window === 'undefined' ? useEffect : useLayoutEffect;
+
+interface StrategistDisplayMessage {
+  id: string;
+  text: string;
+}
+
 export default function StrategistHint() {
   const { room, mapData, myPlayerId, initGameInfo } = useGame();
   const { t } = useTranslation();
   const panelRef = useRef<HTMLElement | null>(null);
+  const frameRef = useRef<number | null>(null);
+  const pendingPositionRef = useRef<StrategistPanelPosition | null>(null);
+  const positionRef = useRef<StrategistPanelPosition | null>(null);
   const stopDraggingRef = useRef<(() => void) | null>(null);
   const isMobileHint = useMediaQuery('(max-width: 639px)');
   const [activeIndex, setActiveIndex] = useState(0);
   const [position, setPosition] = useState<StrategistPanelPosition | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const isStrategistVisible = room.gameStarted && room.preset !== 'tutorial';
 
   const hints = useMemo(() => {
-    if (!room.gameStarted || room.preset === 'tutorial') {
+    if (!isStrategistVisible) {
       return [];
     }
 
@@ -39,11 +53,39 @@ export default function StrategistHint() {
       myPlayerId,
       capital: initGameInfo?.king ?? null,
     });
-  }, [initGameInfo?.king, mapData, myPlayerId, room.gameStarted, room.players, room.preset]);
+  }, [initGameInfo?.king, isStrategistVisible, mapData, myPlayerId, room.players]);
+
+  const myPlayerName = useMemo(() => {
+    return (
+      room.players.find((player) => player.id === myPlayerId)?.username ??
+      t('anonymous')
+    );
+  }, [myPlayerId, room.players, t]);
+
+  const messages = useMemo<StrategistDisplayMessage[]>(() => {
+    if (hints.length === 0) {
+      return [
+        {
+          id: `idle:${myPlayerName}`,
+          text: t('strategist.idle.greeting', { player: myPlayerName }),
+        },
+      ];
+    }
+
+    return hints.map((hint) => ({
+      id: hint.id,
+      text: t(`strategist.messages.${hint.key}`, {
+        player: hint.player,
+        units: hint.units,
+        distance: hint.distance,
+        count: hint.count,
+      }),
+    }));
+  }, [hints, myPlayerName, t]);
 
   const hintSignature = useMemo(
-    () => hints.map((hint) => hint.id).join('|'),
-    [hints]
+    () => messages.map((message) => message.id).join('|'),
+    [messages]
   );
 
   useEffect(() => {
@@ -51,18 +93,18 @@ export default function StrategistHint() {
   }, [hintSignature]);
 
   useEffect(() => {
-    if (hints.length <= 1) {
+    if (messages.length <= 1) {
       return;
     }
 
     const timer = window.setInterval(() => {
-      setActiveIndex((current) => (current + 1) % hints.length);
+      setActiveIndex((current) => (current + 1) % messages.length);
     }, 4200);
 
     return () => {
       window.clearInterval(timer);
     };
-  }, [hints.length]);
+  }, [messages.length]);
 
   const measurePanel = useCallback(() => {
     if (typeof window === 'undefined' || !panelRef.current) {
@@ -82,8 +124,30 @@ export default function StrategistHint() {
     };
   }, []);
 
+  const commitPosition = useCallback(
+    (nextPosition: StrategistPanelPosition, persist = false) => {
+      positionRef.current = nextPosition;
+      setPosition((currentPosition) => {
+        if (
+          currentPosition &&
+          currentPosition.x === nextPosition.x &&
+          currentPosition.y === nextPosition.y
+        ) {
+          return currentPosition;
+        }
+
+        return nextPosition;
+      });
+
+      if (persist) {
+        writeStrategistPanelPosition(nextPosition);
+      }
+    },
+    []
+  );
+
   const syncPosition = useCallback(
-    (candidate?: StrategistPanelPosition | null) => {
+    (candidate?: StrategistPanelPosition | null, persist = false) => {
       const measured = measurePanel();
       if (!measured) {
         return null;
@@ -101,52 +165,46 @@ export default function StrategistHint() {
             isMobileHint
           );
 
-      setPosition((currentPosition) => {
-        if (
-          currentPosition &&
-          currentPosition.x === nextPosition.x &&
-          currentPosition.y === nextPosition.y
-        ) {
-          return currentPosition;
-        }
-        return nextPosition;
-      });
+      commitPosition(nextPosition, persist);
 
       return nextPosition;
     },
-    [isMobileHint, measurePanel]
+    [commitPosition, isMobileHint, measurePanel]
+  );
+
+  const schedulePosition = useCallback(
+    (nextPosition: StrategistPanelPosition) => {
+      if (typeof window === 'undefined') {
+        return;
+      }
+
+      pendingPositionRef.current = nextPosition;
+      if (frameRef.current !== null) {
+        return;
+      }
+
+      frameRef.current = window.requestAnimationFrame(() => {
+        frameRef.current = null;
+        if (!pendingPositionRef.current) {
+          return;
+        }
+
+        const latestPosition = pendingPositionRef.current;
+        pendingPositionRef.current = null;
+        commitPosition(latestPosition);
+      });
+    },
+    [commitPosition]
   );
 
   useEffect(() => {
-    if (typeof window === 'undefined') {
-      return;
-    }
-
-    const frame = window.requestAnimationFrame(() => {
-      syncPosition(readStrategistPanelPosition());
-    });
-
-    return () => {
-      window.cancelAnimationFrame(frame);
-    };
-  }, [hints.length, syncPosition]);
-
-  useEffect(() => {
-    if (!position) {
-      return;
-    }
-
-    writeStrategistPanelPosition(position);
-  }, [position]);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') {
+    if (typeof window === 'undefined' || !isStrategistVisible) {
       return;
     }
 
     const handleResize = () => {
       window.requestAnimationFrame(() => {
-        syncPosition(position);
+        syncPosition(positionRef.current, true);
       });
     };
 
@@ -154,11 +212,22 @@ export default function StrategistHint() {
     return () => {
       window.removeEventListener('resize', handleResize);
     };
-  }, [position, syncPosition]);
+  }, [isStrategistVisible, syncPosition]);
+
+  useSafeLayoutEffect(() => {
+    if (!isStrategistVisible) {
+      return;
+    }
+
+    syncPosition(readStrategistPanelPosition());
+  }, [isStrategistVisible, isMobileHint, syncPosition]);
 
   useEffect(() => {
     return () => {
       stopDraggingRef.current?.();
+      if (typeof window !== 'undefined' && frameRef.current !== null) {
+        window.cancelAnimationFrame(frameRef.current);
+      }
     };
   }, []);
 
@@ -181,7 +250,7 @@ export default function StrategistHint() {
 
       const handlePointerMove = (moveEvent: PointerEvent) => {
         moveEvent.preventDefault();
-        setPosition(
+        schedulePosition(
           clampStrategistPanelPosition(
             {
               x: moveEvent.clientX - offsetX,
@@ -198,6 +267,17 @@ export default function StrategistHint() {
 
       const stopDragging = () => {
         setIsDragging(false);
+        if (typeof window !== 'undefined' && frameRef.current !== null) {
+          window.cancelAnimationFrame(frameRef.current);
+          frameRef.current = null;
+        }
+        if (pendingPositionRef.current) {
+          const latestPosition = pendingPositionRef.current;
+          pendingPositionRef.current = null;
+          commitPosition(latestPosition, true);
+        } else if (positionRef.current) {
+          writeStrategistPanelPosition(positionRef.current);
+        }
         window.removeEventListener('pointermove', handlePointerMove);
         window.removeEventListener('pointerup', stopDragging);
         window.removeEventListener('pointercancel', stopDragging);
@@ -211,59 +291,66 @@ export default function StrategistHint() {
       window.addEventListener('pointerup', stopDragging);
       window.addEventListener('pointercancel', stopDragging);
     },
-    [measurePanel]
+    [commitPosition, measurePanel, schedulePosition]
   );
 
-  if (hints.length === 0) {
+  if (!isStrategistVisible) {
     return null;
   }
 
-  const activeHint = hints[activeIndex % hints.length];
-  const hintMessage = t(`strategist.messages.${activeHint.key}`, {
-    player: activeHint.player,
-    units: activeHint.units,
-    distance: activeHint.distance,
-    count: activeHint.count,
-  });
+  const activeMessage =
+    messages[activeIndex % messages.length]?.text ??
+    t('strategist.idle.greeting', { player: myPlayerName });
 
   return (
     <section
       ref={panelRef}
-      className='pointer-events-none fixed left-1/2 top-16 z-[109] flex w-[min(22rem,calc(100vw-1rem))] -translate-x-1/2 flex-col items-center border px-3 py-2 text-center backdrop-blur-xl sm:top-4 sm:w-[min(28rem,calc(100vw-2rem))]'
+      className='pointer-events-none fixed left-0 top-0 z-[109] flex w-[min(44rem,calc(100vw-0.75rem))] items-center gap-2 border px-2 py-2 backdrop-blur-xl sm:w-[min(46rem,calc(100vw-2rem))]'
       style={{
-        left: position ? `${position.x}px` : undefined,
-        top: position ? `${position.y}px` : undefined,
-        transform: position ? 'none' : undefined,
+        visibility: position ? 'visible' : 'hidden',
+        transform: position
+          ? `translate3d(${position.x}px, ${position.y}px, 0)`
+          : 'translate3d(-9999px, -9999px, 0)',
         borderColor: 'color-mix(in srgb, var(--bw-line-strong) 42%, transparent)',
         backgroundColor:
           'color-mix(in srgb, var(--bw-panel-strong) 88%, transparent)',
         boxShadow: 'var(--bw-shadow-soft)',
+        willChange: isDragging ? 'transform' : undefined,
       }}
     >
       <button
         type='button'
-        className={`pointer-events-auto inline-flex items-center gap-2 border px-2 py-1 text-[10px] font-black uppercase tracking-[0.18em] select-none ${
+        className={`pointer-events-auto inline-flex shrink-0 items-center gap-1.5 border-r pr-2 text-[10px] font-black uppercase tracking-[0.18em] select-none ${
           isDragging ? 'cursor-grabbing' : 'cursor-grab'
         }`}
         style={{
           color: 'var(--bw-ember)',
-          borderColor: 'color-mix(in srgb, var(--bw-ember) 30%, transparent)',
-          backgroundColor:
-            'color-mix(in srgb, var(--bw-panel-strong) 76%, transparent)',
+          borderColor: 'color-mix(in srgb, var(--bw-line) 72%, transparent)',
           touchAction: 'none',
         }}
         onPointerDown={handlePointerDown}
+        title={t('strategist.title')}
       >
-        <span aria-hidden className='text-[8px] tracking-[0.08em]'>
-          ⋮⋮
+        <span
+          aria-hidden
+          className='grid size-5 place-items-center border'
+          style={{
+            borderColor: 'color-mix(in srgb, var(--bw-ember) 32%, transparent)',
+            backgroundColor:
+              'color-mix(in srgb, var(--bw-panel-strong) 78%, transparent)',
+          }}
+        >
+          <Radar size={12} className='bw-strategist-icon' />
         </span>
         <span>{t('strategist.title')}</span>
+        <GripHorizontal size={11} strokeWidth={2.2} />
       </button>
       <p
-        className='mt-1 text-sm leading-5'
+        className='min-w-0 flex-1 truncate text-sm leading-5'
+        title={activeMessage}
         style={{ color: 'var(--bw-ink-soft)' }}
       >
-        {hintMessage}
+        {activeMessage}
       </p>
     </section>
   );

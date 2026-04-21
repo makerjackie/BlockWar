@@ -164,6 +164,9 @@
   },
   "strategist": {
     "title": "Strategist",
+    "idle": {
+      "greeting": "Hi {{player}}, I'm your strategist, and I'll keep you posted on the battlefield."
+    },
     "messages": {
       "enemyInTerritory": "{{player}} has pushed {{units}} troops into your territory.",
       "enemyNearCapital": "{{player}} is only {{distance}} tiles from your capital.",

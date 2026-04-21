@@ -129,6 +129,12 @@ describe('strategist copy', () => {
     ];
 
     localizedCopies.forEach(({ language, strategist }) => {
+      expect(typeof strategist.idle.greeting, `${language}:idle:greeting`).toBe('string');
+      expect(
+        sentenceCount(strategist.idle.greeting),
+        `${language}:idle:greeting`
+      ).toBeLessThanOrEqual(1);
+
       Object.entries(strategist.messages).forEach(([key, copy]) => {
         expect(typeof copy, `${language}:${key}`).toBe('string');
         expect(sentenceCount(copy), `${language}:${key}`).toBeLessThanOrEqual(1);

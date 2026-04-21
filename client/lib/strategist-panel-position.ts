@@ -1,4 +1,5 @@
-export const STRATEGIST_PANEL_POSITION_KEY = 'blockwar-strategist-panel-position';
+export const STRATEGIST_PANEL_POSITION_KEY =
+  'blockwar-strategist-panel-position-v2';
 
 export interface StrategistPanelPosition {
   x: number;
@@ -18,8 +19,8 @@ interface PanelSize {
 type StorageLike = Pick<Storage, 'getItem' | 'setItem'>;
 
 const EDGE_MARGIN = 8;
-const MOBILE_TOP_OFFSET = 64;
-const DESKTOP_TOP_OFFSET = 16;
+const MOBILE_TOP_OFFSET = 72;
+const DESKTOP_TOP_OFFSET = 24;
 
 function roundPosition(position: StrategistPanelPosition): StrategistPanelPosition {
   return {

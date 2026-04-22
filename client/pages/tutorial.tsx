@@ -161,12 +161,12 @@ const steps: Step[] = [
       en: 'Take the Enemy Capital',
     },
     body: {
-      zh: '最后吃掉敌方主城。',
-      en: 'Finish by taking the enemy capital.',
+      zh: '最后吃掉敌方主城，占领所有敌方领地。',
+      en: 'Capture the enemy capital and claim all their territory.',
     },
     hint: {
-      zh: '进攻敌方主城。',
-      en: 'Attack the enemy capital.',
+      zh: '进攻敌方主城，赢得胜利。',
+      en: 'Attack the enemy capital to win.',
     },
     action: {
       type: 'move',
@@ -195,7 +195,8 @@ const uiCopy = {
     invalidTile: '只能从自己的格子出兵。',
     moveSuccess: '做得好，继续下一步。',
     capitalCaptured: '占领主城！敌方所有领地归你所有，兵力减半。',
-    completedTitle: '完成',
+    completedTitle: '教程完成！',
+    completedMessage: '你已经占领了敌方王都，掌握了基本玩法。现在可以返回大厅，和真人或机器人开始对战。',
     playAgain: '再练一次',
     finishBadge: '完成',
     gotIt: '知道了',
@@ -218,7 +219,8 @@ const uiCopy = {
     invalidTile: 'You can only move out from your own tiles.',
     moveSuccess: 'Good. Move on to the next step.',
     capitalCaptured: 'Capital captured! All enemy territory is now yours with halved army.',
-    completedTitle: 'Done',
+    completedTitle: 'Tutorial Complete!',
+    completedMessage: 'You captured the enemy capital and learned the basics. Head back to the lobby to play against real players or bots.',
     playAgain: 'Run it again',
     finishBadge: 'Done',
     gotIt: 'Got it',
@@ -993,7 +995,7 @@ export default function TutorialPage() {
                       className='mt-3 max-w-3xl text-sm leading-7 sm:text-base'
                       style={{ color: 'var(--bw-ink-soft)' }}
                     >
-                      {completed ? copy.moveSuccess : feedback}
+                      {completed ? copy.completedMessage : feedback}
                     </p>
                   </div>
 

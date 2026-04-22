@@ -52,6 +52,7 @@ const ENEMY_COLOR = 2;
 const CAPITAL: Coord = { row: 2, col: 1 };
 const FIRST_PLAIN: Coord = { row: 2, col: 2 };
 const CITY: Coord = { row: 2, col: 3 };
+const MOUNTAIN: Coord = { row: 2, col: 4 };
 const BYPASS: Coord = { row: 3, col: 3 };
 const ENEMY_FRONT: Coord = { row: 3, col: 4 };
 const ENEMY_CAPITAL: Coord = { row: 3, col: 5 };
@@ -119,12 +120,12 @@ const steps: Step[] = [
       en: 'Route Around the Mountain',
     },
     body: {
-      zh: '山地不能走，从下方绕路。',
-      en: 'Mountains block the way, so detour downward.',
+      zh: '右边是山地，无法通过。试试从下方绕路。',
+      en: 'The mountain on the right blocks your path. Try going downward instead.',
     },
     hint: {
-      zh: '从城市走到下方绕路点。',
-      en: 'Move from the city down to the detour tile.',
+      zh: '从城市走到下方绕路点（山地无法通过）。',
+      en: 'Move from the city down to the detour tile (mountains cannot be crossed).',
     },
     action: {
       type: 'move',
@@ -1093,6 +1094,25 @@ export default function TutorialPage() {
                           variant='target'
                         />
                       ) : null}
+
+                      {/* Show mountain warning in mountain detour step */}
+                      {stepIndex === 3 && currentStep.action.type === 'move' && (
+                        <div
+                          style={{
+                            position: 'absolute',
+                            left: MOUNTAIN.col * tileSize,
+                            top: MOUNTAIN.row * tileSize,
+                            width: tileSize,
+                            height: tileSize,
+                            border: '3px solid var(--bw-red)',
+                            boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.3), 0 0 0 2px rgba(239,68,68,0.2)',
+                            background: 'color-mix(in srgb, var(--bw-red) 16%, transparent)',
+                            pointerEvents: 'none',
+                            zIndex: 12,
+                            animation: 'pulse 2s ease-in-out infinite',
+                          }}
+                        />
+                      )}
                     </div>
                   </div>
                 </div>

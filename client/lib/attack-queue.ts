@@ -1,4 +1,5 @@
 import type { Position } from '@/lib/types';
+import { createRandomId } from '@/lib/random-id';
 
 export interface AttackRoute {
   from: Position;
@@ -25,7 +26,7 @@ export class AttackQueue {
 
   constructor(
     private clearFromMap: (route: AttackRoute) => void,
-    private createRequestId: () => string = () => crypto.randomUUID()
+    private createRequestId: () => string = () => createRandomId()
   ) {
     this.allowAttackThisTurn = false;
     this.queued = [];

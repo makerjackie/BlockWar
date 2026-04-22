@@ -22,6 +22,7 @@ import { useGame, useGameDispatch } from '@/context/GameContext';
 import GameSetting from '@/components/GameSetting';
 import GameLoading from '@/components/GameLoading';
 import { soundEffects } from '@/lib/sound-effects';
+import { resolveRoomIdentity } from '@/lib/room-identity';
 
 const debugLog = (...args: unknown[]) => {
   if (process.env.NODE_ENV !== 'production') {
@@ -34,6 +35,7 @@ function GamingRoom() {
   const myPlayerIdRef = useRef<string>(''); // fix useEffect don't get newest myPlayerId
 
   const router = useRouter();
+  const push = router.push;
   const roomId = router.query.roomId as string;
 
   const { t } = useTranslation();
@@ -66,16 +68,25 @@ function GamingRoom() {
   } = useGameDispatch();
 
   useEffect(() => {
-    let tmp: string | null = localStorage.getItem('username');
-    if (!tmp) {
-      router.push('/');
-    } else {
-      setMyUserName(tmp);
-      const tmpId = localStorage.getItem('playerId') || '';
-      setMyPlayerId(tmpId);
-      myPlayerIdRef.current = tmpId;
+    if (!roomId) {
+      return;
     }
-  }, [setMyPlayerId, setMyUserName, router]);
+
+    const { username, playerId, requiresUsername } = resolveRoomIdentity(
+      localStorage.getItem('username'),
+      localStorage.getItem('playerId')
+    );
+
+    if (requiresUsername) {
+      localStorage.removeItem('playerId');
+      void push(`/?redirect=${encodeURIComponent(`/rooms/${roomId}`)}`);
+      return;
+    }
+
+    setMyUserName(username);
+    setMyPlayerId(playerId);
+    myPlayerIdRef.current = playerId;
+  }, [roomId, push, setMyPlayerId, setMyUserName]);
 
   useEffect(() => {
     // Game Logic Init

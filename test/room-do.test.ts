@@ -517,6 +517,82 @@ describe('RoomDurableObject', () => {
     );
   });
 
+  it('removes a lobby player immediately when they leave the room explicitly', async () => {
+    const roomId = `room-${crypto.randomUUID().slice(0, 8)}`;
+    const stub = env.ROOMS.getByName(roomId);
+
+    await runInDurableObject(
+      stub,
+      async (instance: RoomDurableObject) => {
+        const events = captureEvents(instance);
+        const room = await (instance as any).ensureRoom(roomId);
+        room.players.push(
+          new Player('player-a', 'socket-a', 'Alice', 1, 1, true),
+          new Player('player-b', 'socket-b', 'Bob', 2, 2)
+        );
+        (instance as any).sockets.set('socket-b', {
+          close: () => undefined,
+        });
+
+        await (instance as any).handlePacket('socket-b', {
+          type: 'leave_room',
+          data: [],
+        });
+
+        expect(room.players.map((player: Player) => player.id)).toEqual(['player-a']);
+        expect(
+          events.some(
+            (item) =>
+              item.event === 'room_message' &&
+              item.data[0] &&
+              (item.data[0] as { username?: string }).username === 'Bob' &&
+              item.data[1] === 'left the room.'
+          )
+        ).toBe(true);
+        expect(
+          events.some(
+            (item) =>
+              item.event === 'update_room' &&
+              ((item.data[0] as { players?: Array<{ id: string }> }).players ?? []).length === 1
+          )
+        ).toBe(true);
+      }
+    );
+  });
+
+  it('marks an in-game player as disconnected when they leave explicitly', async () => {
+    const roomId = `room-${crypto.randomUUID().slice(0, 8)}`;
+    const stub = env.ROOMS.getByName(roomId);
+
+    await runInDurableObject(
+      stub,
+      async (instance: RoomDurableObject) => {
+        const { events, room } = await createStartedRoom(instance, roomId);
+        (instance as any).sockets.set('socket-a', {
+          close: () => undefined,
+        });
+
+        await (instance as any).handlePacket('socket-a', {
+          type: 'leave_room',
+          data: [],
+        });
+
+        expect(room.players.find((player: Player) => player.id === 'player-a')?.disconnected).toBe(
+          true
+        );
+        expect(
+          events.some(
+            (item) =>
+              item.event === 'room_message' &&
+              item.data[0] &&
+              (item.data[0] as { username?: string }).username === 'Alice' &&
+              item.data[1] === 'disconnected.'
+          )
+        ).toBe(true);
+      }
+    );
+  });
+
   it('lets the host move a bot onto the same team as another player', async () => {
     const roomId = `room-${crypto.randomUUID().slice(0, 8)}`;
     const stub = env.ROOMS.getByName(roomId);

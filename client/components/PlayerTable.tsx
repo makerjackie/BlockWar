@@ -26,6 +26,7 @@ function comparePlayers(a: Player, b: Player, myPlayerId: string) {
   const aIsSpectator = a.team === MaxTeamNum + 1;
   const bIsSpectator = b.team === MaxTeamNum + 1;
   if (aIsSpectator !== bIsSpectator) return aIsSpectator ? 1 : -1;
+  if (a.disconnected !== b.disconnected) return a.disconnected ? 1 : -1;
 
   if (a.team !== b.team) return a.team - b.team;
   if (a.isBot !== b.isBot) return a.isBot ? 1 : -1;
@@ -102,7 +103,11 @@ function PlayerTable(props: PlayerTableProps) {
                 const displayName = warringStatesMode
                   ? `${WarringStates[player.color]} ${player.username}`
                   : player.username;
-                const playerNameColor = isMine ? 'var(--bw-ink)' : 'var(--bw-ink-soft)';
+                const playerNameColor = player.disconnected
+                  ? 'var(--bw-muted)'
+                  : isMine
+                    ? 'var(--bw-ink)'
+                    : 'var(--bw-ink-soft)';
                 const playerBackgroundColor = isSelected
                   ? 'color-mix(in srgb, var(--bw-panel-strong) 88%, var(--bw-line-strong) 12%)'
                   : isMine
@@ -153,6 +158,11 @@ function PlayerTable(props: PlayerTableProps) {
                       {player.forceStart ? (
                         <span className='inline-flex min-h-5 items-center rounded-full border border-emerald-500/60 px-2 text-[10px] font-black uppercase tracking-[0.08em] text-emerald-300'>
                           {t('ready')}
+                        </span>
+                      ) : null}
+                      {player.disconnected ? (
+                        <span className='inline-flex min-h-5 items-center rounded-full border border-zinc-700 px-2 text-[10px] font-black uppercase tracking-[0.08em] text-zinc-400'>
+                          {t('disconnected')}
                         </span>
                       ) : null}
                     </span>

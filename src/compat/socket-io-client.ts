@@ -1,3 +1,5 @@
+import { createRandomId } from '@/lib/random-id';
+
 type Packet = {
   type: string;
   data: unknown[];
@@ -13,7 +15,7 @@ function toBaseHttpUrl(value?: string) {
 }
 
 export class Socket {
-  public id = crypto.randomUUID();
+  public id = createRandomId();
   private listeners = new Map<string, Set<Listener>>();
   private ws: WebSocket | null = null;
   private sendQueue: Packet[] = [];

@@ -1,5 +1,6 @@
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import { useState, useEffect, StrictMode } from 'react';
+import { useRouter } from 'next/router';
 
 import Navbar from '../components/Navbar';
 import Login from '../components/Login';
@@ -7,21 +8,53 @@ import Login from '../components/Login';
 import Lobby from '../components/Lobby';
 import Head from 'next/head';
 
+function normalizeRedirectTarget(value: unknown) {
+  if (typeof value !== 'string') {
+    return '';
+  }
+
+  if (!value.startsWith('/') || value.startsWith('//')) {
+    return '';
+  }
+
+  return value;
+}
+
 export default function Home() {
   const [username, setUsername] = useState('');
+  const router = useRouter();
+  const push = router.push;
+  const redirectTarget = normalizeRedirectTarget(router.query.redirect);
 
   useEffect(() => {
     const storedUsername = localStorage.getItem('username');
     if (storedUsername) {
-      setUsername(storedUsername);
+      const normalizedUsername = storedUsername.trim();
+      if (!normalizedUsername) {
+        return;
+      }
+
+      setUsername(normalizedUsername);
+      if (redirectTarget) {
+        void push(redirectTarget);
+      }
     }
-  }, []);
+  }, [redirectTarget, push]);
 
   const handlePlayClick = (username: string) => {
-    setUsername(username);
+    const normalizedUsername = username.trim();
+    if (!normalizedUsername) {
+      return;
+    }
+
+    setUsername(normalizedUsername);
     if (typeof window !== 'undefined') {
-      localStorage.setItem('username', username);
+      localStorage.setItem('username', normalizedUsername);
       localStorage.removeItem('playerId');
+    }
+
+    if (redirectTarget) {
+      void push(redirectTarget);
     }
   };
 

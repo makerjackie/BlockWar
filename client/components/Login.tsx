@@ -1,6 +1,6 @@
 import { useTranslation } from 'next-i18next';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import HolidayGreeting from './HolidayGreeting';
 
 interface LoginProps {
@@ -11,14 +11,29 @@ interface LoginProps {
 const Login: React.FC<LoginProps> = (props) => {
   const { username, handlePlayClick } = props;
   const { t } = useTranslation();
-  const [inputName, setInputName] = useState('Anonymous');
+  const [inputName, setInputName] = useState(username);
+
+  useEffect(() => {
+    setInputName(username);
+  }, [username]);
+
+  const normalizedName = inputName.trim();
+  const canPlay = normalizedName.length > 0;
+
+  const handleSubmit = () => {
+    if (!canPlay) {
+      return;
+    }
+
+    handlePlayClick(normalizedName);
+  };
 
   const handleUsernameChange = (event: any) => {
     setInputName(event.target.value);
   };
   const handleInputKeyDown = (event: any) => {
     if (event.key === 'Enter') {
-      handlePlayClick(inputName);
+      handleSubmit();
     }
   };
 
@@ -64,14 +79,21 @@ const Login: React.FC<LoginProps> = (props) => {
                     className='bw-input'
                     id='username'
                     placeholder={t('username-placeholder')}
-                    defaultValue={username || inputName}
+                    value={inputName}
                     onChange={handleUsernameChange}
                     onKeyDown={handleInputKeyDown}
+                    maxLength={20}
                   />
+                  {!canPlay ? (
+                    <p className='text-sm font-black' style={{ color: 'var(--bw-ember)' }}>
+                      {t('username-required')}
+                    </p>
+                  ) : null}
                   <button
                     type='button'
                     className='bw-button bw-button-primary w-full'
-                    onClick={() => handlePlayClick(inputName)}
+                    disabled={!canPlay}
+                    onClick={handleSubmit}
                   >
                     {t('play')}
                   </button>

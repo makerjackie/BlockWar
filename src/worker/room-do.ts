@@ -516,7 +516,10 @@ export class RoomDurableObject extends DurableObject<Env> {
     await this.syncRoomSummary();
   }
 
-  private async handleDisconnect(connectionId: string) {
+  private async handleDisconnect(
+    connectionId: string,
+    reason: 'disconnect' | 'leave' = 'disconnect'
+  ) {
     if (!this.room) {
       return;
     }
@@ -526,9 +529,18 @@ export class RoomDurableObject extends DurableObject<Env> {
       return;
     }
 
-    this.broadcast('room_message', player.minify(), 'quit.');
+    const leavingActiveGame = this.room.gameStarted && !player.spectating();
+    this.broadcast(
+      'room_message',
+      player.minify(),
+      leavingActiveGame
+        ? 'disconnected.'
+        : reason === 'leave'
+          ? 'left the room.'
+          : 'quit.'
+    );
 
-    if (this.room.gameStarted && !player.spectating()) {
+    if (leavingActiveGame) {
       player.disconnected = true;
       this.handleNeutralized(this.room, player);
     } else {
@@ -807,6 +819,11 @@ export class RoomDurableObject extends DurableObject<Env> {
         if (room.gameStarted) {
           await this.sendCurrentGameState(connectionId);
         }
+        break;
+      case 'leave_room':
+        await this.handleDisconnect(connectionId, 'leave');
+        this.sockets.get(connectionId)?.close(1000, 'Left room');
+        this.sockets.delete(connectionId);
         break;
       case 'set_team': {
         if (!player) return;

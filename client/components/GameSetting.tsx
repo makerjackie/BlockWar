@@ -204,6 +204,7 @@ const GameSetting: React.FC<GameSettingProps> = () => {
 
   const handleLeaveRoom = () => {
     console.log('Leave Room');
+    socketRef.current.emit('leave_room');
     socketRef.current.disconnect();
     router.push(`/`);
   };

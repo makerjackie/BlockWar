@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BlockWar 演示文稿</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: #f7f7f2;
+      font-family: Inter, -apple-system, BlinkMacSystemFont, "SF Pro Display", "PingFang SC", sans-serif;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .slide-container {
+      width: 100vw;
+      height: 100vh;
+      position: relative;
+      overflow: auto;
+    }
+
+    iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+      display: block;
+    }
+
+    .help-text {
+      position: fixed;
+      top: 30px;
+      right: 30px;
+      background: rgba(253, 253, 247, 0.95);
+      border: 3px solid rgba(23, 27, 34, 0.2);
+      padding: 16px 24px;
+      font-size: 14px;
+      color: #667085;
+      box-shadow: 4px 4px 0 rgba(23, 27, 34, 0.1);
+      z-index: 1000;
+      opacity: 1;
+      transition: opacity 0.3s ease;
+      pointer-events: none;
+    }
+
+    .help-text.hidden {
+      opacity: 0;
+    }
+
+    .help-text kbd {
+      background: #171b22;
+      color: #f7f2e9;
+      padding: 4px 8px;
+      border-radius: 3px;
+      font-family: monospace;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .help-text .divider {
+      margin: 0 8px;
+      color: #a1a1aa;
+    }
+
+    /* 页码指示器 */
+    .page-indicator {
+      position: fixed;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(253, 253, 247, 0.95);
+      border: 3px solid rgba(23, 27, 34, 0.2);
+      padding: 12px 24px;
+      font-size: 16px;
+      font-weight: 900;
+      color: #171b22;
+      box-shadow: 4px 4px 0 rgba(23, 27, 34, 0.1);
+      z-index: 1000;
+      opacity: 1;
+      transition: opacity 0.3s ease;
+      pointer-events: none;
+      letter-spacing: 0.05em;
+    }
+
+    .page-indicator.hidden {
+      opacity: 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="slide-container" id="slideContainer">
+    <iframe id="slideFrame" src="slide-01-cover.html"></iframe>
+  </div>
+
+  <div class="help-text" id="helpText">
+    <kbd>←</kbd> <kbd>→</kbd> 切换幻灯片
+    <span class="divider">|</span>
+    <kbd>F</kbd> 全屏
+    <span class="divider">|</span>
+    <kbd>ESC</kbd> 退出
+  </div>
+
+  <div class="page-indicator" id="pageIndicator">
+    <span id="currentSlide">1</span> / <span id="totalSlides">8</span>
+  </div>
+
+  <script>
+    const slides = [
+      { file: 'slide-01-cover.html', title: '封面' },
+      { file: 'slide-02-intro.html', title: '游戏介绍' },
+      { file: 'slide-03-features.html', title: '核心功能' },
+      { file: 'slide-04-highlights.html', title: '特色亮点' },
+      { file: 'slide-05-tech.html', title: '技术栈' },
+      { file: 'slide-06-opensource.html', title: '开源理念' },
+      { file: 'slide-07-cta.html', title: '行动号召' },
+      { file: 'slide-08-end.html', title: '结束页' }
+    ];
+
+    let currentIndex = 0;
+    let indicatorTimeout;
+
+    function updateSlide() {
+      const frame = document.getElementById('slideFrame');
+      const currentSlideEl = document.getElementById('currentSlide');
+      const pageIndicator = document.getElementById('pageIndicator');
+
+      frame.src = slides[currentIndex].file;
+      currentSlideEl.textContent = currentIndex + 1;
+
+      // 显示页码指示器
+      pageIndicator.classList.remove('hidden');
+      clearTimeout(indicatorTimeout);
+      indicatorTimeout = setTimeout(() => {
+        pageIndicator.classList.add('hidden');
+      }, 2000);
+    }
+
+    function nextSlide() {
+      if (currentIndex < slides.length - 1) {
+        currentIndex++;
+        updateSlide();
+      }
+    }
+
+    function prevSlide() {
+      if (currentIndex > 0) {
+        currentIndex--;
+        updateSlide();
+      }
+    }
+
+    // 键盘控制
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') {
+        e.preventDefault();
+        nextSlide();
+      } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        prevSlide();
+      } else if (e.key === 'Home') {
+        e.preventDefault();
+        currentIndex = 0;
+        updateSlide();
+      } else if (e.key === 'End') {
+        e.preventDefault();
+        currentIndex = slides.length - 1;
+        updateSlide();
+      } else if (e.key === 'f' || e.key === 'F') {
+        e.preventDefault();
+        if (!document.fullscreenElement) {
+          document.documentElement.requestFullscreen();
+        } else {
+          document.exitFullscreen();
+        }
+      }
+    });
+
+    // 5秒后隐藏帮助文本
+    setTimeout(() => {
+      document.getElementById('helpText').classList.add('hidden');
+    }, 5000);
+
+    // 初始化
+    document.getElementById('totalSlides').textContent = slides.length;
+    updateSlide();
+
+    // 3秒后隐藏页码指示器
+    setTimeout(() => {
+      document.getElementById('pageIndicator').classList.add('hidden');
+    }, 3000);
+  </script>
+</body>
+</html>

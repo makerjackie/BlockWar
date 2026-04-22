@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=1920, height=1080">
+  <title>BlockWar - 核心功能</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      width: 1920px;
+      height: 1080px;
+      background: #f7f7f2;
+      color: #171b22;
+      font-family: Inter, -apple-system, BlinkMacSystemFont, "SF Pro Display", "PingFang SC", sans-serif;
+      padding: 100px 120px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .grid-bg {
+      position: absolute;
+      inset: 0;
+      opacity: 0.04;
+      background-image:
+        linear-gradient(rgba(221, 171, 40, 0.2) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(221, 171, 40, 0.2) 1px, transparent 1px);
+      background-size: 80px 80px;
+    }
+
+    .content {
+      position: relative;
+      z-index: 1;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .section-label {
+      font-size: 24px;
+      color: #ddab28;
+      font-weight: 900;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      margin-bottom: 40px;
+      border-left: 6px solid #ddab28;
+      padding-left: 24px;
+    }
+
+    h2 {
+      font-size: 72px;
+      font-weight: 900;
+      line-height: 1.2;
+      margin-bottom: 80px;
+      text-shadow: 3px 3px 0 rgba(23, 27, 34, 0.08);
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 50px;
+      flex: 1;
+    }
+
+    .feature-card {
+      background: #edede7;
+      border: 4px solid rgba(23, 27, 34, 0.15);
+      padding: 50px;
+      box-shadow: 8px 8px 0 rgba(23, 27, 34, 0.1);
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      transition: all 0.3s ease;
+    }
+
+    .feature-card:hover {
+      border-color: #ddab28;
+      transform: translate(-4px, -4px);
+      box-shadow: 12px 12px 0 rgba(23, 27, 34, 0.15);
+    }
+
+    .feature-header {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+    }
+
+    .feature-number {
+      width: 70px;
+      height: 70px;
+      background: #ddab28;
+      border: 3px solid #171b22;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 36px;
+      font-weight: 900;
+      color: #171b22;
+      box-shadow: 5px 5px 0 rgba(23, 27, 34, 0.12);
+      flex-shrink: 0;
+    }
+
+    .feature-title {
+      font-size: 40px;
+      font-weight: 900;
+      color: #171b22;
+      line-height: 1.2;
+    }
+
+    .feature-description {
+      font-size: 26px;
+      line-height: 1.6;
+      color: #667085;
+      padding-left: 94px;
+    }
+  </style>
+</head>
+<body>
+  <div class="grid-bg"></div>
+
+  <div class="content">
+    <div class="section-label">核心功能</div>
+    <h2>完整的游戏体验</h2>
+
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-header">
+          <div class="feature-number">01</div>
+          <div class="feature-title">房间系统</div>
+        </div>
+        <div class="feature-description">
+          创建房间、组队对战<br>
+          支持观战、准备机制<br>
+          房间内聊天交流
+        </div>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-header">
+          <div class="feature-number">02</div>
+          <div class="feature-title">自定义地图</div>
+        </div>
+        <div class="feature-description">
+          内置地图编辑器<br>
+          发布、浏览、搜索地图<br>
+          地图点赞和排行
+        </div>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-header">
+          <div class="feature-number">03</div>
+          <div class="feature-title">游戏回放</div>
+        </div>
+        <div class="feature-description">
+          自动保存对局录像<br>
+          回放查看完整过程<br>
+          学习高手操作
+        </div>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-header">
+          <div class="feature-number">04</div>
+          <div class="feature-title">AI 机器人</div>
+        </div>
+        <div class="feature-description">
+          手动添加 AI 对手<br>
+          单人练习模式<br>
+          新手教程引导
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

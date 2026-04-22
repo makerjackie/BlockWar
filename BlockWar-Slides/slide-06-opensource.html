@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=1920, height=1080">
+  <title>BlockWar - 开源理念</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      width: 1920px;
+      height: 1080px;
+      background: #f7f7f2;
+      color: #171b22;
+      font-family: Inter, -apple-system, BlinkMacSystemFont, "SF Pro Display", "PingFang SC", sans-serif;
+      padding: 100px 120px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .grid-bg {
+      position: absolute;
+      inset: 0;
+      opacity: 0.04;
+      background-image:
+        linear-gradient(rgba(221, 171, 40, 0.2) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(221, 171, 40, 0.2) 1px, transparent 1px);
+      background-size: 80px 80px;
+    }
+
+    .content {
+      position: relative;
+      z-index: 1;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+    }
+
+    .section-label {
+      font-size: 24px;
+      color: #ddab28;
+      font-weight: 900;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      margin-bottom: 50px;
+    }
+
+    h2 {
+      font-size: 96px;
+      font-weight: 900;
+      line-height: 1.2;
+      margin-bottom: 60px;
+      text-shadow: 4px 4px 0 rgba(23, 27, 34, 0.08);
+    }
+
+    .highlight {
+      color: #ddab28;
+    }
+
+    .main-message {
+      font-size: 42px;
+      line-height: 1.8;
+      color: #2d3440;
+      margin-bottom: 80px;
+      max-width: 1400px;
+    }
+
+    .main-message strong {
+      color: #171b22;
+      font-weight: 900;
+    }
+
+    .benefits {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 40px;
+      width: 100%;
+      max-width: 1500px;
+    }
+
+    .benefit-card {
+      background: #edede7;
+      border: 4px solid rgba(23, 27, 34, 0.12);
+      padding: 50px 40px;
+      box-shadow: 8px 8px 0 rgba(23, 27, 34, 0.1);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 24px;
+    }
+
+    .benefit-icon {
+      font-size: 72px;
+      line-height: 1;
+    }
+
+    .benefit-title {
+      font-size: 36px;
+      font-weight: 900;
+      color: #ddab28;
+    }
+
+    .benefit-description {
+      font-size: 24px;
+      line-height: 1.6;
+      color: #667085;
+    }
+
+    .ai-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 16px;
+      background: linear-gradient(135deg, #ddab28 0%, #c99820 100%);
+      border: 4px solid #171b22;
+      padding: 20px 50px;
+      font-size: 32px;
+      font-weight: 900;
+      color: #171b22;
+      box-shadow: 8px 8px 0 rgba(23, 27, 34, 0.12);
+      margin-top: 60px;
+    }
+
+    .ai-badge-icon {
+      font-size: 40px;
+    }
+  </style>
+</head>
+<body>
+  <div class="grid-bg"></div>
+
+  <div class="content">
+    <div class="section-label">开源 + AI 开发</div>
+
+    <h2>
+      完全<span class="highlight">开源</span><br>
+      完全<span class="highlight">免费</span>
+    </h2>
+
+    <p class="main-message">
+      整个游戏<strong>完全开源</strong>，代码托管在 GitHub<br>
+      你可以用 <strong>AI 二次开发</strong>任何你想要的功能<br>
+      并且<strong>零成本部署</strong>给你的小伙伴们玩耍
+    </p>
+
+    <div class="benefits">
+      <div class="benefit-card">
+        <div class="benefit-icon">📖</div>
+        <div class="benefit-title">开源代码</div>
+        <div class="benefit-description">
+          GPL-3.0 协议<br>
+          完整源码可学习
+        </div>
+      </div>
+
+      <div class="benefit-card">
+        <div class="benefit-icon">🚀</div>
+        <div class="benefit-title">零成本部署</div>
+        <div class="benefit-description">
+          Cloudflare 免费额度<br>
+          足够个人使用
+        </div>
+      </div>
+
+      <div class="benefit-card">
+        <div class="benefit-icon">🤖</div>
+        <div class="benefit-title">AI 友好</div>
+        <div class="benefit-description">
+          用 AI 快速开发<br>
+          添加自定义功能
+        </div>
+      </div>
+    </div>
+
+    <div class="ai-badge">
+      <span class="ai-badge-icon">✨</span>
+      <span>大部分代码由 AI 生成</span>
+    </div>
+  </div>
+</body>
+</html>

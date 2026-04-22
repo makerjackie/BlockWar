@@ -1046,36 +1046,27 @@ export default function TutorialPage() {
                           const isShaking = errorShake && sameCoord(errorShake, coord);
 
                           return (
-                            <div
+                            <MapTile
                               key={`${rowIndex}/${colIndex}`}
-                              style={{
-                                position: 'absolute',
-                                left: colIndex * tileSize,
-                                top: rowIndex * tileSize,
-                                animation: isShaking ? 'shake 0.5s' : undefined,
-                              }}
-                            >
-                              <MapTile
-                                size={tileSize}
-                                x={rowIndex}
-                                y={colIndex}
-                                tile={tile}
-                                isOwned={tutorialTile.owner === 'player'}
-                                _className=''
-                                tileHalf={false}
-                                isSelected={sameCoord(selected, coord)}
-                                isNextPossibleMove={
-                                  isAdjacentMoveTarget &&
-                                  tileType !== TileType.Mountain
-                                }
-                                isBlockedMoveTarget={
-                                  isAdjacentMoveTarget &&
-                                  tileType === TileType.Mountain
-                                }
-                                showMyKingHighlight={sameCoord(coord, CAPITAL)}
-                                warringStatesMode={false}
-                              />
-                            </div>
+                              size={tileSize}
+                              x={rowIndex}
+                              y={colIndex}
+                              tile={tile}
+                              isOwned={tutorialTile.owner === 'player'}
+                              _className={isShaking ? 'shake-tile' : ''}
+                              tileHalf={false}
+                              isSelected={sameCoord(selected, coord)}
+                              isNextPossibleMove={
+                                isAdjacentMoveTarget &&
+                                tileType !== TileType.Mountain
+                              }
+                              isBlockedMoveTarget={
+                                isAdjacentMoveTarget &&
+                                tileType === TileType.Mountain
+                              }
+                              showMyKingHighlight={sameCoord(coord, CAPITAL)}
+                              warringStatesMode={false}
+                            />
                           );
                         })
                       )}
@@ -1148,6 +1139,9 @@ export default function TutorialPage() {
       </main>
       <style dangerouslySetInnerHTML={{
         __html: `
+          .shake-tile {
+            animation: shake 0.5s;
+          }
           @keyframes shake {
             0%, 100% { transform: translateX(0); }
             10%, 30%, 50%, 70%, 90% { transform: translateX(-4px); }

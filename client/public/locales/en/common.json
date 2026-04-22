@@ -80,6 +80,14 @@
   "waiting": "Waiting",
   "game-starting": "Game Starting...",
   "game-loading": "Game Loading...",
+  "loadingTips": {
+    "title": "Field Tips",
+    "items": [
+      "Press Z before moving, or double-tap the selected tile, to send only half your army and keep more strength behind.",
+      "Plains grow only once every 25 seconds, so grabbing a tile right before the income tick lets it start producing immediately.",
+      "Swamps keep draining armies after you take them, so do not stack too much there unless you need the route or the block."
+    ]
+  },
   "win": "won!",
   "winner": "Winner",
   "captured-by": "Captured by",
@@ -228,6 +236,6 @@
     "wsad": "WSAD / ArrowKey / MouseClick / Mobile: Select then drag to a neighboring tile",
     "enter": "Enter",
     "surrender": "Surrender",
-    "beginnerTutorial": "If this is your first match, start Tutorial from the lobby and learn step by step in-game."
+    "beginnerTutorial": "If this is your first match, open the standalone Tutorial from the lobby and learn capitals, movement, and king captures in 7 steps."
   }
 }

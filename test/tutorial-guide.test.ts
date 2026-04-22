@@ -110,3 +110,36 @@ describe('tutorial guide progression', () => {
     });
   });
 });
+
+describe('loading tips copy', () => {
+  it('keeps tactical loading tips for half-army, timing, and swamps in both locales', () => {
+    const localizedTips = [
+      {
+        language: 'en',
+        tips: enCommon.loadingTips.items,
+        halfArmyCue: /\bZ\b|half/i,
+        timingCue: /25 seconds|income tick/i,
+        swampCue: /swamp/i,
+      },
+      {
+        language: 'zh',
+        tips: zhCommon.loadingTips.items,
+        halfArmyCue: /Z|半兵/,
+        timingCue: /25 秒|产兵/,
+        swampCue: /沼泽|掉兵/,
+      },
+    ];
+
+    localizedTips.forEach(
+      ({ language, tips, halfArmyCue, timingCue, swampCue }) => {
+        expect(Array.isArray(tips), `${language}:tips`).toBe(true);
+        expect(tips.length, `${language}:tip count`).toBeGreaterThanOrEqual(3);
+
+        const joinedTips = tips.join(' ');
+        expect(joinedTips, `${language}:half-army`).toMatch(halfArmyCue);
+        expect(joinedTips, `${language}:timing`).toMatch(timingCue);
+        expect(joinedTips, `${language}:swamp`).toMatch(swampCue);
+      }
+    );
+  });
+});

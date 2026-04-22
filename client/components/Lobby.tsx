@@ -22,11 +22,12 @@ function Lobby() {
   const [username, setUsername] = useState('');
   const [createPresetLoading, setCreatePresetLoading] =
     useState<RoomPreset | null>(null);
+  const [tutorialOpening, setTutorialOpening] = useState(false);
   const [onboardingStatus, setOnboardingStatus] =
     useState<OnboardingStatus | null>(null);
   const router = useRouter();
 
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
 
   useEffect(() => {
     console.log('fetching rooms from: ', process.env.NEXT_PUBLIC_SERVER_API);
@@ -127,6 +128,12 @@ function Lobby() {
 
   const tutorialRecommended =
     onboardingStatus !== null && shouldShowOnboardingPrompt(onboardingStatus);
+  const isChinese = (i18n.resolvedLanguage ?? i18n.language ?? 'en')
+    .toLowerCase()
+    .startsWith('zh');
+  const tutorialPromoCopy = isChinese
+    ? '先用一个简短教学关熟悉基础：认识目标、选主城、移动、占城、绕山，再吃掉敌方主城。'
+    : 'Start with a short guided mission: learn the goal, select your capital, move out, capture a city, route around mountains, then take the enemy capital.';
   const tutorialButtonClass = tutorialRecommended
     ? 'bw-button bw-button-primary w-full justify-center'
     : 'bw-button bw-button-secondary w-full justify-center';
@@ -134,8 +141,17 @@ function Lobby() {
     ? 'bw-button bw-button-secondary w-full'
     : 'bw-button bw-button-primary w-full';
   const actionCopy = tutorialRecommended
-    ? t('onboarding.copy')
+    ? tutorialPromoCopy
     : t('empty-room-help');
+
+  const handleOpenTutorial = async () => {
+    try {
+      setTutorialOpening(true);
+      await router.push('/tutorial');
+    } finally {
+      setTutorialOpening(false);
+    }
+  };
 
   return (
     <>
@@ -292,12 +308,14 @@ function Lobby() {
                     <button
                       type='button'
                       className={tutorialButtonClass}
-                      disabled={createPresetLoading !== null}
-                      onClick={() => handleCreateRoomClick('tutorial')}
+                      disabled={createPresetLoading !== null || tutorialOpening}
+                      onClick={handleOpenTutorial}
                     >
                       <GraduationCap size={16} strokeWidth={2.5} />
-                      {createPresetLoading === 'tutorial'
-                        ? t('onboarding.creatingTutorial')
+                      {tutorialOpening
+                        ? isChinese
+                          ? '正在打开教程...'
+                          : 'Opening tutorial...'
                         : t('onboarding.startTutorial')}
                       {tutorialRecommended ? (
                         <span className='ml-1 border border-yellow-300/40 px-1.5 py-0.5 text-[10px] uppercase tracking-[0.14em] text-yellow-300'>

@@ -280,7 +280,6 @@ const GameProvider: React.FC<GameProviderProp> = ({ children }) => {
   const handlePositionChange = useCallback(
     (selectPos: SelectedMapTileInfo, newPoint: Position, className: string) => {
       if (!withinMap(newPoint)) {
-        console.log('new point not within map', newPoint);
         return;
       }
 
@@ -376,10 +375,6 @@ const GameProvider: React.FC<GameProviderProp> = ({ children }) => {
       showBlockedMoveFeedback(tileType);
     } else if (isOwned) {
       if (selectedMapTileInfo.x === x && selectedMapTileInfo.y === y) {
-        console.log(
-          'Clicked on the current tile, changing tile half state to',
-          !tileHalf
-        );
         setSelectedMapTileInfo({
           x,
           y,

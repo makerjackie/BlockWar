@@ -1,5 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useRouter } from 'next/router';
+import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useTranslation } from 'next-i18next';
 import { formatCreatorRoomName } from '@shared/game/room-names';
@@ -24,7 +23,9 @@ import { forceStartOK, MaxTeamNum, SpeedOptions } from '@/lib/constants';
 import { useGame, useGameDispatch } from '@/context/GameContext';
 import ModalShell from '@/components/ui/ModalShell';
 
-type GameSettingProps = Record<string, never>;
+interface GameSettingProps {
+  onLeaveRoom: () => void;
+}
 
 const tabLabels = ['players-tab', 'map', 'terrain', 'rules'] as const;
 const sectionLabelClass =
@@ -89,7 +90,33 @@ function ToggleRow({
   );
 }
 
-const GameSetting: React.FC<GameSettingProps> = () => {
+function HostOnlyOverlay({
+  locked,
+  onLockedInteraction,
+  ariaLabel,
+  children,
+}: {
+  locked: boolean;
+  onLockedInteraction: () => void;
+  ariaLabel: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className='relative'>
+      {children}
+      {locked ? (
+        <button
+          type='button'
+          className='absolute inset-0 z-10 cursor-not-allowed bg-transparent'
+          onClick={onLockedInteraction}
+          aria-label={ariaLabel}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+const GameSetting: React.FC<GameSettingProps> = ({ onLeaveRoom }) => {
   const [tabIndex, setTabIndex] = useState(0);
   const [isNameFocused, setIsNamedFocused] = useState(false);
   const roomNameInputRef = useRef<HTMLInputElement | null>(null);
@@ -104,11 +131,19 @@ const GameSetting: React.FC<GameSettingProps> = () => {
 
   const { t } = useTranslation();
 
-  const router = useRouter();
-
   useEffect(() => {
     setShareLink(window.location.href);
   }, []);
+
+  const showHostOnlyNotice = () => {
+    snackStateDispatch({
+      type: 'update',
+      title: t('room-settings'),
+      status: 'warning',
+      message: t('not-host'),
+      duration: 2500,
+    });
+  };
 
   const handleRoomNameBlur = () => {
     setIsNamedFocused(false);
@@ -150,16 +185,8 @@ const GameSetting: React.FC<GameSettingProps> = () => {
     socketRef.current.emit('force_start');
   };
 
-  const disabledUi: boolean = useMemo(() => {
-    if (myPlayerId && room.players) {
-      for (let i = 0; i < room.players.length; ++i) {
-        if (room.players[i].id === myPlayerId) {
-          return !room.players[i].isRoomHost;
-        }
-      }
-    }
-    return true;
-  }, [myPlayerId, room]);
+  const currentPlayer = room.players.find((player) => player.id === myPlayerId);
+  const disabledUi = !currentPlayer?.isRoomHost;
 
   const handleRoomNameChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     roomDispatch({
@@ -173,7 +200,6 @@ const GameSetting: React.FC<GameSettingProps> = () => {
 
   const handleSettingChange =
     (property: string) => (event: Event | null, newValue: any) => {
-      console.log(`change_room_setting: ${property}, ${newValue}`);
       if (property === 'gameSpeed') newValue = Number.parseFloat(newValue);
       roomDispatch({
         type: 'update_property',
@@ -183,10 +209,9 @@ const GameSetting: React.FC<GameSettingProps> = () => {
         },
       });
       socketRef.current.emit('change_room_setting', property, newValue);
-    };
+  };
 
-  const handleChangeHost = (playerId: string, username: string) => {
-    console.log(`change host to ${username}, id ${playerId}`);
+  const handleChangeHost = (playerId: string, _username: string) => {
     socketRef.current.emit('change_host', playerId);
   };
 
@@ -203,16 +228,12 @@ const GameSetting: React.FC<GameSettingProps> = () => {
   };
 
   const handleLeaveRoom = () => {
-    console.log('Leave Room');
-    socketRef.current.emit('leave_room');
-    socketRef.current.disconnect();
-    router.push(`/`);
+    onLeaveRoom();
   };
 
   const canManageBots = !disabledUi && !room.gameStarted;
   const forceStartTarget = getForceStartTarget(room);
   const isTutorialRoom = room.preset === 'tutorial';
-  const currentPlayer = room.players.find((player) => player.id === myPlayerId);
   const canStartTutorial =
     isTutorialRoom &&
     !disabledUi &&
@@ -261,7 +282,7 @@ const GameSetting: React.FC<GameSettingProps> = () => {
         title={t('choose-map')}
         widthClassName='max-w-5xl'
       >
-        <MapExplorer userId={myUserName} onSelect={handleMapSelect} />
+        <MapExplorer username={myUserName} onSelect={handleMapSelect} />
       </ModalShell>
 
       <div className='flex flex-col gap-4'>
@@ -282,7 +303,12 @@ const GameSetting: React.FC<GameSettingProps> = () => {
                 className='bw-title min-w-0 truncate text-center text-xl leading-none text-zinc-50 sm:text-2xl'
                 title={disabledUi ? t('room-settings-host-only') : room.roomName}
                 onClick={() => {
-                  if (!disabledUi) setIsNamedFocused(true);
+                  if (disabledUi) {
+                    showHostOnlyNotice();
+                    return;
+                  }
+
+                  setIsNamedFocused(true);
                 }}
               >
                 {room.roomName}
@@ -381,6 +407,14 @@ const GameSetting: React.FC<GameSettingProps> = () => {
               <>
                 <div className='flex items-center justify-between gap-3'>
                   <p className='bw-page-copy'>{t('room-settings')}</p>
+                  {disabledUi ? (
+                    <span
+                      className='text-[11px] font-black uppercase tracking-[0.12em] sm:text-xs'
+                      style={{ color: 'var(--bw-ember)' }}
+                    >
+                      {t('not-host')}
+                    </span>
+                  ) : null}
                 </div>
 
                 <div className='grid grid-cols-2 gap-1.5 sm:flex sm:flex-wrap sm:gap-2'>
@@ -422,19 +456,25 @@ const GameSetting: React.FC<GameSettingProps> = () => {
                     </div>
 
                     <div className='space-y-2.5 sm:space-y-3'>
-                      <SliderBox
-                        label={t('max-player-num')}
-                        value={room.maxPlayers}
-                        disabled={disabledUi}
-                        min={2}
-                        max={12}
-                        step={1}
-                        marks={Array.from({ length: 11 }, (_, i) => ({
-                          value: i + 2,
-                          label: `${i + 2}`,
-                        }))}
-                        handleChange={handleSettingChange('maxPlayers')}
-                      />
+                      <HostOnlyOverlay
+                        locked={disabledUi}
+                        onLockedInteraction={showHostOnlyNotice}
+                        ariaLabel={t('room-settings-host-only')}
+                      >
+                        <SliderBox
+                          label={t('max-player-num')}
+                          value={room.maxPlayers}
+                          disabled={disabledUi}
+                          min={2}
+                          max={12}
+                          step={1}
+                          marks={Array.from({ length: 11 }, (_, i) => ({
+                            value: i + 2,
+                            label: `${i + 2}`,
+                          }))}
+                          handleChange={handleSettingChange('maxPlayers')}
+                        />
+                      </HostOnlyOverlay>
                     </div>
                   </div>
                 </TabPanel>
@@ -443,14 +483,20 @@ const GameSetting: React.FC<GameSettingProps> = () => {
                   <div className='space-y-3 sm:space-y-4'>
                     <div className='space-y-2.5 sm:space-y-3'>
                       <p className={sectionLabelClass}>{t('select-a-custom-map')}</p>
-                      <button
-                        type='button'
-                        className='bw-button bw-button-primary w-full'
-                        disabled={disabledUi}
-                        onClick={() => setOpenMapExplorer(true)}
+                      <HostOnlyOverlay
+                        locked={disabledUi}
+                        onLockedInteraction={showHostOnlyNotice}
+                        ariaLabel={t('room-settings-host-only')}
                       >
-                        {t('select-a-custom-map')}
-                      </button>
+                        <button
+                          type='button'
+                          className='bw-button bw-button-primary w-full'
+                          disabled={disabledUi}
+                          onClick={() => setOpenMapExplorer(true)}
+                        >
+                          {t('select-a-custom-map')}
+                        </button>
+                      </HostOnlyOverlay>
 
                       {room.mapName ? (
                         <div className='flex items-center justify-between gap-2 border border-zinc-800 bg-zinc-950/60 px-3 py-2.5 sm:gap-3 sm:px-4 sm:py-3'>
@@ -480,113 +526,133 @@ const GameSetting: React.FC<GameSettingProps> = () => {
 
                     <div className='space-y-3 sm:space-y-4'>
                       <p className={sectionLabelClass}>{t('map-size')}</p>
-                      <SliderBox
-                        label={t('height')}
-                        value={room.mapWidth}
-                        disabled={disabledUi}
-                        handleChange={handleSettingChange('mapWidth')}
-                      />
-                      <SliderBox
-                        label={t('width')}
-                        value={room.mapHeight}
-                        disabled={disabledUi}
-                        handleChange={handleSettingChange('mapHeight')}
-                      />
+                      <HostOnlyOverlay
+                        locked={disabledUi}
+                        onLockedInteraction={showHostOnlyNotice}
+                        ariaLabel={t('room-settings-host-only')}
+                      >
+                        <div className='space-y-3 sm:space-y-4'>
+                          <SliderBox
+                            label={t('height')}
+                            value={room.mapWidth}
+                            disabled={disabledUi}
+                            handleChange={handleSettingChange('mapWidth')}
+                          />
+                          <SliderBox
+                            label={t('width')}
+                            value={room.mapHeight}
+                            disabled={disabledUi}
+                            handleChange={handleSettingChange('mapHeight')}
+                          />
+                        </div>
+                      </HostOnlyOverlay>
                     </div>
                   </div>
                 </TabPanel>
 
                 <TabPanel value={tabIndex} index={2}>
-                  <div className='space-y-3 sm:space-y-4'>
-                    <SliderBox
-                      label={t('mountain')}
-                      value={room.mountain}
-                      disabled={disabledUi}
-                      handleChange={handleSettingChange('mountain')}
-                      icon={<Mountain size={16} strokeWidth={2.25} />}
-                    />
-                    <SliderBox
-                      label={t('city')}
-                      value={room.city}
-                      disabled={disabledUi}
-                      handleChange={handleSettingChange('city')}
-                      icon={<Castle size={16} strokeWidth={2.25} />}
-                    />
-                    <SliderBox
-                      label={t('swamp')}
-                      value={room.swamp}
-                      disabled={disabledUi}
-                      handleChange={handleSettingChange('swamp')}
-                      icon={<Waves size={16} strokeWidth={2.25} />}
-                    />
-                  </div>
+                  <HostOnlyOverlay
+                    locked={disabledUi}
+                    onLockedInteraction={showHostOnlyNotice}
+                    ariaLabel={t('room-settings-host-only')}
+                  >
+                    <div className='space-y-3 sm:space-y-4'>
+                      <SliderBox
+                        label={t('mountain')}
+                        value={room.mountain}
+                        disabled={disabledUi}
+                        handleChange={handleSettingChange('mountain')}
+                        icon={<Mountain size={16} strokeWidth={2.25} />}
+                      />
+                      <SliderBox
+                        label={t('city')}
+                        value={room.city}
+                        disabled={disabledUi}
+                        handleChange={handleSettingChange('city')}
+                        icon={<Castle size={16} strokeWidth={2.25} />}
+                      />
+                      <SliderBox
+                        label={t('swamp')}
+                        value={room.swamp}
+                        disabled={disabledUi}
+                        handleChange={handleSettingChange('swamp')}
+                        icon={<Waves size={16} strokeWidth={2.25} />}
+                      />
+                    </div>
+                  </HostOnlyOverlay>
                 </TabPanel>
 
                 <TabPanel value={tabIndex} index={3}>
-                  <div className='space-y-3 sm:space-y-4'>
-                    <div className='space-y-2.5 sm:space-y-3'>
-                      <p className={sectionLabelClass}>{t('game-speed')}</p>
-                      <div className='grid grid-cols-5 gap-1.5 sm:flex sm:flex-wrap sm:gap-2'>
-                        {SpeedOptions.map((value) => (
-                          <button
-                            key={value}
-                            type='button'
-                            className={`${tabButtonClass(room.gameSpeed === value)} w-full sm:w-auto`}
-                            disabled={disabledUi}
-                            onClick={(event) =>
-                              handleSettingChange('gameSpeed')(
-                                event as unknown as Event,
-                                value
-                              )
-                            }
-                          >
-                            {`${value}x`}
-                          </button>
-                        ))}
+                  <HostOnlyOverlay
+                    locked={disabledUi}
+                    onLockedInteraction={showHostOnlyNotice}
+                    ariaLabel={t('room-settings-host-only')}
+                  >
+                    <div className='space-y-3 sm:space-y-4'>
+                      <div className='space-y-2.5 sm:space-y-3'>
+                        <p className={sectionLabelClass}>{t('game-speed')}</p>
+                        <div className='grid grid-cols-5 gap-1.5 sm:flex sm:flex-wrap sm:gap-2'>
+                          {SpeedOptions.map((value) => (
+                            <button
+                              key={value}
+                              type='button'
+                              className={`${tabButtonClass(room.gameSpeed === value)} w-full sm:w-auto`}
+                              disabled={disabledUi}
+                              onClick={(event) =>
+                                handleSettingChange('gameSpeed')(
+                                  event as unknown as Event,
+                                  value
+                                )
+                              }
+                            >
+                              {`${value}x`}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className='grid gap-2.5 sm:gap-3'>
+                        <ToggleRow
+                          label={t('fog-of-war')}
+                          checked={room.fogOfWar}
+                          disabled={disabledUi}
+                          onToggle={() =>
+                            handleSettingChange('fogOfWar')(null, !room.fogOfWar)
+                          }
+                        />
+                        <ToggleRow
+                          label={t('reveal-king')}
+                          checked={room.revealKing}
+                          disabled={disabledUi}
+                          onToggle={() =>
+                            handleSettingChange('revealKing')(null, !room.revealKing)
+                          }
+                        />
+                        <ToggleRow
+                          label={t('death-spectator')}
+                          checked={room.deathSpectator}
+                          disabled={disabledUi}
+                          onToggle={() =>
+                            handleSettingChange('deathSpectator')(
+                              null,
+                              !room.deathSpectator
+                            )
+                          }
+                        />
+                        <ToggleRow
+                          label={t('warring-states-mode')}
+                          checked={room.warringStatesMode}
+                          disabled={disabledUi}
+                          onToggle={() =>
+                            handleSettingChange('warringStatesMode')(
+                              null,
+                              !room.warringStatesMode
+                            )
+                          }
+                        />
                       </div>
                     </div>
-
-                    <div className='grid gap-2.5 sm:gap-3'>
-                      <ToggleRow
-                        label={t('fog-of-war')}
-                        checked={room.fogOfWar}
-                        disabled={disabledUi}
-                        onToggle={() =>
-                          handleSettingChange('fogOfWar')(null, !room.fogOfWar)
-                        }
-                      />
-                      <ToggleRow
-                        label={t('reveal-king')}
-                        checked={room.revealKing}
-                        disabled={disabledUi}
-                        onToggle={() =>
-                          handleSettingChange('revealKing')(null, !room.revealKing)
-                        }
-                      />
-                      <ToggleRow
-                        label={t('death-spectator')}
-                        checked={room.deathSpectator}
-                        disabled={disabledUi}
-                        onToggle={() =>
-                          handleSettingChange('deathSpectator')(
-                            null,
-                            !room.deathSpectator
-                          )
-                        }
-                      />
-                      <ToggleRow
-                        label={t('warring-states-mode')}
-                        checked={room.warringStatesMode}
-                        disabled={disabledUi}
-                        onToggle={() =>
-                          handleSettingChange('warringStatesMode')(
-                            null,
-                            !room.warringStatesMode
-                          )
-                        }
-                      />
-                    </div>
-                  </div>
+                  </HostOnlyOverlay>
                 </TabPanel>
               </>
             )}
@@ -611,8 +677,15 @@ const GameSetting: React.FC<GameSettingProps> = () => {
                 <button
                   type='button'
                   className='bw-button bw-button-secondary min-h-9 px-2.5 text-[11px] sm:min-h-10 sm:px-3 sm:text-xs'
-                  disabled={!canManageBots || room.players.length >= room.maxPlayers}
-                  onClick={handleAddBot}
+                  disabled={room.gameStarted || room.players.length >= room.maxPlayers}
+                  onClick={() => {
+                    if (disabledUi) {
+                      showHostOnlyNotice();
+                      return;
+                    }
+
+                    handleAddBot();
+                  }}
                 >
                   <Bot size={16} strokeWidth={2.5} />
                   {t('add-bot')}
@@ -629,6 +702,7 @@ const GameSetting: React.FC<GameSettingProps> = () => {
                   disabled_ui={disabledUi}
                   canManageBots={canManageBots}
                   warringStatesMode={room.warringStatesMode}
+                  onHostOnlyInteraction={showHostOnlyNotice}
                 />
               </div>
             </section>

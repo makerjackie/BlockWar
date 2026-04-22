@@ -5,7 +5,7 @@ import {
 } from '@shared/game/room-defaults';
 import type { RoomPreset } from '@shared/game/room-presets';
 import { DEFAULT_ROOM_NAME } from '@shared/game/room-names';
-import type { CustomMapData, CustomMapInfo } from '@shared/game/types';
+import { TileType, type CustomMapData, type CustomMapInfo } from '@shared/game/types';
 import {
   cloneRoomSummary,
   sanitizeRoomSummary,
@@ -39,12 +39,59 @@ type ReplayRow = {
   size_bytes: number;
 };
 
+type SessionRow = {
+  id: string;
+  token: string;
+  username: string;
+};
+
+type MapOwnerRow = {
+  map_id: string;
+  session_id: string;
+};
+
+type RoomPlayerTokenRow = {
+  player_id: string;
+};
+
+type SessionIdentity = {
+  id: string;
+  token: string;
+  username: string;
+};
+
 type StarAction = 'increase' | 'decrease';
 type StarResult =
   | { ok: true; status: 200 }
   | { ok: false; status: 400 | 404; error: string };
 
+type MutationResult<T> =
+  | { ok: true; status: 200; value: T }
+  | { ok: false; status: 400 | 403 | 404 | 409; error: string };
+
+type CustomMapValidationResult =
+  | { ok: true; value: CustomMapData }
+  | { ok: false; error: string };
+
 const REPLAY_MAX_BYTES = 150 * 1024;
+const MAX_USERNAME_LENGTH = 20;
+const MAX_CUSTOM_MAP_ID_LENGTH = 64;
+const MAX_CUSTOM_MAP_NAME_LENGTH = 80;
+const MAX_CUSTOM_MAP_DESCRIPTION_LENGTH = 2_000;
+const MAX_CUSTOM_MAP_SIDE = 40;
+const MAX_CUSTOM_MAP_CELLS = MAX_CUSTOM_MAP_SIDE * MAX_CUSTOM_MAP_SIDE;
+const MAX_CUSTOM_TILE_UNITS = 999_999;
+const MAX_CUSTOM_TILE_PRIORITY = 999_999;
+const UNSAFE_NAME_CHARS = /[<>&"'`]/g;
+const VALID_CUSTOM_TILE_TYPES = new Set<number>([
+  TileType.King,
+  TileType.City,
+  TileType.Fog,
+  TileType.Obstacle,
+  TileType.Plain,
+  TileType.Mountain,
+  TileType.Swamp,
+]);
 const textEncoder = new TextEncoder();
 const textDecoder = new TextDecoder();
 const COMPRESSED_REPLAY_PREFIX = 'gz:';
@@ -52,14 +99,20 @@ const COMPRESSED_REPLAY_PREFIX = 'gz:';
 const APP_SCHEMA_STATEMENTS = [
   'CREATE TABLE IF NOT EXISTS rooms (id TEXT PRIMARY KEY, room_json TEXT NOT NULL, updated_at INTEGER NOT NULL)',
   'CREATE TABLE IF NOT EXISTS maps (id TEXT PRIMARY KEY, name TEXT NOT NULL, width INTEGER NOT NULL, height INTEGER NOT NULL, creator TEXT NOT NULL, description TEXT NOT NULL, map_tiles_data TEXT NOT NULL, created_at TEXT NOT NULL, views INTEGER NOT NULL DEFAULT 0, star_count INTEGER NOT NULL DEFAULT 0)',
+  'CREATE TABLE IF NOT EXISTS map_owners (map_id TEXT PRIMARY KEY, session_id TEXT NOT NULL, created_at TEXT NOT NULL)',
   'CREATE TABLE IF NOT EXISTS stars (user_id TEXT NOT NULL, map_id TEXT NOT NULL, PRIMARY KEY(user_id, map_id))',
+  'CREATE TABLE IF NOT EXISTS sessions (id TEXT PRIMARY KEY, token TEXT NOT NULL UNIQUE, username TEXT NOT NULL, created_at TEXT NOT NULL, last_seen_at TEXT NOT NULL)',
+  'CREATE TABLE IF NOT EXISTS room_player_tokens (token TEXT PRIMARY KEY, room_id TEXT NOT NULL, player_id TEXT NOT NULL, session_id TEXT NOT NULL, created_at TEXT NOT NULL, last_seen_at TEXT NOT NULL, UNIQUE(room_id, player_id))',
   `CREATE TABLE IF NOT EXISTS replays (id TEXT PRIMARY KEY, replay_json TEXT NOT NULL, size_bytes INTEGER NOT NULL CHECK(size_bytes < ${REPLAY_MAX_BYTES}), created_at TEXT NOT NULL)`,
   'CREATE INDEX IF NOT EXISTS idx_rooms_updated_at ON rooms(updated_at)',
   'CREATE INDEX IF NOT EXISTS idx_maps_created_at ON maps(created_at)',
   'CREATE INDEX IF NOT EXISTS idx_maps_views ON maps(views)',
   'CREATE INDEX IF NOT EXISTS idx_maps_star_count ON maps(star_count)',
+  'CREATE INDEX IF NOT EXISTS idx_map_owners_session_id ON map_owners(session_id)',
   'CREATE INDEX IF NOT EXISTS idx_stars_map_id ON stars(map_id)',
   'CREATE INDEX IF NOT EXISTS idx_stars_user_id ON stars(user_id)',
+  'CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token)',
+  'CREATE INDEX IF NOT EXISTS idx_room_player_tokens_session_id ON room_player_tokens(session_id)',
 ];
 
 function randomId(length = 8) {
@@ -78,6 +131,156 @@ function mapRowToInfo(map: MapRow): CustomMapInfo {
     views: map.views,
     starCount: map.star_count,
   };
+}
+
+function sanitizeUsername(value: string | null | undefined) {
+  const raw = (value ?? '').trim().slice(0, MAX_USERNAME_LENGTH);
+  const escaped = raw.replace(UNSAFE_NAME_CHARS, '');
+  return escaped.length > 0 ? escaped : '';
+}
+
+function validateCustomMapData(
+  value: unknown,
+  creator: string,
+  mapIdOverride?: string
+): CustomMapValidationResult {
+  if (!value || typeof value !== 'object') {
+    return { ok: false, error: 'Invalid map payload' };
+  }
+
+  const input = value as Partial<CustomMapData>;
+  const idSource = mapIdOverride ?? input.id;
+  const id = typeof idSource === 'string' ? idSource.trim() : '';
+  const name = typeof input.name === 'string'
+    ? input.name.trim().slice(0, MAX_CUSTOM_MAP_NAME_LENGTH)
+    : '';
+  const description = typeof input.description === 'string'
+    ? input.description.trim().slice(0, MAX_CUSTOM_MAP_DESCRIPTION_LENGTH)
+    : '';
+
+  if (!id || id.length > MAX_CUSTOM_MAP_ID_LENGTH) {
+    return { ok: false, error: 'Invalid map id' };
+  }
+  if (!name) {
+    return { ok: false, error: 'Map name cannot be empty' };
+  }
+
+  const normalizedWidth = Number(input.width);
+  const normalizedHeight = Number(input.height);
+  if (
+    !Number.isSafeInteger(normalizedWidth) ||
+    !Number.isSafeInteger(normalizedHeight) ||
+    normalizedWidth < 1 ||
+    normalizedHeight < 1 ||
+    normalizedWidth > MAX_CUSTOM_MAP_SIDE ||
+    normalizedHeight > MAX_CUSTOM_MAP_SIDE ||
+    normalizedWidth * normalizedHeight > MAX_CUSTOM_MAP_CELLS
+  ) {
+    return { ok: false, error: 'Invalid map size' };
+  }
+
+  if (!Array.isArray(input.mapTilesData) || input.mapTilesData.length !== normalizedWidth) {
+    return { ok: false, error: 'Map tile data does not match width' };
+  }
+
+  const mapTilesData: CustomMapData['mapTilesData'] = [];
+
+  for (let x = 0; x < normalizedWidth; x += 1) {
+    const column = input.mapTilesData[x];
+    if (!Array.isArray(column) || column.length !== normalizedHeight) {
+      return { ok: false, error: 'Map tile data does not match height' };
+    }
+
+    const sanitizedColumn: CustomMapData['mapTilesData'][number] = [];
+    for (let y = 0; y < normalizedHeight; y += 1) {
+      const tile = column[y];
+      if (!Array.isArray(tile) || tile.length !== 5) {
+        return { ok: false, error: 'Invalid tile payload' };
+      }
+
+      const [tileType, team, unitsCount, isAlwaysRevealed, priority] = tile;
+      if (!Number.isSafeInteger(tileType) || !VALID_CUSTOM_TILE_TYPES.has(tileType)) {
+        return { ok: false, error: 'Invalid tile type' };
+      }
+      if (team !== null && !Number.isSafeInteger(team)) {
+        return { ok: false, error: 'Invalid tile owner' };
+      }
+      if (
+        !Number.isSafeInteger(unitsCount) ||
+        unitsCount < 0 ||
+        unitsCount > MAX_CUSTOM_TILE_UNITS
+      ) {
+        return { ok: false, error: 'Invalid tile unit count' };
+      }
+      if (typeof isAlwaysRevealed !== 'boolean') {
+        return { ok: false, error: 'Invalid visibility flag' };
+      }
+      if (
+        !Number.isSafeInteger(priority) ||
+        priority < 0 ||
+        priority > MAX_CUSTOM_TILE_PRIORITY
+      ) {
+        return { ok: false, error: 'Invalid king priority' };
+      }
+
+      sanitizedColumn.push([
+        tileType as TileType,
+        team as number | null,
+        unitsCount,
+        isAlwaysRevealed,
+        priority,
+      ]);
+    }
+
+    mapTilesData.push(sanitizedColumn);
+  }
+
+  return {
+    ok: true,
+    value: {
+      id,
+      name,
+      width: normalizedWidth,
+      height: normalizedHeight,
+      creator,
+      description,
+      mapTilesData,
+    },
+  };
+}
+
+function parseStoredCustomMap(row: MapRow): CustomMapData | null {
+  try {
+    const result = validateCustomMapData(
+      {
+        id: row.id,
+        name: row.name,
+        width: row.width,
+        height: row.height,
+        creator: row.creator,
+        description: row.description,
+        mapTilesData: JSON.parse(row.map_tiles_data) as unknown,
+      },
+      row.creator,
+      row.id
+    );
+
+    if (!result.ok) {
+      console.warn('Skipping invalid stored map payload', {
+        mapId: row.id,
+        reason: result.error,
+      });
+      return null;
+    }
+
+    return result.value;
+  } catch (error) {
+    console.warn('Failed to parse stored map payload', {
+      mapId: row.id,
+      error,
+    });
+    return null;
+  }
 }
 
 function byteLength(value: string) {
@@ -191,7 +394,7 @@ export class AppDurableObject extends DurableObject<Env> {
     await this.env.DB.batch(statements);
   }
 
-  private createSession() {
+  private createDbSession() {
     return this.env.DB.withSession('first-primary');
   }
 
@@ -233,6 +436,178 @@ export class AppDurableObject extends DurableObject<Env> {
       .prepare('SELECT * FROM maps WHERE id = ?')
       .bind(mapId)
       .first<MapRow>();
+  }
+
+  private async getMapOwnerRow(
+    mapId: string,
+    executor: D1Executor = this.env.DB
+  ): Promise<MapOwnerRow | null> {
+    return await executor
+      .prepare('SELECT map_id, session_id FROM map_owners WHERE map_id = ?')
+      .bind(mapId)
+      .first<MapOwnerRow>();
+  }
+
+  private async getSessionRowByToken(
+    token: string,
+    executor: D1Executor = this.env.DB
+  ): Promise<SessionRow | null> {
+    return await executor
+      .prepare('SELECT id, token, username FROM sessions WHERE token = ?')
+      .bind(token)
+      .first<SessionRow>();
+  }
+
+  private async touchSessionRow(sessionId: string, username?: string) {
+    if (username) {
+      await this.execute(
+        'UPDATE sessions SET username = ?, last_seen_at = ? WHERE id = ?',
+        username,
+        new Date().toISOString(),
+        sessionId
+      );
+      return;
+    }
+
+    await this.execute(
+      'UPDATE sessions SET last_seen_at = ? WHERE id = ?',
+      new Date().toISOString(),
+      sessionId
+    );
+  }
+
+  async ensureSession(token: string | null | undefined, username: string): Promise<SessionIdentity> {
+    await this.ensureInitialized();
+    const sanitizedUsername = sanitizeUsername(username);
+
+    if (!sanitizedUsername) {
+      throw new Error('Username is required');
+    }
+
+    const normalizedToken = token?.trim() ?? '';
+    if (normalizedToken) {
+      const existing = await this.getSessionRowByToken(normalizedToken);
+      if (existing) {
+        const nextUsername =
+          existing.username === sanitizedUsername ? undefined : sanitizedUsername;
+        await this.touchSessionRow(existing.id, nextUsername);
+        return {
+          id: existing.id,
+          token: existing.token,
+          username: nextUsername ?? existing.username,
+        };
+      }
+    }
+
+    const now = new Date().toISOString();
+    const session = {
+      id: randomId(16),
+      token: crypto.randomUUID(),
+      username: sanitizedUsername,
+    };
+    await this.execute(
+      `
+        INSERT INTO sessions (id, token, username, created_at, last_seen_at)
+        VALUES (?, ?, ?, ?, ?)
+      `,
+      session.id,
+      session.token,
+      session.username,
+      now,
+      now
+    );
+
+    return session;
+  }
+
+  async getSession(token: string | null | undefined): Promise<SessionIdentity | null> {
+    await this.ensureInitialized();
+    const normalizedToken = token?.trim() ?? '';
+    if (!normalizedToken) {
+      return null;
+    }
+
+    const session = await this.getSessionRowByToken(normalizedToken);
+    if (!session) {
+      return null;
+    }
+
+    await this.touchSessionRow(session.id);
+    return session;
+  }
+
+  async issueReconnectToken(
+    sessionId: string,
+    roomId: string,
+    playerId: string
+  ): Promise<string> {
+    await this.ensureInitialized();
+    const token = crypto.randomUUID();
+    const now = new Date().toISOString();
+
+    await this.execute(
+      `
+        INSERT INTO room_player_tokens (
+          token, room_id, player_id, session_id, created_at, last_seen_at
+        ) VALUES (?, ?, ?, ?, ?, ?)
+        ON CONFLICT(room_id, player_id) DO UPDATE SET
+          token = excluded.token,
+          session_id = excluded.session_id,
+          last_seen_at = excluded.last_seen_at
+      `,
+      token,
+      roomId,
+      playerId,
+      sessionId,
+      now,
+      now
+    );
+
+    return token;
+  }
+
+  async resolveReconnectToken(
+    token: string | null | undefined,
+    roomId: string,
+    sessionId: string
+  ): Promise<string | null> {
+    await this.ensureInitialized();
+    const normalizedToken = token?.trim() ?? '';
+    if (!normalizedToken) {
+      return null;
+    }
+
+    const row = await this.queryFirst<RoomPlayerTokenRow>(
+      `
+        SELECT player_id
+        FROM room_player_tokens
+        WHERE token = ? AND room_id = ? AND session_id = ?
+      `,
+      normalizedToken,
+      roomId,
+      sessionId
+    );
+
+    if (!row) {
+      return null;
+    }
+
+    await this.execute(
+      'UPDATE room_player_tokens SET last_seen_at = ? WHERE token = ?',
+      new Date().toISOString(),
+      normalizedToken
+    );
+
+    return row.player_id;
+  }
+
+  async revokeReconnectToken(roomId: string, playerId: string): Promise<void> {
+    await this.ensureInitialized();
+    await this.execute(
+      'DELETE FROM room_player_tokens WHERE room_id = ? AND player_id = ?',
+      roomId,
+      playerId
+    );
   }
 
   async listRooms(): Promise<Record<string, PlainRoom>> {
@@ -326,33 +701,59 @@ export class AppDurableObject extends DurableObject<Env> {
     );
   }
 
-  async createMap(map: CustomMapData) {
+  async createMap(
+    map: unknown,
+    sessionId: string,
+    creator: string
+  ): Promise<MutationResult<{ success: true }>> {
     await this.ensureInitialized();
-    await this.execute(
-      `
-        INSERT INTO maps (
-          id, name, width, height, creator, description, map_tiles_data, created_at, views, star_count
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 0)
-      `,
-      map.id,
-      map.name,
-      map.width,
-      map.height,
-      map.creator,
-      map.description,
-      JSON.stringify(map.mapTilesData),
-      new Date().toISOString()
-    );
+    const validated = validateCustomMapData(map, creator);
+    if (!validated.ok) {
+      return { ok: false, status: 400, error: validated.error };
+    }
 
-    return { success: true };
+    const existing = await this.getMapRow(validated.value.id);
+    if (existing) {
+      return { ok: false, status: 409, error: 'Map id already exists' };
+    }
+
+    const now = new Date().toISOString();
+    await this.executeBatch([
+      this.env.DB.prepare(
+        `
+          INSERT INTO maps (
+            id, name, width, height, creator, description, map_tiles_data, created_at, views, star_count
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 0)
+        `
+      ).bind(
+        validated.value.id,
+        validated.value.name,
+        validated.value.width,
+        validated.value.height,
+        validated.value.creator,
+        validated.value.description,
+        JSON.stringify(validated.value.mapTilesData),
+        now
+      ),
+      this.env.DB.prepare(
+        'INSERT INTO map_owners (map_id, session_id, created_at) VALUES (?, ?, ?)'
+      ).bind(validated.value.id, sessionId, now),
+    ]);
+
+    return { ok: true, status: 200, value: { success: true } };
   }
 
   async getMap(mapId: string, incrementViews = true): Promise<CustomMapData | null> {
     await this.ensureInitialized();
-    const session = this.createSession();
+    const session = this.createDbSession();
     const row = await this.getMapRow(mapId, session);
 
     if (!row) {
+      return null;
+    }
+
+    const map = parseStoredCustomMap(row);
+    if (!map) {
       return null;
     }
 
@@ -363,20 +764,32 @@ export class AppDurableObject extends DurableObject<Env> {
         .run();
     }
 
-    return {
-      id: row.id,
-      name: row.name,
-      width: row.width,
-      height: row.height,
-      creator: row.creator,
-      description: row.description,
-      mapTilesData: JSON.parse(row.map_tiles_data) as CustomMapData['mapTilesData'],
-    };
+    return map;
   }
 
-  async updateMap(mapId: string, map: CustomMapData) {
+  async updateMap(
+    mapId: string,
+    map: unknown,
+    sessionId: string,
+    creator: string
+  ): Promise<MutationResult<CustomMapData>> {
     await this.ensureInitialized();
-    const session = this.createSession();
+    const validated = validateCustomMapData(map, creator, mapId);
+    if (!validated.ok) {
+      return { ok: false, status: 400, error: validated.error };
+    }
+
+    const session = this.createDbSession();
+    const row = await this.getMapRow(mapId, session);
+    if (!row) {
+      return { ok: false, status: 404, error: 'Map not found' };
+    }
+
+    const owner = await this.getMapOwnerRow(mapId, session);
+    if (!owner || owner.session_id !== sessionId) {
+      return { ok: false, status: 403, error: 'You do not own this map' };
+    }
+
     await session
       .prepare(
         `
@@ -386,40 +799,41 @@ export class AppDurableObject extends DurableObject<Env> {
         `
       )
       .bind(
-        map.name,
-        map.width,
-        map.height,
-        map.creator,
-        map.description,
-        JSON.stringify(map.mapTilesData),
+        validated.value.name,
+        validated.value.width,
+        validated.value.height,
+        validated.value.creator,
+        validated.value.description,
+        JSON.stringify(validated.value.mapTilesData),
         mapId
       )
       .run();
 
-    const row = await this.getMapRow(mapId, session);
-    if (!row) {
-      return null;
-    }
-
-    return {
-      id: row.id,
-      name: row.name,
-      width: row.width,
-      height: row.height,
-      creator: row.creator,
-      description: row.description,
-      mapTilesData: JSON.parse(row.map_tiles_data) as CustomMapData['mapTilesData'],
-    };
+    return { ok: true, status: 200, value: validated.value };
   }
 
-  async deleteMap(mapId: string) {
+  async deleteMap(
+    mapId: string,
+    sessionId: string
+  ): Promise<MutationResult<{ success: true }>> {
     await this.ensureInitialized();
+    const map = await this.getMapRow(mapId);
+    if (!map) {
+      return { ok: false, status: 404, error: 'Map not found' };
+    }
+
+    const owner = await this.getMapOwnerRow(mapId);
+    if (!owner || owner.session_id !== sessionId) {
+      return { ok: false, status: 403, error: 'You do not own this map' };
+    }
+
     await this.executeBatch([
       this.env.DB.prepare('DELETE FROM maps WHERE id = ?').bind(mapId),
+      this.env.DB.prepare('DELETE FROM map_owners WHERE map_id = ?').bind(mapId),
       this.env.DB.prepare('DELETE FROM stars WHERE map_id = ?').bind(mapId),
     ]);
 
-    return { success: true };
+    return { ok: true, status: 200, value: { success: true } };
   }
 
   async listMapsByOrder(order: 'new' | 'hot' | 'best') {
@@ -457,9 +871,9 @@ export class AppDurableObject extends DurableObject<Env> {
     ).map(mapRowToInfo);
   }
 
-  async toggleStar(userId: string, mapId: string, action: StarAction): Promise<StarResult> {
+  async toggleStar(sessionId: string, mapId: string, action: StarAction): Promise<StarResult> {
     await this.ensureInitialized();
-    const session = this.createSession();
+    const session = this.createDbSession();
     const map = await this.getMapRow(mapId, session);
     if (!map) {
       return { ok: false, status: 404, error: 'Map not found' };
@@ -467,7 +881,7 @@ export class AppDurableObject extends DurableObject<Env> {
 
     const existing = await session
       .prepare('SELECT user_id FROM stars WHERE user_id = ? AND map_id = ?')
-      .bind(userId, mapId)
+      .bind(sessionId, mapId)
       .first<{ user_id: string }>();
 
     if (action === 'increase') {
@@ -477,7 +891,7 @@ export class AppDurableObject extends DurableObject<Env> {
 
       await session
         .prepare('INSERT INTO stars (user_id, map_id) VALUES (?, ?)')
-        .bind(userId, mapId)
+        .bind(sessionId, mapId)
         .run();
       await session
         .prepare('UPDATE maps SET star_count = star_count + 1 WHERE id = ?')
@@ -492,7 +906,7 @@ export class AppDurableObject extends DurableObject<Env> {
 
     await session
       .prepare('DELETE FROM stars WHERE user_id = ? AND map_id = ?')
-      .bind(userId, mapId)
+      .bind(sessionId, mapId)
       .run();
     await session
       .prepare('UPDATE maps SET star_count = MAX(star_count - 1, 0) WHERE id = ?')
@@ -501,12 +915,12 @@ export class AppDurableObject extends DurableObject<Env> {
     return { ok: true, status: 200 };
   }
 
-  async getStarredMaps(userId: string) {
+  async getStarredMaps(sessionId: string) {
     await this.ensureInitialized();
     return (
       await this.queryAll<{ map_id: string }>(
         'SELECT map_id FROM stars WHERE user_id = ?',
-        userId
+        sessionId
       )
     ).map((row) => row.map_id);
   }

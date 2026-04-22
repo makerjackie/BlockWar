@@ -50,7 +50,6 @@ export default function Home() {
     setUsername(normalizedUsername);
     if (typeof window !== 'undefined') {
       localStorage.setItem('username', normalizedUsername);
-      localStorage.removeItem('playerId');
     }
 
     if (redirectTarget) {

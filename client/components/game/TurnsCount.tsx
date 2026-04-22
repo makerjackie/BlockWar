@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import PingTest from '@/components/PingTest';
 import { ArrowLeft, Moon, Sun } from 'lucide-react';
@@ -7,27 +6,21 @@ import { useThemeMode } from '@/context/ThemeModeContext';
 interface TurnsCountProps {
   count: number;
   handleReturnClick: any;
+  latencyMs?: number | null;
+  connectionState?: 'connecting' | 'connected' | 'reconnecting';
 }
 
 function TurnsCount(props: TurnsCountProps) {
-  const { count, handleReturnClick } = props;
+  const { count, handleReturnClick, latencyMs, connectionState } = props;
   const { t } = useTranslation();
   const { mode, toggleMode } = useThemeMode();
-  const [showPingTest, setShowPingTest] = useState(false);
 
   const displayTurnsCount = Math.floor(count / 2);
   const themeToggleLabel =
     mode === 'dark' ? t('switch-to-light') : t('switch-to-dark');
 
-  const handleDoubleClick = () => {
-    setShowPingTest(!showPingTest);
-  };
-
   return (
-    <div
-      className='absolute left-px top-0 z-[110] flex flex-col items-start'
-      onDoubleClick={handleDoubleClick}
-    >
+    <div className='absolute left-px top-0 z-[110] flex flex-col items-start gap-1'>
       <div className='menu-container flex items-center gap-2 rounded-none border-l-0 px-2 py-2'>
         <button
           type='button'
@@ -54,7 +47,9 @@ function TurnsCount(props: TurnsCountProps) {
           {t('turn')}: {displayTurnsCount}
         </div>
       </div>
-      {showPingTest && <PingTest />}
+      {connectionState ? (
+        <PingTest ping={latencyMs ?? null} connectionState={connectionState} />
+      ) : null}
     </div>
   );
 }

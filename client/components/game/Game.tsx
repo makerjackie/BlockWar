@@ -8,7 +8,12 @@ import { useGame, useGameDispatch } from '@/context/GameContext';
 import TutorialGuide from './TutorialGuide';
 import StrategistHint from './StrategistHint';
 
-export default function Game() {
+interface GameProps {
+  latencyMs: number | null;
+  connectionState: 'connecting' | 'connected' | 'reconnecting';
+}
+
+export default function Game({ latencyMs, connectionState }: GameProps) {
   const { room, socketRef, myPlayerId, turnsCount, leaderBoardData } =
     useGame();
   const { setOpenOverDialog, setDialogContent, setIsSurrendered } =
@@ -29,7 +34,12 @@ export default function Game() {
 
   return (
     <div className='Game'>
-      <TurnsCount count={turnsCount} handleReturnClick={handleReturnClick} />
+      <TurnsCount
+        count={turnsCount}
+        handleReturnClick={handleReturnClick}
+        latencyMs={latencyMs}
+        connectionState={connectionState}
+      />
       <StrategistHint />
       <LeaderBoard
         leaderBoardTable={leaderBoardData}

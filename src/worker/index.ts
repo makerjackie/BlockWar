@@ -1,4 +1,4 @@
-import { Hono } from 'hono';
+import { Hono, type Context } from 'hono';
 import { normalizeRoomPreset } from '@shared/game/room-presets';
 import { resolveRoomName } from '@shared/game/room-names';
 import { AppDurableObject } from './app-do';
@@ -8,14 +8,50 @@ type Env = {
   Bindings: Cloudflare.Env;
 };
 
+type SessionPayload = {
+  username?: string;
+};
+
 function hasFileExtension(pathname: string) {
   const lastSegment = pathname.split('/').at(-1) ?? '';
   return lastSegment.includes('.');
 }
 
+async function requireSession(c: Context<Env>) {
+  const session = await c.env.APP
+    .getByName('global')
+    .getSession(c.req.header('x-blockwar-session'));
+
+  if (!session) {
+    return null;
+  }
+
+  return session;
+}
+
 const api = new Hono<Env>();
 
 api.get('/ping', (c) => c.json(''));
+
+api.post('/session', async (c) => {
+  const rawBody = await c.req.json<SessionPayload>().catch(() => null);
+  const username = rawBody?.username;
+  if (!username || !username.trim()) {
+    return c.json({ error: 'Username is required' }, 400);
+  }
+
+  try {
+    const session = await c.env.APP
+      .getByName('global')
+      .ensureSession(c.req.header('x-blockwar-session'), username);
+    return c.json({
+      token: session.token,
+      username: session.username,
+    });
+  } catch (error) {
+    return c.json({ error: 'Username is required' }, 400);
+  }
+});
 
 api.get('/get_rooms', async (c) => {
   return c.json(await c.env.APP.getByName('global').listRooms());
@@ -41,9 +77,19 @@ api.get('/maps', async (c) => {
 });
 
 api.post('/maps', async (c) => {
+  const session = await requireSession(c);
+  if (!session) {
+    return c.json({ error: 'Unauthorized' }, 401);
+  }
+
   const body = await c.req.json();
-  const result = await c.env.APP.getByName('global').createMap(body);
-  return c.json(result);
+  const result = await c.env.APP
+    .getByName('global')
+    .createMap(body, session.id, session.username);
+  if (!result.ok) {
+    return c.json({ error: result.error }, result.status);
+  }
+  return c.json(result.value);
 });
 
 api.get('/maps/:id', async (c) => {
@@ -55,16 +101,34 @@ api.get('/maps/:id', async (c) => {
 });
 
 api.put('/maps/:id', async (c) => {
+  const session = await requireSession(c);
+  if (!session) {
+    return c.json({ error: 'Unauthorized' }, 401);
+  }
+
   const body = await c.req.json();
-  return c.json(
-    await c.env.APP.getByName('global').updateMap(c.req.param('id'), body)
-  );
+  const result = await c.env.APP
+    .getByName('global')
+    .updateMap(c.req.param('id'), body, session.id, session.username);
+  if (!result.ok) {
+    return c.json({ error: result.error }, result.status);
+  }
+  return c.json(result.value);
 });
 
 api.delete('/maps/:id', async (c) => {
-  return c.json(
-    await c.env.APP.getByName('global').deleteMap(c.req.param('id'))
-  );
+  const session = await requireSession(c);
+  if (!session) {
+    return c.json({ error: 'Unauthorized' }, 401);
+  }
+
+  const result = await c.env.APP
+    .getByName('global')
+    .deleteMap(c.req.param('id'), session.id);
+  if (!result.ok) {
+    return c.json({ error: result.error }, result.status);
+  }
+  return c.json(result.value);
 });
 
 api.get('/new', async (c) =>
@@ -83,20 +147,26 @@ api.get('/search', async (c) => {
 });
 
 api.post('/toggleStar', async (c) => {
-  const { userId, mapId, action } = await c.req.json<{
-    userId?: string;
+  const session = await requireSession(c);
+  if (!session) {
+    return c.json({ error: 'Unauthorized' }, 401);
+  }
+
+  const { mapId, action } = await c.req.json<{
     mapId?: string;
     action?: string;
   }>();
 
-  if (!userId || !mapId || !action) {
+  if (!mapId || !action) {
     return c.json({ error: 'Invalid request payload' }, 400);
   }
   if (action !== 'increase' && action !== 'decrease') {
     return c.json({ error: 'Invalid star action' }, 400);
   }
 
-  const result = await c.env.APP.getByName('global').toggleStar(userId, mapId, action);
+  const result = await c.env.APP
+    .getByName('global')
+    .toggleStar(session.id, mapId, action);
   if (!result.ok) {
     return c.json({ error: result.error }, result.status);
   }
@@ -104,11 +174,12 @@ api.post('/toggleStar', async (c) => {
 });
 
 api.get('/starredMaps', async (c) => {
-  const userId = c.req.query('userId');
-  if (!userId) {
-    return c.json({ error: 'User ID is required' }, 400);
+  const session = await requireSession(c);
+  if (!session) {
+    return c.json({ error: 'Unauthorized' }, 401);
   }
-  return c.json(await c.env.APP.getByName('global').getStarredMaps(userId));
+
+  return c.json(await c.env.APP.getByName('global').getStarredMaps(session.id));
 });
 
 const app = new Hono<Env>();

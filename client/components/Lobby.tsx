@@ -30,7 +30,6 @@ function Lobby() {
   const { t, i18n } = useTranslation();
 
   useEffect(() => {
-    console.log('fetching rooms from: ', process.env.NEXT_PUBLIC_SERVER_API);
     const fetchRooms = async () => {
       try {
         const res = await fetch(

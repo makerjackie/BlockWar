@@ -14,6 +14,7 @@ interface PlayerTableProps {
   disabled_ui: boolean;
   canManageBots: boolean;
   warringStatesMode: boolean;
+  onHostOnlyInteraction?: () => void;
 }
 
 function comparePlayers(a: Player, b: Player, myPlayerId: string) {
@@ -45,6 +46,7 @@ function PlayerTable(props: PlayerTableProps) {
     disabled_ui,
     canManageBots,
     warringStatesMode,
+    onHostOnlyInteraction,
   } = props;
   const { t } = useTranslation();
   const [selectedPlayerId, setSelectedPlayerId] = useState('');
@@ -119,7 +121,12 @@ function PlayerTable(props: PlayerTableProps) {
                     type='button'
                     key={player.id}
                     onClick={() => {
-                      if (!canSelect) return;
+                      if (!canSelect) {
+                        if (disabled_ui) {
+                          onHostOnlyInteraction?.();
+                        }
+                        return;
+                      }
                       setSelectedPlayerId((current) => (current === player.id ? '' : player.id));
                     }}
                     className={`flex min-h-10 w-full items-center justify-between gap-3 border-l-2 bg-zinc-950/80 px-3 py-2 text-left transition ${

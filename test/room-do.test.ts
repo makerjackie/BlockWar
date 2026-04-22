@@ -49,6 +49,31 @@ async function createStartedRoom(instance: RoomDurableObject, roomId: string) {
 }
 
 describe('RoomDurableObject', () => {
+  it('echoes application ping packets over the room socket', async () => {
+    const roomId = `room-${crypto.randomUUID().slice(0, 8)}`;
+    const stub = env.ROOMS.getByName(roomId);
+
+    await runInDurableObject(
+      stub,
+      async (instance: RoomDurableObject) => {
+        const events = captureEvents(instance);
+        const room = await (instance as any).ensureRoom(roomId);
+        room.players.push(new Player('player-a', 'socket-a', 'Alice', 1, 1, true));
+
+        await (instance as any).handlePacket('socket-a', {
+          type: 'ping',
+          data: ['ping-1'],
+        });
+
+        expect(events).toContainEqual({
+          connectionId: 'socket-a',
+          event: 'pong',
+          data: ['ping-1'],
+        });
+      }
+    );
+  });
+
   it('starts a game and advances turns', async () => {
     const roomId = `room-${crypto.randomUUID().slice(0, 8)}`;
     const stub = env.ROOMS.getByName(roomId);
@@ -398,7 +423,7 @@ describe('RoomDurableObject', () => {
     );
   });
 
-  it('cleans a started room immediately when every player disconnects', async () => {
+  it('keeps a started room alive during disconnect grace', async () => {
     const roomId = `room-${crypto.randomUUID().slice(0, 8)}`;
     const stub = env.ROOMS.getByName(roomId);
 
@@ -410,9 +435,85 @@ describe('RoomDurableObject', () => {
         await (instance as any).handleDisconnect('socket-a');
         await (instance as any).handleDisconnect('socket-b');
 
-        expect(room.gameStarted).toBe(false);
-        expect(room.players).toHaveLength(0);
-        expect(await (instance as any).app.getRoom(roomId)).toBeNull();
+        expect(room.gameStarted).toBe(true);
+        expect(room.players).toHaveLength(2);
+        expect(room.players.every((player: Player) => player.disconnected)).toBe(
+          true
+        );
+      }
+    );
+  });
+
+  it('lets an in-game player reconnect before the disconnect grace expires', async () => {
+    const roomId = `room-${crypto.randomUUID().slice(0, 8)}`;
+    const stub = env.ROOMS.getByName(roomId);
+
+    await runInDurableObject(
+      stub,
+      async (instance: RoomDurableObject) => {
+        const { events, room } = await createStartedRoom(instance, roomId);
+        const player = room.players[0];
+        const reconnectToken = await (instance as any).app.issueReconnectToken(
+          'session-a',
+          roomId,
+          player.id
+        );
+        const originalLandCount = player.land.length;
+
+        await (instance as any).handleDisconnect('socket-a');
+        expect(player.disconnected).toBe(true);
+        expect(player.isDead).toBe(false);
+        expect(player.land).toHaveLength(originalLandCount);
+
+        await (instance as any).handleJoin(
+          'socket-a-reconnected',
+          roomId,
+          'Alice',
+          'session-a',
+          reconnectToken
+        );
+
+        expect(player.disconnected).toBe(false);
+        expect(player.socket_id).toBe('socket-a-reconnected');
+        expect(room.gameStarted).toBe(true);
+        expect(
+          events.some(
+            (item) =>
+              item.event === 'room_message' &&
+              item.data[0] &&
+              (item.data[0] as { username?: string }).username === 'Alice' &&
+              item.data[1] === 'reconnected.'
+          )
+        ).toBe(true);
+      }
+    );
+  });
+
+  it('neutralizes an in-game player after the disconnect grace expires', async () => {
+    const roomId = `room-${crypto.randomUUID().slice(0, 8)}`;
+    const stub = env.ROOMS.getByName(roomId);
+
+    await runInDurableObject(
+      stub,
+      async (instance: RoomDurableObject) => {
+        const { events, room } = await createStartedRoom(instance, roomId);
+        const player = room.players[0];
+
+        await (instance as any).handleDisconnect('socket-a');
+        await (instance as any).expireDisconnectedPlayer(player.id);
+
+        expect(player.disconnected).toBe(true);
+        expect(player.isDead).toBe(true);
+        expect(player.land).toHaveLength(0);
+        expect(
+          events.some(
+            (item) =>
+              item.event === 'room_message' &&
+              item.data[0] &&
+              (item.data[0] as { username?: string }).username === 'Alice' &&
+              item.data[1] === 'timed out.'
+          )
+        ).toBe(true);
       }
     );
   });
@@ -438,6 +539,7 @@ describe('RoomDurableObject', () => {
           'socket-c',
           roomId,
           'Carol',
+          'session-c',
           ''
         );
 
@@ -460,7 +562,13 @@ describe('RoomDurableObject', () => {
         const room = await (instance as any).ensureRoom(roomId);
         room.roomName = DEFAULT_ROOM_NAME;
 
-        await (instance as any).handleJoin('socket-a', roomId, 'Alice', '');
+        await (instance as any).handleJoin(
+          'socket-a',
+          roomId,
+          'Alice',
+          'session-a',
+          ''
+        );
 
         expect(room.roomName).toBe(formatCreatorRoomName('Alice'));
         expect(room.players[0]?.isRoomHost).toBe(true);
@@ -513,6 +621,37 @@ describe('RoomDurableObject', () => {
 
         expect(room.players.find((player: Player) => player.id === 'player-b')?.isRoomHost).toBe(true);
         expect(room.players.find((player: Player) => player.id === 'player-a')?.isRoomHost).toBe(false);
+      }
+    );
+  });
+
+  it('reassigns the host when the current host disconnects', async () => {
+    const roomId = `room-${crypto.randomUUID().slice(0, 8)}`;
+    const stub = env.ROOMS.getByName(roomId);
+
+    await runInDurableObject(
+      stub,
+      async (instance: RoomDurableObject) => {
+        const events = captureEvents(instance);
+        const room = await (instance as any).ensureRoom(roomId);
+        room.players.push(
+          new Player('player-a', 'socket-a', 'Alice', 1, 1, true),
+          new Player('player-b', 'socket-b', 'Bob', 2, 2),
+          new Player('player-c', 'socket-c', 'Carol', 3, 3)
+        );
+
+        await (instance as any).handleDisconnect('socket-a');
+
+        expect(room.players.find((player: Player) => player.id === 'player-b')?.isRoomHost).toBe(true);
+        expect(room.players.some((player: Player) => player.id === 'player-a')).toBe(false);
+        expect(
+          events.some(
+            (item) =>
+              item.event === 'host_reassigned' &&
+              (item.data[0] as { username?: string })?.username === 'Alice' &&
+              (item.data[1] as { username?: string })?.username === 'Bob'
+          )
+        ).toBe(true);
       }
     );
   });
@@ -589,6 +728,40 @@ describe('RoomDurableObject', () => {
               item.data[1] === 'disconnected.'
           )
         ).toBe(true);
+      }
+    );
+  });
+
+  it('ignores the follow-up socket close after an explicit in-game leave', async () => {
+    const roomId = `room-${crypto.randomUUID().slice(0, 8)}`;
+    const stub = env.ROOMS.getByName(roomId);
+
+    await runInDurableObject(
+      stub,
+      async (instance: RoomDurableObject) => {
+        const { events, room } = await createStartedRoom(instance, roomId);
+        (instance as any).sockets.set('socket-a', {
+          close: () => undefined,
+        });
+
+        await (instance as any).handlePacket('socket-a', {
+          type: 'leave_room',
+          data: [],
+        });
+        await (instance as any).handleDisconnect('socket-a');
+
+        expect(room.players.find((player: Player) => player.id === 'player-a')?.disconnected).toBe(
+          true
+        );
+        expect(
+          events.filter(
+            (item) =>
+              item.event === 'room_message' &&
+              item.data[0] &&
+              (item.data[0] as { username?: string }).username === 'Alice' &&
+              item.data[1] === 'disconnected.'
+          )
+        ).toHaveLength(1);
       }
     );
   });

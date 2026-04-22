@@ -6,6 +6,7 @@ import {
   normalizeMapExplorerResponse,
   type MapExplorerEndpoint,
 } from '@/lib/map-explorer';
+import { buildSessionHeaders, ensurePlayerSession } from '@/lib/session';
 import { useTranslation } from 'next-i18next';
 import {
   Eye,
@@ -95,13 +96,13 @@ const ListItem = memo<ListItemProps>(function MemoItems(props) {
 });
 
 interface MapExplorerProps {
-  userId: string;
+  username: string;
   onSelect?: (mapId: string) => void;
 }
 
 const tabLabels: MapExplorerEndpoint[] = ['new', 'hot', 'best', 'search'];
 
-export default function MapExplorer({ userId, onSelect }: MapExplorerProps) {
+export default function MapExplorer({ username, onSelect }: MapExplorerProps) {
   const [tabIndex, setTabIndex] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
   const [maps, setMaps] = useState<CustomMapInfo[] | undefined>(undefined);
@@ -111,11 +112,16 @@ export default function MapExplorer({ userId, onSelect }: MapExplorerProps) {
   const { t } = useTranslation();
 
   useEffect(() => {
-    if (!userId) return;
+    if (!username) return;
     const fetchStarredMaps = async () => {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_SERVER_API}/starredMaps?userId=${userId}`
-      );
+      const sessionToken = await ensurePlayerSession(username);
+      const response = await fetch(`${process.env.NEXT_PUBLIC_SERVER_API}/starredMaps`, {
+        headers: buildSessionHeaders(sessionToken),
+      });
+      if (!response.ok) {
+        setStarredMaps({});
+        return;
+      }
       const data: string[] = await response.json();
 
       const nextStarredMaps = data.reduce(
@@ -129,7 +135,7 @@ export default function MapExplorer({ userId, onSelect }: MapExplorerProps) {
     };
 
     fetchStarredMaps();
-  }, [userId]);
+  }, [username]);
 
   useEffect(() => {
     let cancelled = false;
@@ -206,13 +212,14 @@ export default function MapExplorer({ userId, onSelect }: MapExplorerProps) {
           [mapId]: !isStarred,
         }));
 
+        const sessionToken = await ensurePlayerSession(username);
         await fetch(`${process.env.NEXT_PUBLIC_SERVER_API}/toggleStar`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            ...buildSessionHeaders(sessionToken),
           },
           body: JSON.stringify({
-            userId,
             mapId,
             action,
           }),
@@ -221,7 +228,7 @@ export default function MapExplorer({ userId, onSelect }: MapExplorerProps) {
         console.log('star error', error);
       }
     },
-    [starredMaps, userId]
+    [starredMaps, username]
   );
 
   return (

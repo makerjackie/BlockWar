@@ -188,4 +188,33 @@ describe('AppDurableObject', () => {
       expect(replayId).toBeNull();
     });
   });
+
+  it('scopes reconnect tokens to the issuing session and room', async () => {
+    const stub = env.APP.getByName(`app-${crypto.randomUUID().slice(0, 8)}`);
+
+    await runInDurableObject(stub, async (instance: AppDurableObject) => {
+      const ownerSession = await instance.ensureSession(null, 'Alice');
+      const otherSession = await instance.ensureSession(null, 'Bob');
+      const token = await instance.issueReconnectToken(
+        ownerSession.id,
+        'room-alpha',
+        'player-a'
+      );
+
+      expect(
+        await instance.resolveReconnectToken(token, 'room-alpha', ownerSession.id)
+      ).toBe('player-a');
+      expect(
+        await instance.resolveReconnectToken(token, 'room-beta', ownerSession.id)
+      ).toBeNull();
+      expect(
+        await instance.resolveReconnectToken(token, 'room-alpha', otherSession.id)
+      ).toBeNull();
+
+      await instance.revokeReconnectToken('room-alpha', 'player-a');
+      expect(
+        await instance.resolveReconnectToken(token, 'room-alpha', ownerSession.id)
+      ).toBeNull();
+    });
+  });
 });

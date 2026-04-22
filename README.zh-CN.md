@@ -27,6 +27,7 @@
 ## 主要能力
 
 - 基于原生 WebSocket 的实时多人房间。
+- 服务端签发的游客会话：用于更安全的断线重连、地图所有权和收藏行为。
 - 大厅、创建房间、转移房主、队伍、观战、准备/强制开局、按需添加机器人、房间聊天。
 - 内置更新日志页 `/changelog`：集中展示简明的重要更新。
 - 独立新手教程页 `/tutorial`：固定 7 步练习地图，并在完成后写入 onboarding completed。
@@ -50,6 +51,7 @@
 - **实时房间：** `RoomDurableObject` 负责房间状态、WebSocket 连接、游戏 tick、玩家操作和回放采集。
 - **应用协调：** `AppDurableObject` 负责房间摘要与持久化操作的集中入口。
 - **持久化：** Cloudflare D1 保存房间、自定义地图、收藏关系和回放记录；表结构由 `AppDurableObject` 在运行时初始化。
+- **身份模型：** Worker 会为浏览器签发游客会话，用该会话校验地图写入/收藏，并按房间座位轮换重连 token。
 - **共享游戏逻辑：** 核心游戏类型和引擎代码位于 `src/shared/game/`。
 - **静态资源：** Vite 将 SPA 构建到 `dist/client`；Wrangler 通过 `ASSETS` binding 提供资源，并支持 SPA fallback。
 
@@ -79,15 +81,16 @@
 | 接口 | 用途 |
 | --- | --- |
 | `GET /api/ping` | 客户端使用的健康检查。 |
+| `POST /api/session` | 为当前用户名创建或刷新游客会话，并返回受保护接口所需的 session token。 |
 | `GET /api/get_rooms` | 获取当前由应用协调器保存的活跃房间。 |
 | `GET /api/create_room?name=...&creator=...&preset=warring_state` | 创建房间并返回 room id；支持 `standard`、`warring_state` 和 `tutorial` 三种 preset；当未传 `name` 时，会默认使用 `【creator】的房间`。 |
 | `GET /api/get_replay/:replayId` | 获取已保存的回放。 |
-| `GET /api/maps` / `POST /api/maps` | 获取或创建自定义地图。 |
-| `GET /api/maps/:id` / `PUT /api/maps/:id` / `DELETE /api/maps/:id` | 读取、更新或删除自定义地图。 |
+| `GET /api/maps` / `POST /api/maps` | 获取自定义地图，或通过 `x-blockwar-session` 为当前会话创建地图。 |
+| `GET /api/maps/:id` / `PUT /api/maps/:id` / `DELETE /api/maps/:id` | 读取自定义地图，或在当前会话拥有该地图时更新/删除。 |
 | `GET /api/new` / `GET /api/hot` / `GET /api/best` | 按创建时间、浏览量或收藏数列出地图。 |
 | `GET /api/search?q=...` | 按名称或 id 搜索地图。 |
-| `POST /api/toggleStar` | 为某个用户收藏或取消收藏地图。 |
-| `GET /api/starredMaps?userId=...` | 获取某个用户收藏的地图 id 列表。 |
+| `POST /api/toggleStar` | 通过 `x-blockwar-session` 为当前会话收藏或取消收藏地图。 |
+| `GET /api/starredMaps` | 通过 `x-blockwar-session` 获取当前会话收藏的地图 id 列表。 |
 | `GET /ws/rooms/:roomId` | socket.io 兼容层使用的 WebSocket 入口。 |
 
 ## 本地开发

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
 import { io } from 'socket.io-client';
 import { useTranslation } from 'next-i18next';
@@ -19,10 +19,17 @@ import {
 import { AttackQueue } from '@/lib/attack-queue';
 import Game from '@/components/game/Game';
 import { useGame, useGameDispatch } from '@/context/GameContext';
-import GameSetting from '@/components/GameSetting';
 import GameLoading from '@/components/GameLoading';
+import GameSetting from '@/components/GameSetting';
+import RoomSessionGate from '@/components/RoomSessionGate';
 import { soundEffects } from '@/lib/sound-effects';
-import { resolveRoomIdentity } from '@/lib/room-identity';
+import {
+  clearReconnectToken,
+  getStoredReconnectToken,
+  resolveRoomIdentity,
+  storeReconnectToken,
+} from '@/lib/room-identity';
+import { ensurePlayerSession } from '@/lib/session';
 
 const debugLog = (...args: unknown[]) => {
   if (process.env.NODE_ENV !== 'production') {
@@ -30,13 +37,35 @@ const debugLog = (...args: unknown[]) => {
   }
 };
 
+type RoomSessionPhase =
+  | 'joining'
+  | 'joined'
+  | 'reconnecting'
+  | 'leaving'
+  | 'rejected';
+
 function GamingRoom() {
   const [messages, setMessages] = useState<Message[]>([]);
-  const myPlayerIdRef = useRef<string>(''); // fix useEffect don't get newest myPlayerId
+  const [sessionToken, setSessionToken] = useState('');
+  const [latencyMs, setLatencyMs] = useState<number | null>(null);
+  const [connectionState, setConnectionState] = useState<
+    'connecting' | 'connected' | 'reconnecting'
+  >('connecting');
+  const [roomSessionPhase, setRoomSessionPhase] =
+    useState<RoomSessionPhase>('joining');
+  const [hasJoinedRoom, setHasJoinedRoom] = useState(false);
+  const [reconnectAttempt, setReconnectAttempt] = useState(0);
+  const [reconnectDelayMs, setReconnectDelayMs] = useState<number | null>(null);
+  const [joinRejectionMessage, setJoinRejectionMessage] = useState('');
+  const myPlayerIdRef = useRef<string>('');
+  const wasRoomHostRef = useRef(false);
+  const hasResolvedRoomHostRef = useRef(false);
+  const hasJoinedRoomRef = useRef(false);
+  const intentionalDisconnectRef = useRef(false);
 
   const router = useRouter();
   const push = router.push;
-  const roomId = router.query.roomId as string;
+  const roomId = typeof router.query.roomId === 'string' ? router.query.roomId : '';
 
   const { t } = useTranslation();
 
@@ -44,7 +73,6 @@ function GamingRoom() {
     room,
     roomUiStatus,
     socketRef,
-    myPlayerId,
     attackQueueRef,
     myUserName,
     snackState,
@@ -67,31 +95,153 @@ function GamingRoom() {
     setMyUserName,
   } = useGameDispatch();
 
+  const returnToLobby = useCallback(() => {
+    intentionalDisconnectRef.current = true;
+    if (roomId) {
+      clearReconnectToken(roomId);
+    }
+    socketRef.current?.disconnect();
+    void push('/');
+  }, [push, roomId, socketRef]);
+
+  const confirmRoomJoin = useCallback(
+    (nextRoom: Room) => {
+      if (intentionalDisconnectRef.current) {
+        return;
+      }
+
+      if (!hasJoinedRoomRef.current) {
+        hasJoinedRoomRef.current = true;
+        setHasJoinedRoom(true);
+      }
+
+      if (myPlayerIdRef.current && nextRoom.players) {
+        const player = nextRoom.players.find(
+          (roomPlayer) => roomPlayer.id === myPlayerIdRef.current
+        );
+        if (player) {
+          setTeam(player.team);
+          debugLog('set team', player.team);
+
+          if (
+            hasResolvedRoomHostRef.current &&
+            player.isRoomHost &&
+            !wasRoomHostRef.current
+          ) {
+            snackStateDispatch({
+              type: 'update',
+              title: t('room-host-promoted-title'),
+              status: 'success',
+              message: t('room-host-promoted-message'),
+              duration: 3000,
+            });
+          }
+
+          wasRoomHostRef.current = player.isRoomHost;
+          hasResolvedRoomHostRef.current = true;
+        } else {
+          wasRoomHostRef.current = false;
+        }
+      } else {
+        wasRoomHostRef.current = false;
+      }
+
+      setReconnectAttempt(0);
+      setReconnectDelayMs(null);
+      setRoomSessionPhase('joined');
+    },
+    [setTeam, snackStateDispatch, t]
+  );
+
+  const handleLeaveRoom = useCallback(() => {
+    intentionalDisconnectRef.current = true;
+    setRoomSessionPhase('leaving');
+    if (roomId) {
+      clearReconnectToken(roomId);
+    }
+    socketRef.current?.emit('leave_room');
+
+    window.setTimeout(() => {
+      socketRef.current?.disconnect();
+      void router.push('/');
+    }, 120);
+  }, [roomId, router, socketRef]);
+
   useEffect(() => {
     if (!roomId) {
       return;
     }
 
-    const { username, playerId, requiresUsername } = resolveRoomIdentity(
-      localStorage.getItem('username'),
-      localStorage.getItem('playerId')
+    const { username, requiresUsername } = resolveRoomIdentity(
+      localStorage.getItem('username')
     );
 
     if (requiresUsername) {
-      localStorage.removeItem('playerId');
       void push(`/?redirect=${encodeURIComponent(`/rooms/${roomId}`)}`);
       return;
     }
 
     setMyUserName(username);
-    setMyPlayerId(playerId);
-    myPlayerIdRef.current = playerId;
-  }, [roomId, push, setMyPlayerId, setMyUserName]);
+    setSessionToken('');
+    setMyPlayerId('');
+    myPlayerIdRef.current = '';
+    wasRoomHostRef.current = false;
+    hasResolvedRoomHostRef.current = false;
+    hasJoinedRoomRef.current = false;
+    intentionalDisconnectRef.current = false;
+    setHasJoinedRoom(false);
+    setReconnectAttempt(0);
+    setReconnectDelayMs(null);
+    setJoinRejectionMessage('');
+    setMessages([]);
+    setLatencyMs(null);
+    setConnectionState('connecting');
+    setRoomSessionPhase('joining');
+    roomDispatch({ type: 'update', payload: new Room(roomId) });
+    setRoomUiStatus(RoomUiStatus.gameSetting);
+
+    let cancelled = false;
+
+    void ensurePlayerSession(username)
+      .then((token) => {
+        if (!cancelled) {
+          setSessionToken(token);
+        }
+      })
+      .catch((error) => {
+        console.error('Failed to initialize room session', error);
+        if (!cancelled) {
+          setJoinRejectionMessage('Unable to initialize player session.');
+          setRoomSessionPhase('rejected');
+          snackStateDispatch({
+            type: 'update',
+            title: 'Connect Error',
+            status: 'error',
+            message: 'Please refresh the App.',
+            duration: null,
+          });
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    push,
+    roomDispatch,
+    roomId,
+    setMyPlayerId,
+    setMyUserName,
+    setRoomUiStatus,
+    snackStateDispatch,
+    t,
+  ]);
 
   useEffect(() => {
-    // Game Logic Init
-    if (!roomId) return;
-    if (!myUserName) return;
+    if (!roomId || !myUserName || !sessionToken) {
+      return;
+    }
+
     soundEffects.init();
 
     attackQueueRef.current = new AttackQueue((route) => {
@@ -103,31 +253,60 @@ function GamingRoom() {
       });
     });
 
-    // myPlayerId could be null for first connect
+    const reconnectToken = getStoredReconnectToken(roomId);
+    setConnectionState('connecting');
+    setLatencyMs(null);
+    setRoomSessionPhase(hasJoinedRoomRef.current ? 'reconnecting' : 'joining');
+
     socketRef.current = io(process.env.NEXT_PUBLIC_SERVER_API, {
       query: {
-        roomId: roomId,
-        username: myUserName,
-        myPlayerId: myPlayerIdRef.current,
+        roomId,
+        sessionToken,
+        reconnectToken,
       },
     });
-    let socket = socketRef.current;
-    socket.emit('get_room_info');
+    const socket = socketRef.current;
 
-    // set up socket event listeners
     socket.on('connect', () => {
+      setConnectionState('connected');
+      if (!hasJoinedRoomRef.current) {
+        setRoomSessionPhase('joining');
+      }
       debugLog(`socket client connect to server: ${socket.id}`);
     });
-    // get player id when first connect
-    socket.on('set_player_id', (playerId: string) => {
-      debugLog(`set_player_id: ${playerId}`);
-      setMyPlayerId(playerId);
-      myPlayerIdRef.current = playerId;
-      localStorage.setItem('playerId', playerId);
+
+    socket.on('reconnect_attempt', (attempt: number, delay: number) => {
+      setConnectionState('reconnecting');
+      setReconnectAttempt(attempt);
+      setReconnectDelayMs(delay);
+      setRoomSessionPhase(hasJoinedRoomRef.current ? 'reconnecting' : 'joining');
     });
+
+    socket.on('latency', (nextLatency: number | null) => {
+      setLatencyMs(nextLatency);
+    });
+
+    socket.on(
+      'set_player_id',
+      (playerId: string, nextReconnectToken?: string | null) => {
+        debugLog(`set_player_id: ${playerId}`);
+        setMyPlayerId(playerId);
+        myPlayerIdRef.current = playerId;
+
+        const normalizedReconnectToken = (nextReconnectToken ?? '').trim();
+        if (roomId) {
+          storeReconnectToken(roomId, normalizedReconnectToken);
+        }
+        socket.updateQuery({
+          reconnectToken: normalizedReconnectToken,
+        });
+      }
+    );
+
     socket.on('game_started', (initGameInfo: initGameInfo) => {
       debugLog('Game started:', initGameInfo);
       soundEffects.play('gameStart');
+      setRoomUiStatus(RoomUiStatus.loading);
       setInitGameInfo(initGameInfo);
       setIsSurrendered(false);
       setDialogContent([[null], '', null]);
@@ -152,50 +331,61 @@ function GamingRoom() {
         mapHeight: initGameInfo.mapHeight,
       });
     });
+
     socket.on('update_room', (room: Room) => {
       debugLog('update_room');
       debugLog(room);
       debugLog(myPlayerIdRef.current);
-      // if my player id  equal to room's one of player ,setSpectating from room player
-      if (myPlayerIdRef.current && room.players) {
-        let player = room.players.find(
-          (player) => player.id === myPlayerIdRef.current
-        );
-        if (player) {
-          setTeam(player.team);
-          debugLog('set team', player.team);
-        }
-      }
+      confirmRoomJoin(room);
       roomDispatch({ type: 'update', payload: room });
     });
 
     socket.on('error', (title: string, message: string) => {
       snackStateDispatch({
         type: 'update',
-        title: title,
-        message: message,
+        title,
+        message,
         duration: 3000,
       });
     });
 
     socket.on('room_message', (player: UserData | null, content: string) => {
-      setMessages((messages: any) => [...messages, new Message(player, content)]);
+      setMessages((messages: Message[]) => [
+        ...messages,
+        new Message(player, content),
+      ]);
     });
+
     socket.on('captured', (player1: UserData, player2: UserData) => {
       if (player2.id !== myPlayerIdRef.current) {
         soundEffects.play('capture');
       }
-      setMessages((messages: any) => [
+      setMessages((messages: Message[]) => [
         ...messages,
         new Message(player1, t('captured'), player2),
       ]);
     });
+
     socket.on('host_modification', (player1: UserData, player2: UserData) => {
-      setMessages((messages: any) => [
+      setMessages((messages: Message[]) => [
         ...messages,
         new Message(player1, t('transfer-host-to'), player2),
       ]);
     });
+
+    socket.on('host_reassigned', (player1: UserData, player2: UserData) => {
+      setMessages((messages: Message[]) => [
+        ...messages,
+        new Message(
+          null,
+          t('host-reassigned-message', {
+            from: player1.username,
+            to: player2.username,
+          })
+        ),
+      ]);
+    });
+
     socket.on('game_over', (capturedBy: UserData) => {
       debugLog(`game_over: ${capturedBy.username}`);
       soundEffects.play('defeat');
@@ -203,6 +393,7 @@ function GamingRoom() {
       setRoomUiStatus(RoomUiStatus.gameOverConfirm);
       setDialogContent([[capturedBy], 'game_over', null]);
     });
+
     socket.on('game_ended', (winner: [UserData], replayLink: string | null) => {
       debugLog(`game_ended: ${winner.map((x) => x.username)} ${replayLink}`);
       if (winner.some((player) => player.id === myPlayerIdRef.current)) {
@@ -228,7 +419,6 @@ function GamingRoom() {
         turnsCount: number,
         leaderBoardData: LeaderBoardTable
       ) => {
-        // console.log(`game_update: ${turnsCount}`, new Date().toISOString());
         debugLog(`game_update: ${turnsCount}`);
 
         attackQueueRef.current.allowAttackThisTurn = true;
@@ -238,11 +428,11 @@ function GamingRoom() {
         setLeaderBoardData(leaderBoardData);
 
         if (!attackQueueRef.current.isEmpty()) {
-          let item = attackQueueRef.current.pop();
+          const item = attackQueueRef.current.pop();
           socket.emit('attack', item.from, item.to, item.half, item.requestId);
           attackQueueRef.current.allowAttackThisTurn = false;
           debugLog(
-            `emit attack: `,
+            'emit attack: ',
             item.from,
             item.to,
             item.half,
@@ -264,18 +454,31 @@ function GamingRoom() {
     );
 
     socket.on('reject_join', (message: string) => {
+      intentionalDisconnectRef.current = true;
+      if (roomId) {
+        clearReconnectToken(roomId);
+      }
+      setJoinRejectionMessage(message);
+      setRoomSessionPhase('rejected');
+      socket.disconnect();
+
       snackStateDispatch({
         type: 'update',
         title: t('reject-join'),
         status: 'error',
-        message: 'Please choose another room.',
+        message:
+          message === 'The room is full.'
+            ? t('roomSession.roomFullCopy')
+            : t('roomSession.joinRejectedCopy'),
         duration: null,
       });
-      // router.push(`/`);
     });
 
     socket.on('kicked', () => {
-      localStorage.removeItem('playerId');
+      intentionalDisconnectRef.current = true;
+      if (roomId) {
+        clearReconnectToken(roomId);
+      }
       socket.disconnect();
       snackStateDispatch({
         type: 'update',
@@ -284,53 +487,162 @@ function GamingRoom() {
         message: t('kicked-message'),
         duration: 4000,
       });
-      router.push('/');
+      void router.push('/');
     });
 
     socket.on('connect_error', (error: Error) => {
       debugLog('\nConnection Failed: ' + error);
-      socket.disconnect();
+      if (intentionalDisconnectRef.current) {
+        return;
+      }
 
-      snackStateDispatch({
-        type: 'update',
-        title: 'Connect Error',
-        status: 'error',
-        message: 'Please refresh the App.',
-        duration: null,
-      });
+      setConnectionState('reconnecting');
+      setLatencyMs(null);
+      setRoomSessionPhase(hasJoinedRoomRef.current ? 'reconnecting' : 'joining');
     });
 
-    socket.on('disconnect', () => {
+    socket.on('disconnect', (reason?: string) => {
       debugLog('Disconnected from server.');
+      if (intentionalDisconnectRef.current || reason === 'io client disconnect') {
+        return;
+      }
 
-      snackStateDispatch({
-        type: 'update',
-        title: 'Reconnecting...',
-        status: 'error',
-        message: 'Disconnected from the server',
-        duration: null,
-      });
+      setConnectionState('reconnecting');
+      setLatencyMs(null);
+      setRoomSessionPhase(hasJoinedRoomRef.current ? 'reconnecting' : 'joining');
     });
 
     socket.on('reconnect', () => {
       debugLog('Reconnected to server.');
-      if (room.gameStarted && myPlayerIdRef.current) {
-        socket.emit('reconnect', myPlayerIdRef.current);
-      } else {
-        socket.emit('get_room_info');
-      }
+      setConnectionState('connected');
+      setRoomSessionPhase(hasJoinedRoomRef.current ? 'reconnecting' : 'joining');
     });
 
     return () => {
-      socketRef.current.disconnect();
+      intentionalDisconnectRef.current = true;
+      socketRef.current?.disconnect?.();
     };
-  }, [roomId, myUserName]);
+  }, [
+    attackQueueRef,
+    confirmRoomJoin,
+    mapDataDispatch,
+    mapQueueDataDispatch,
+    myUserName,
+    roomDispatch,
+    roomId,
+    router,
+    sessionToken,
+    setDialogContent,
+    setInitGameInfo,
+    setIsSurrendered,
+    setLeaderBoardData,
+    setMyPlayerId,
+    setOpenOverDialog,
+    setRoomUiStatus,
+    setSelectedMapTileInfo,
+    setTurnsCount,
+    snackStateDispatch,
+    socketRef,
+    t,
+  ]);
 
   useEffect(() => {
     if (room.gameStarted && roomUiStatus === RoomUiStatus.gameSetting) {
       setRoomUiStatus(RoomUiStatus.loading);
     }
-  }, [room, roomUiStatus, setRoomUiStatus]);
+  }, [room.gameStarted, roomUiStatus, setRoomUiStatus]);
+
+  const gateDetail = useMemo(() => {
+    if (roomSessionPhase !== 'reconnecting') {
+      return undefined;
+    }
+
+    const detailParts: string[] = [];
+
+    if (reconnectAttempt > 0) {
+      detailParts.push(t('roomSession.attempt', { count: reconnectAttempt }));
+    }
+
+    if (reconnectDelayMs !== null) {
+      detailParts.push(
+        t('roomSession.retryingIn', {
+          seconds: Math.max(1, Math.ceil(reconnectDelayMs / 1000)),
+        })
+      );
+    }
+
+    return detailParts.join(' / ') || t('roomSession.connectErrorCopy');
+  }, [reconnectAttempt, reconnectDelayMs, roomSessionPhase, t]);
+
+  const gateConfig = useMemo(() => {
+    switch (roomSessionPhase) {
+      case 'leaving':
+        return {
+          tone: 'ember' as const,
+          label: t('roomSession.leavingLabel'),
+          title: t('roomSession.leavingTitle'),
+          description: t('roomSession.leavingCopy'),
+          detail: undefined,
+          action: undefined,
+        };
+      case 'reconnecting':
+        return {
+          tone: 'sky' as const,
+          label: t('roomSession.reconnectingLabel'),
+          title: t('roomSession.reconnectingTitle'),
+          description: t('roomSession.reconnectingCopy'),
+          detail: gateDetail,
+          action: (
+            <button
+              type='button'
+              className='bw-button bw-button-secondary min-h-10 px-4 text-xs'
+              onClick={returnToLobby}
+            >
+              {t('roomSession.returnLobby')}
+            </button>
+          ),
+        };
+      case 'rejected': {
+        const roomIsFull = joinRejectionMessage === 'The room is full.';
+
+        return {
+          tone: 'rose' as const,
+          label: t('reject-join'),
+          title: roomIsFull
+            ? t('roomSession.roomFullTitle')
+            : t('roomSession.joinRejectedTitle'),
+          description: roomIsFull
+            ? t('roomSession.roomFullCopy')
+            : t('roomSession.joinRejectedCopy'),
+          detail: joinRejectionMessage || undefined,
+          action: (
+            <button
+              type='button'
+              className='bw-button bw-button-primary min-h-10 px-4 text-xs'
+              onClick={returnToLobby}
+            >
+              {t('roomSession.returnLobby')}
+            </button>
+          ),
+        };
+      }
+      case 'joined':
+        return null;
+      case 'joining':
+      default:
+        return {
+          tone: 'ember' as const,
+          label: t('roomSession.joiningLabel'),
+          title: t('roomSession.joiningTitle', { roomId }),
+          description: t('roomSession.joiningCopy'),
+          detail: undefined,
+          action: undefined,
+        };
+    }
+  }, [gateDetail, joinRejectionMessage, returnToLobby, roomId, roomSessionPhase, t]);
+
+  const showRoomShell = hasJoinedRoom && roomSessionPhase !== 'rejected';
+  const showGate = gateConfig !== null;
 
   return (
     <div className='app-container'>
@@ -344,28 +656,47 @@ function GamingRoom() {
           snackStateDispatch({ type: 'toggle' });
         }}
       />
-      {roomUiStatus === RoomUiStatus.gameSetting && (
-        <div>
-          <Navbar />
-          <div className='flex min-h-dvh w-full flex-col items-center justify-start px-3 pb-20 pt-[5.75rem] sm:px-4 sm:pb-24 sm:pt-24 lg:justify-center lg:px-6 lg:pb-20 lg:pt-24'>
-            <GameSetting />
-          </div>
-        </div>
-      )}
-      {roomUiStatus === RoomUiStatus.loading && (
-        <div className='center-layout'>
-          <GameLoading />
-        </div>
-      )}
-      {(roomUiStatus === RoomUiStatus.gameRealStarted ||
-        roomUiStatus === RoomUiStatus.gameOverConfirm) && <Game />}
-      <ChatBox
-        socket={socketRef.current}
-        messages={messages}
-        defaultExpanded={
-          roomUiStatus === RoomUiStatus.gameSetting ? false : undefined
-        }
-      />
+      {showRoomShell ? (
+        <>
+          {roomUiStatus === RoomUiStatus.gameSetting && (
+            <div>
+              <Navbar />
+              <div className='flex min-h-dvh w-full flex-col items-center justify-start px-3 pb-20 pt-[5.75rem] sm:px-4 sm:pb-24 sm:pt-24 lg:justify-center lg:px-6 lg:pb-20 lg:pt-24'>
+                <GameSetting onLeaveRoom={handleLeaveRoom} />
+              </div>
+            </div>
+          )}
+          {roomUiStatus === RoomUiStatus.loading && (
+            <div className='center-layout'>
+              <GameLoading />
+            </div>
+          )}
+          {(roomUiStatus === RoomUiStatus.gameRealStarted ||
+            roomUiStatus === RoomUiStatus.gameOverConfirm) && (
+            <Game latencyMs={latencyMs} connectionState={connectionState} />
+          )}
+          <ChatBox
+            socket={socketRef.current}
+            messages={messages}
+            defaultExpanded={
+              roomUiStatus === RoomUiStatus.gameSetting ? false : undefined
+            }
+          />
+        </>
+      ) : null}
+
+      {showGate && gateConfig ? (
+        <RoomSessionGate
+          variant={showRoomShell ? 'overlay' : 'page'}
+          tone={gateConfig.tone}
+          label={gateConfig.label}
+          title={gateConfig.title}
+          description={gateConfig.description}
+          roomId={roomId}
+          detail={gateConfig.detail}
+          action={gateConfig.action}
+        />
+      ) : null}
     </div>
   );
 }

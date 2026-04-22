@@ -6,6 +6,26 @@ declare module 'cloudflare:test' {
   interface ProvidedEnv extends Cloudflare.Env {}
 }
 
+async function createSession(username: string) {
+  const response = await SELF.fetch('http://example.com/api/session', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({ username }),
+  });
+
+  expect(response.ok).toBe(true);
+  return (await response.json()) as { token: string; username: string };
+}
+
+function withSession(token: string, headers: Record<string, string> = {}) {
+  return {
+    ...headers,
+    'x-blockwar-session': token,
+  };
+}
+
 describe('BlockWar API', () => {
   it('lists active rooms and creates new preset rooms', async () => {
     const initialResponse = await SELF.fetch('http://example.com/api/get_rooms');
@@ -111,13 +131,14 @@ describe('BlockWar API', () => {
   });
 
   it('stores maps and star relationships', async () => {
+    const session = await createSession('MapOwner');
     const mapId = `map-${crypto.randomUUID().slice(0, 8)}`;
     const mapPayload = {
       id: mapId,
       name: 'BlockWar Test Map',
       width: 4,
       height: 4,
-      creator: 'tester',
+      creator: 'spoofed-name',
       description: 'Smoke test map',
       mapTilesData: Array.from({ length: 4 }, () =>
         Array.from({ length: 4 }, () => [4, null, 0, false, 0])
@@ -128,6 +149,7 @@ describe('BlockWar API', () => {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
+        ...withSession(session.token),
       },
       body: JSON.stringify(mapPayload),
     });
@@ -139,35 +161,47 @@ describe('BlockWar API', () => {
     const storedMap = (await mapResponse.json()) as {
       id: string;
       name: string;
+      creator: string;
       mapTilesData: number[][][];
     };
     expect(storedMap.id).toBe(mapId);
     expect(storedMap.name).toBe(mapPayload.name);
+    expect(storedMap.creator).toBe('MapOwner');
     expect(storedMap.mapTilesData).toHaveLength(4);
 
     const starResponse = await SELF.fetch('http://example.com/api/toggleStar', {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
+        ...withSession(session.token),
       },
       body: JSON.stringify({
-        userId: 'player-1',
         mapId,
         action: 'increase',
       }),
     });
     expect(starResponse.ok).toBe(true);
 
-    const starredMapsResponse = await SELF.fetch(
-      'http://example.com/api/starredMaps?userId=player-1'
-    );
+    const starredMapsResponse = await SELF.fetch('http://example.com/api/starredMaps', {
+      headers: withSession(session.token),
+    });
     expect(starredMapsResponse.ok).toBe(true);
 
     const starredMaps = (await starredMapsResponse.json()) as string[];
     expect(starredMaps).toContain(mapId);
+
+    const otherSession = await createSession('OtherPlayer');
+    const otherStarredMapsResponse = await SELF.fetch(
+      'http://example.com/api/starredMaps',
+      {
+        headers: withSession(otherSession.token),
+      }
+    );
+    expect(await otherStarredMapsResponse.json()).not.toContain(mapId);
   });
 
   it('returns empty search results for blank queries and finds maps by name', async () => {
+    const session = await createSession('Searcher');
     const mapId = `search-${crypto.randomUUID().slice(0, 8)}`;
     const mapPayload = {
       id: mapId,
@@ -185,6 +219,7 @@ describe('BlockWar API', () => {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
+        ...withSession(session.token),
       },
       body: JSON.stringify(mapPayload),
     });
@@ -211,15 +246,16 @@ describe('BlockWar API', () => {
   });
 
   it('rejects invalid star actions and missing maps', async () => {
+    const session = await createSession('StarTester');
     const missingMapId = `missing-${crypto.randomUUID().slice(0, 8)}`;
 
     const invalidActionResponse = await SELF.fetch('http://example.com/api/toggleStar', {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
+        ...withSession(session.token),
       },
       body: JSON.stringify({
-        userId: 'player-invalid-action',
         mapId: missingMapId,
         action: 'toggle',
       }),
@@ -230,18 +266,107 @@ describe('BlockWar API', () => {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
+        ...withSession(session.token),
       },
       body: JSON.stringify({
-        userId: 'player-missing-map',
         mapId: missingMapId,
         action: 'increase',
       }),
     });
     expect(missingMapResponse.status).toBe(404);
 
-    const starredMapsResponse = await SELF.fetch(
-      'http://example.com/api/starredMaps?userId=player-missing-map'
-    );
+    const starredMapsResponse = await SELF.fetch('http://example.com/api/starredMaps', {
+      headers: withSession(session.token),
+    });
     expect(await starredMapsResponse.json()).not.toContain(missingMapId);
+  });
+
+  it('requires a session for map writes and starred-map access', async () => {
+    const mapId = `auth-${crypto.randomUUID().slice(0, 8)}`;
+    const mapPayload = {
+      id: mapId,
+      name: 'Unauthorized Map',
+      width: 4,
+      height: 4,
+      creator: 'attacker',
+      description: 'Should fail',
+      mapTilesData: Array.from({ length: 4 }, () =>
+        Array.from({ length: 4 }, () => [4, null, 0, false, 0])
+      ),
+    };
+
+    const createResponse = await SELF.fetch('http://example.com/api/maps', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify(mapPayload),
+    });
+    expect(createResponse.status).toBe(401);
+
+    const starredMapsResponse = await SELF.fetch('http://example.com/api/starredMaps');
+    expect(starredMapsResponse.status).toBe(401);
+  });
+
+  it('enforces map ownership and rejects malformed map payloads', async () => {
+    const ownerSession = await createSession('Owner');
+    const attackerSession = await createSession('Attacker');
+    const mapId = `owned-${crypto.randomUUID().slice(0, 8)}`;
+    const mapPayload = {
+      id: mapId,
+      name: 'Owned Map',
+      width: 4,
+      height: 4,
+      creator: 'ignored',
+      description: 'Ownership test map',
+      mapTilesData: Array.from({ length: 4 }, () =>
+        Array.from({ length: 4 }, () => [4, null, 0, false, 0])
+      ),
+    };
+
+    const createResponse = await SELF.fetch('http://example.com/api/maps', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        ...withSession(ownerSession.token),
+      },
+      body: JSON.stringify(mapPayload),
+    });
+    expect(createResponse.ok).toBe(true);
+
+    const invalidMapResponse = await SELF.fetch('http://example.com/api/maps', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        ...withSession(ownerSession.token),
+      },
+      body: JSON.stringify({
+        ...mapPayload,
+        id: `invalid-${crypto.randomUUID().slice(0, 8)}`,
+        width: 40,
+        height: 40,
+        mapTilesData: [],
+      }),
+    });
+    expect(invalidMapResponse.status).toBe(400);
+
+    const updateResponse = await SELF.fetch(`http://example.com/api/maps/${mapId}`, {
+      method: 'PUT',
+      headers: {
+        'content-type': 'application/json',
+        ...withSession(attackerSession.token),
+      },
+      body: JSON.stringify({
+        ...mapPayload,
+        name: 'Hijacked Map',
+      }),
+    });
+    expect(updateResponse.status).toBe(403);
+
+    const deleteResponse = await SELF.fetch(`http://example.com/api/maps/${mapId}`, {
+      method: 'DELETE',
+      headers: withSession(attackerSession.token),
+    });
+    expect(deleteResponse.status).toBe(403);
   });
 });

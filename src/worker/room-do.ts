@@ -53,6 +53,8 @@ const configurableRoomSettings = new Set([
   'deathSpectator',
 ]);
 
+const DISCONNECT_GRACE_MS = 15000;
+
 function serializeError(error: unknown) {
   if (error instanceof Error) {
     return {
@@ -61,12 +63,6 @@ function serializeError(error: unknown) {
     };
   }
   return { message: String(error) };
-}
-
-function sanitizeUsername(value: string | null) {
-  const raw = (value ?? 'Anonymous').trim().slice(0, 20);
-  const escaped = raw.replace(/[<>&"'`]/g, '');
-  return escaped.length > 0 ? escaped : 'Anonymous';
 }
 
 function buildPacket(type: string, data: unknown[]): string {
@@ -147,6 +143,7 @@ export class RoomDurableObject extends DurableObject<Env> {
   private room: Room | null = null;
   private sockets = new Map<string, WebSocket>();
   private gameLoopTimer: number | null = null;
+  private disconnectTimers = new Map<string, number>();
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
@@ -170,18 +167,28 @@ export class RoomDurableObject extends DurableObject<Env> {
       return new Response('Missing room id', { status: 400 });
     }
 
-    const username = sanitizeUsername(url.searchParams.get('username'));
-    const myPlayerId = url.searchParams.get('myPlayerId') ?? '';
+    const session = await this.app.getSession(url.searchParams.get('sessionToken'));
+    if (!session) {
+      return new Response('Unauthorized', { status: 401 });
+    }
+
+    const reconnectToken = url.searchParams.get('reconnectToken') ?? '';
     const pair = new WebSocketPair();
     const client = pair[0];
     const server = pair[1];
     const connectionId = crypto.randomUUID();
 
     this.ctx.acceptWebSocket(server);
-    server.serializeAttachment({ connectionId, roomId, playerId: myPlayerId });
+    server.serializeAttachment({ connectionId, roomId });
     this.sockets.set(connectionId, server);
 
-    void this.handleJoin(connectionId, roomId, username, myPlayerId).catch(
+    void this.handleJoin(
+      connectionId,
+      roomId,
+      session.username,
+      session.id,
+      reconnectToken
+    ).catch(
       (error) => {
         console.error('join failed', serializeError(error));
         this.send(connectionId, 'reject_join', 'Unable to join the room.');
@@ -386,6 +393,103 @@ export class RoomDurableObject extends DurableObject<Env> {
     this.room = hydrateRoomSummary(this.room.id, liveSummary);
   }
 
+  private ensureConnectedHumanHost(
+    previousHost: Player | null = null,
+    announce = false
+  ) {
+    if (!this.room) {
+      return null;
+    }
+
+    const nextHost =
+      this.room.players.find(
+        (roomPlayer) =>
+          roomPlayer.isRoomHost && !roomPlayer.isBot && !roomPlayer.disconnected
+      ) ??
+      pickNextConnectedHumanHost(this.room) ??
+      null;
+
+    this.room.players.forEach((roomPlayer) => {
+      roomPlayer.setRoomHost(nextHost ? roomPlayer.id === nextHost.id : false);
+    });
+
+    if (
+      announce &&
+      previousHost &&
+      nextHost &&
+      previousHost.id !== nextHost.id
+    ) {
+      this.broadcast('host_reassigned', previousHost.minify(), nextHost.minify());
+    }
+
+    return nextHost;
+  }
+
+  private clearDisconnectTimer(playerId: string) {
+    const timer = this.disconnectTimers.get(playerId);
+    if (timer !== undefined) {
+      clearTimeout(timer);
+      this.disconnectTimers.delete(playerId);
+    }
+  }
+
+  private clearAllDisconnectTimers() {
+    for (const playerId of this.disconnectTimers.keys()) {
+      this.clearDisconnectTimer(playerId);
+    }
+  }
+
+  private scheduleDisconnectTimer(player: Player) {
+    this.clearDisconnectTimer(player.id);
+    const timer = setTimeout(() => {
+      this.disconnectTimers.delete(player.id);
+      void this.expireDisconnectedPlayer(player.id).catch((error) => {
+        console.error('disconnect grace expiration failed', serializeError(error));
+      });
+    }, DISCONNECT_GRACE_MS) as unknown as number;
+    this.disconnectTimers.set(player.id, timer);
+  }
+
+  private async expireDisconnectedPlayer(playerId: string) {
+    if (!this.room?.gameStarted) {
+      return;
+    }
+
+    const player = this.room.players.find((roomPlayer) => roomPlayer.id === playerId);
+    if (!player || !player.disconnected || player.spectating()) {
+      return;
+    }
+
+    if (!player.isDead) {
+      this.broadcast('room_message', player.minify(), 'timed out.');
+      this.handleNeutralized(this.room, player);
+    }
+
+    await this.app.revokeReconnectToken(this.room.id, player.id);
+
+    if (!this.hasConnectedPlayers()) {
+      this.clearGameLoop();
+      await this.finishGame(null);
+      return;
+    }
+
+    this.ensureConnectedHumanHost(player.isRoomHost ? player : null, player.isRoomHost);
+    this.broadcast('update_room', this.room);
+    await this.syncRoomSummary();
+  }
+
+  private pauseGameLoopIfUnattended() {
+    if (this.room?.gameStarted && !this.hasConnectedPlayers()) {
+      this.clearGameLoop();
+    }
+  }
+
+  private resumeGameLoopIfNeeded() {
+    if (this.room?.gameStarted && this.hasConnectedPlayers()) {
+      this.scheduleGameLoop();
+    }
+  }
+
   private async sendCurrentGameState(
     connectionId: string,
     leaderBoard: LeaderBoardTable = this.computeLeaderBoard()
@@ -452,21 +556,26 @@ export class RoomDurableObject extends DurableObject<Env> {
     connectionId: string,
     roomId: string,
     username: string,
-    myPlayerId: string
+    sessionId: string,
+    reconnectToken: string
   ) {
     const room = await this.ensureRoom(roomId);
     let player: Player | undefined;
     let joinMessage = 'joined the room.';
-    let isReconnect = false;
+    const reconnectPlayerId = await this.app.resolveReconnectToken(
+      reconnectToken,
+      roomId,
+      sessionId
+    );
 
-    if (myPlayerId) {
-      const playerIndex = getPlayerIndex(room, myPlayerId);
+    if (reconnectPlayerId) {
+      const playerIndex = getPlayerIndex(room, reconnectPlayerId);
       if (playerIndex !== -1) {
         player = room.players[playerIndex];
+        this.clearDisconnectTimer(player.id);
         player.disconnected = false;
         player.socket_id = connectionId;
         player.patchView = new MapDiff();
-        isReconnect = true;
       }
     }
 
@@ -497,18 +606,25 @@ export class RoomDurableObject extends DurableObject<Env> {
         player.patchView = new MapDiff();
         joinMessage = 'joined as spectator.';
       }
-
       room.players.push(player);
-      this.send(connectionId, 'set_player_id', player.id);
     } else {
-      joinMessage = 're-joined the lobby.';
+      joinMessage = room.gameStarted ? 'reconnected.' : 're-joined the lobby.';
     }
 
+    this.ensureConnectedHumanHost();
+
+    const nextReconnectToken = await this.app.issueReconnectToken(
+      sessionId,
+      roomId,
+      player.id
+    );
     this.persistSocketAttachment(connectionId, roomId, player.id);
+    this.send(connectionId, 'set_player_id', player.id, nextReconnectToken);
 
     if (room.gameStarted) {
       this.send(connectionId, 'game_started', this.createInitGameInfo(player));
       await this.sendCurrentGameState(connectionId);
+      this.resumeGameLoopIfNeeded();
     }
 
     this.broadcast('room_message', player.minify(), joinMessage);
@@ -525,49 +641,56 @@ export class RoomDurableObject extends DurableObject<Env> {
     }
 
     const player = this.getPlayerByConnection(connectionId);
-    if (!player) {
+    if (!player || player.disconnected) {
       return;
     }
 
     const leavingActiveGame = this.room.gameStarted && !player.spectating();
+    const shouldGraceReconnect = leavingActiveGame && reason === 'disconnect';
+    this.clearDisconnectTimer(player.id);
     this.broadcast(
       'room_message',
       player.minify(),
-      leavingActiveGame
+      shouldGraceReconnect
+        ? 'lost connection.'
+        : leavingActiveGame
         ? 'disconnected.'
         : reason === 'leave'
           ? 'left the room.'
           : 'quit.'
     );
 
-    if (leavingActiveGame) {
+    if (shouldGraceReconnect) {
+      player.disconnected = true;
+      this.scheduleDisconnectTimer(player);
+    } else if (leavingActiveGame) {
       player.disconnected = true;
       this.handleNeutralized(this.room, player);
+      await this.app.revokeReconnectToken(this.room.id, player.id);
     } else {
       this.room.players = this.room.players.filter((item) => item.id !== player.id);
+      await this.app.revokeReconnectToken(this.room.id, player.id);
     }
 
     this.room.forceStartNum = countReadyParticipants(this.room);
 
-    if (this.room.gameStarted && !this.hasConnectedPlayers()) {
+    if (shouldGraceReconnect) {
+      this.pauseGameLoopIfUnattended();
+    } else if (this.room.gameStarted && !this.hasConnectedPlayers()) {
       this.clearGameLoop();
       await this.finishGame(null);
       return;
     }
 
-    const disconnectedWasHost = player.isRoomHost;
-    const hasConnectedHumanHost = this.room.players.some(
-      (roomPlayer) => roomPlayer.isRoomHost && !roomPlayer.isBot && !roomPlayer.disconnected
-    );
-
-    if (disconnectedWasHost || !hasConnectedHumanHost) {
-      this.room.players.forEach((roomPlayer) => roomPlayer.setRoomHost(false));
-      pickNextConnectedHumanHost(this.room)?.setRoomHost(true);
+    if (!shouldGraceReconnect) {
+      this.ensureConnectedHumanHost(player.isRoomHost ? player : null, player.isRoomHost);
     }
 
     this.broadcast('update_room', this.room);
-    await this.syncRoomSummary();
-    await this.checkForcedStart();
+    if (!shouldGraceReconnect) {
+      await this.syncRoomSummary();
+      await this.checkForcedStart();
+    }
   }
 
   private async checkForcedStart() {
@@ -621,6 +744,7 @@ export class RoomDurableObject extends DurableObject<Env> {
       return;
     }
 
+    this.clearAllDisconnectTimers();
     this.room.players.forEach((player) => {
       player.reset();
       player.disconnected = false;
@@ -691,7 +815,7 @@ export class RoomDurableObject extends DurableObject<Env> {
     }
 
     for (const player of this.room.players) {
-      if (!player.isDead && !player.spectating() && !player.disconnected) {
+      if (!player.isDead && !player.spectating()) {
         const block = this.room.map.getBlock(player.king!);
         const blockPlayerIndex = getPlayerIndex(this.room, block.player?.id);
 
@@ -713,7 +837,11 @@ export class RoomDurableObject extends DurableObject<Env> {
             });
             this.room.map.getBlock(player.king!).kingBeDominated();
             player.land.length = 0;
-          } else if (player.operatedTurn === 0 && player.operatedTurn + 160 <= this.room.map.turn) {
+          } else if (
+            !player.disconnected &&
+            player.operatedTurn === 0 &&
+            player.operatedTurn + 160 <= this.room.map.turn
+          ) {
             this.handleNeutralized(this.room, player);
             this.broadcast('room_message', player.minify(), 'surrendered');
           }
@@ -773,6 +901,7 @@ export class RoomDurableObject extends DurableObject<Env> {
       return;
     }
 
+    this.clearAllDisconnectTimers();
     const replayId = await this.app.saveReplay(
       JSON.parse(JSON.stringify(this.room.gameRecord))
     );
@@ -790,14 +919,12 @@ export class RoomDurableObject extends DurableObject<Env> {
     this.room.players.forEach((player) => {
       player.reset();
     });
+    const removedPlayers = this.room.players.filter((player) => player.disconnected);
     this.room.players = this.room.players.filter((player) => !player.disconnected);
-    if (
-      this.room.players.length > 0 &&
-      !this.room.players.some((player) => player.isRoomHost)
-    ) {
-      this.room.players.forEach((player) => player.setRoomHost(false));
-      pickNextConnectedHumanHost(this.room)?.setRoomHost(true);
+    for (const removedPlayer of removedPlayers) {
+      await this.app.revokeReconnectToken(this.room.id, removedPlayer.id);
     }
+    this.ensureConnectedHumanHost();
     this.broadcast('update_room', this.room);
     this.clearGameLoop();
     await this.syncRoomSummary();
@@ -813,6 +940,9 @@ export class RoomDurableObject extends DurableObject<Env> {
     const [arg1, arg2, arg3, arg4] = packet.data;
 
     switch (packet.type) {
+      case 'ping':
+        this.send(connectionId, 'pong', arg1 ?? null);
+        break;
       case 'get_room_info':
       case 'reconnect':
         this.send(connectionId, 'update_room', room);
@@ -1168,6 +1298,7 @@ export class RoomDurableObject extends DurableObject<Env> {
         }
 
         const [targetPlayer] = room.players.splice(targetIndex, 1);
+        await this.app.revokeReconnectToken(room.id, targetPlayer.id);
         room.forceStartNum = countReadyParticipants(room);
         this.broadcast('update_room', room);
         this.broadcast('room_message', player.minify(), `kicked ${targetPlayer.username}.`);

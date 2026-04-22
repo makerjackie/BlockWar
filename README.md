@@ -28,6 +28,7 @@
 ## Features
 
 - Real-time multiplayer rooms with native WebSocket transport.
+- Server-issued guest sessions for safer room reconnects, map ownership, and starring.
 - Lobby, room creation, host transfer, teams, spectators, ready/force-start flow, on-demand bots, and room chat.
 - Built-in changelog page at `/changelog` for concise product updates.
 - Standalone beginner tutorial at `/tutorial` with a fixed seven-step practice board, plus onboarding completion tracking.
@@ -51,6 +52,7 @@
 - **Realtime rooms:** `RoomDurableObject` manages room state, WebSocket connections, game ticks, player actions, and replay capture.
 - **App coordinator:** `AppDurableObject` centralizes room summaries and persistence operations.
 - **Persistence:** Cloudflare D1 stores rooms, custom maps, stars, and replay records. Tables are initialized at runtime by `AppDurableObject`.
+- **Identity model:** The Worker issues per-browser guest sessions, authorizes custom-map writes and stars from that session, and rotates reconnect tokens per room seat.
 - **Shared game logic:** Core game types and engine code live in `src/shared/game/`.
 - **Assets:** Vite builds the SPA into `dist/client`; Wrangler serves it through the `ASSETS` binding with SPA fallback routing.
 
@@ -80,15 +82,16 @@
 | Endpoint | Purpose |
 | --- | --- |
 | `GET /api/ping` | Health check used by the client. |
+| `POST /api/session` | Create or refresh the current guest session for a username and return the session token used by protected endpoints. |
 | `GET /api/get_rooms` | List active rooms currently stored by the app coordinator. |
 | `GET /api/create_room?name=...&creator=...&preset=warring_state` | Create a room and return its room id. Supported presets are `standard`, `warring_state`, and `tutorial`; if `name` is omitted, the API falls back to `【creator】的房间`. |
 | `GET /api/get_replay/:replayId` | Load a saved replay. |
-| `GET /api/maps` / `POST /api/maps` | List or create custom maps. |
-| `GET /api/maps/:id` / `PUT /api/maps/:id` / `DELETE /api/maps/:id` | Read, update, or delete a custom map. |
+| `GET /api/maps` / `POST /api/maps` | List custom maps, or create one with the current session via `x-blockwar-session`. |
+| `GET /api/maps/:id` / `PUT /api/maps/:id` / `DELETE /api/maps/:id` | Read a custom map, or update/delete it when the current session owns it. |
 | `GET /api/new` / `GET /api/hot` / `GET /api/best` | List maps by creation time, views, or stars. |
 | `GET /api/search?q=...` | Search maps by name or id. |
-| `POST /api/toggleStar` | Star or unstar a map for a user id. |
-| `GET /api/starredMaps?userId=...` | List map ids starred by a user. |
+| `POST /api/toggleStar` | Star or unstar a map for the current session via `x-blockwar-session`. |
+| `GET /api/starredMaps` | List map ids starred by the current session via `x-blockwar-session`. |
 | `GET /ws/rooms/:roomId` | WebSocket endpoint used by the socket.io compatibility shim. |
 
 ## Local Development

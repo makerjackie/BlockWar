@@ -29,6 +29,7 @@ import PublishMapDialog from '@/components/PublishMapDialog';
 import ReactMarkdown from 'react-markdown';
 import { v4 as uuidv4 } from 'uuid';
 import { blankFill } from '@/lib/constants';
+import { buildSessionHeaders, ensurePlayerSession } from '@/lib/session';
 import Toast from '@/components/ui/Toast';
 import ModalShell from '@/components/ui/ModalShell';
 import {
@@ -571,12 +572,14 @@ function MapEditor({ editMode }: { editMode: boolean }) {
     });
 
     try {
+      const sessionToken = await ensurePlayerSession(username);
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_SERVER_API}/maps`,
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            ...buildSessionHeaders(sessionToken),
           },
           body: JSON.stringify(customMapData),
         }
@@ -802,7 +805,7 @@ function MapEditor({ editMode }: { editMode: boolean }) {
           </button>
         }
       >
-        <MapExplorer userId={username} onSelect={handleMapSelect} />
+        <MapExplorer username={username} onSelect={handleMapSelect} />
       </ModalShell>
 
       {editMode && isCompactEditor && (

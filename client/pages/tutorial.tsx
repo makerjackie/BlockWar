@@ -89,7 +89,7 @@ const steps: Step[] = [
       en: 'Move one tile to the right.',
     },
     hint: {
-      zh: '向右占下第一块平原。',
+      zh: '向右占下第一块平原（WASD/方向键/鼠标点击）。',
       en: 'Move right into the first plain tile.',
     },
     action: {

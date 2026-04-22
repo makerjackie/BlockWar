@@ -798,7 +798,7 @@ export class RoomDurableObject extends DurableObject<Env> {
     }
 
     const player = this.getPlayerByConnection(connectionId);
-    const [arg1, arg2, arg3] = packet.data;
+    const [arg1, arg2, arg3, arg4] = packet.data;
 
     switch (packet.type) {
       case 'get_room_info':
@@ -1380,21 +1380,22 @@ export class RoomDurableObject extends DurableObject<Env> {
         const from = pointFromPayload(arg1);
         const to = pointFromPayload(arg2);
         const isHalf = arg3;
+        const requestId = typeof arg4 === 'string' ? arg4 : null;
 
         if (!from || !to || typeof isHalf !== 'boolean') {
-          this.send(connectionId, 'attack_failure', arg1 ?? null, arg2 ?? null, 'Invalid parameter type');
+          this.send(connectionId, 'attack_failure', arg1 ?? null, arg2 ?? null, 'Invalid parameter type', requestId);
           return;
         }
         if (from.x < 0 || from.x >= room.map.width || from.y < 0 || from.y >= room.map.height) {
-          this.send(connectionId, 'attack_failure', from, to, 'Invalid starting point');
+          this.send(connectionId, 'attack_failure', from, to, 'Invalid starting point', requestId);
           return;
         }
         if (to.x < 0 || to.x >= room.map.width || to.y < 0 || to.y >= room.map.height) {
-          this.send(connectionId, 'attack_failure', from, to, 'Invalid ending point, out of map');
+          this.send(connectionId, 'attack_failure', from, to, 'Invalid ending point, out of map', requestId);
           return;
         }
         if (!isCardinalNeighbor(from, to)) {
-          this.send(connectionId, 'attack_failure', from, to, 'Invalid ending point, not adjacent');
+          this.send(connectionId, 'attack_failure', from, to, 'Invalid ending point, not adjacent', requestId);
           return;
         }
 
@@ -1405,14 +1406,15 @@ export class RoomDurableObject extends DurableObject<Env> {
             room.map.moveAllMovableUnit(player, from, to);
           }
           player.operatedTurn = room.map.turn;
-          this.send(connectionId, 'attack_success', from, to, room.map.turn);
+          this.send(connectionId, 'attack_success', from, to, room.map.turn, requestId);
         } else {
           this.send(
             connectionId,
             'attack_failure',
             from,
             to,
-            `Invalid operation: ${player.operatedTurn} ${room.map.turn} ${room.map.commendable(player, from, to)}`
+            `Invalid operation: ${player.operatedTurn} ${room.map.turn} ${room.map.commendable(player, from, to)}`,
+            requestId
           );
         }
         break;

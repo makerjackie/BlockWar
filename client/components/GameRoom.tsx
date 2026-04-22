@@ -12,11 +12,11 @@ import {
   UserData,
   MapDiffData,
   LeaderBoardTable,
-  Route,
   Position,
   RoomUiStatus,
   initGameInfo,
 } from '@/lib/types';
+import { AttackQueue } from '@/lib/attack-queue';
 import Game from '@/components/game/Game';
 import { useGame, useGameDispatch } from '@/context/GameContext';
 import GameSetting from '@/components/GameSetting';
@@ -83,82 +83,14 @@ function GamingRoom() {
     if (!myUserName) return;
     soundEffects.init();
 
-    class AttackQueue {
-      public items: Route[];
-      public lastItem: Route | undefined;
-      public allowAttackThisTurn: boolean;
-
-      constructor() {
-        this.items = new Array<Route>();
-        this.lastItem = undefined;
-        this.allowAttackThisTurn = false;
-      }
-
-      insert(item: Route): void {
-        debugLog('Item queued: ', item.to.x, item.to.y);
-        this.items.push(item);
-      }
-
-      clearFromMap(route: Route): void {
-        mapQueueDataDispatch({
-          type: 'change',
-          x: route.from.x,
-          y: route.from.y,
-          className: '',
-        });
-      }
-
-      pop(): Route | undefined {
-        let item = this.items.shift();
-        if (this.lastItem) {
-          this.clearFromMap(this.lastItem);
-          this.lastItem = undefined;
-        }
-        this.lastItem = item;
-        return item;
-      }
-
-      pop_back(): Route | undefined {
-        let item = this.items.pop();
-        if (item) {
-          this.clearFromMap(item);
-          return item;
-        }
-      }
-
-      front(): Route {
-        return this.items[0];
-      }
-
-      end(): Route {
-        return this.items[this.items.length - 1];
-      }
-
-      isEmpty(): boolean {
-        return this.items.length == 0;
-      }
-
-      size(): number {
-        return this.items.length;
-      }
-
-      clear(): void {
-        this.items.forEach((item) => {
-          this.clearFromMap(item);
-        });
-        this.items.length = 0;
-        this.clearLastItem();
-      }
-
-      clearLastItem(): void {
-        if (this.lastItem) {
-          this.clearFromMap(this.lastItem);
-          this.lastItem = undefined;
-        }
-      }
-    }
-
-    attackQueueRef.current = new AttackQueue();
+    attackQueueRef.current = new AttackQueue((route) => {
+      mapQueueDataDispatch({
+        type: 'change',
+        x: route.from.x,
+        y: route.from.y,
+        className: '',
+      });
+    });
 
     // myPlayerId could be null for first connect
     socketRef.current = io(process.env.NEXT_PUBLIC_SERVER_API, {
@@ -272,8 +204,9 @@ function GamingRoom() {
 
     socket.on(
       'attack_success',
-      (from: Position, to: Position, turn: number) => {
-        debugLog('attach success: ', from, to, turn);
+      (from: Position, to: Position, turn: number, requestId?: string | null) => {
+        debugLog('attach success: ', from, to, turn, requestId);
+        attackQueueRef.current.resolveSuccess(requestId, from, to);
       }
     );
 
@@ -295,13 +228,14 @@ function GamingRoom() {
 
         if (!attackQueueRef.current.isEmpty()) {
           let item = attackQueueRef.current.pop();
-          socket.emit('attack', item.from, item.to, item.half);
+          socket.emit('attack', item.from, item.to, item.half, item.requestId);
           attackQueueRef.current.allowAttackThisTurn = false;
           debugLog(
             `emit attack: `,
             item.from,
             item.to,
             item.half,
+            item.requestId,
             turnsCount
           );
         } else if (attackQueueRef.current.lastItem) {
@@ -312,18 +246,9 @@ function GamingRoom() {
 
     socket.on(
       'attack_failure',
-      (from: Position, to: Position, message: string) => {
-        debugLog('attack_failure: ', from, to, message);
-        attackQueueRef.current.clearLastItem();
-        while (!attackQueueRef.current.isEmpty()) {
-          let route = attackQueueRef.current.front();
-          if (route.from.x === to.x && route.from.y === to.y) {
-            attackQueueRef.current.pop();
-            to = route.to;
-          } else {
-            break;
-          }
-        }
+      (from: Position, to: Position, message: string, requestId?: string | null) => {
+        debugLog('attack_failure: ', from, to, message, requestId);
+        attackQueueRef.current.resolveFailure(requestId, from, to);
       }
     );
 

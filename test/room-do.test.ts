@@ -299,10 +299,12 @@ describe('RoomDurableObject', () => {
         const player = room.players[0];
         const map = room.map!;
         map.turn = 1;
+        const malformedRequestId = 'req-malformed';
+        const diagonalRequestId = 'req-diagonal';
 
         await (instance as any).handlePacket('socket-a', {
           type: 'attack',
-          data: [null, { x: 0, y: 0 }, 'false'],
+          data: [null, { x: 0, y: 0 }, 'false', malformedRequestId],
         });
 
         const from = { x: player.king!.x, y: player.king!.y };
@@ -313,13 +315,59 @@ describe('RoomDurableObject', () => {
 
         await (instance as any).handlePacket('socket-a', {
           type: 'attack',
-          data: [from, to, false],
+          data: [from, to, false, diagonalRequestId],
         });
 
         const attackFailures = events.filter((item) => item.event === 'attack_failure');
         expect(attackFailures).toHaveLength(2);
         expect(events.some((item) => item.event === 'attack_success')).toBe(false);
         expect(player.operatedTurn).toBe(0);
+        expect(attackFailures[0].data[3]).toBe(malformedRequestId);
+        expect(attackFailures[1].data[3]).toBe(diagonalRequestId);
+      }
+    );
+  });
+
+  it('echoes the client request id for successful attacks', async () => {
+    const roomId = `room-${crypto.randomUUID().slice(0, 8)}`;
+    const stub = env.ROOMS.getByName(roomId);
+
+    await runInDurableObject(
+      stub,
+      async (instance: RoomDurableObject) => {
+        const { events, room } = await createStartedRoom(instance, roomId);
+        const player = room.players[0];
+        const map = room.map!;
+        map.turn = 1;
+
+        const from = { x: player.king!.x, y: player.king!.y };
+        const candidateTargets = [
+          { x: from.x - 1, y: from.y },
+          { x: from.x + 1, y: from.y },
+          { x: from.x, y: from.y - 1 },
+          { x: from.x, y: from.y + 1 },
+        ];
+        const to = candidateTargets.find((point) => {
+          return (
+            point.x >= 0 &&
+            point.x < map.width &&
+            point.y >= 0 &&
+            point.y < map.height &&
+            map.commendable(player, from, point)
+          );
+        });
+
+        expect(to).toBeTruthy();
+
+        await (instance as any).handlePacket('socket-a', {
+          type: 'attack',
+          data: [from, to, false, 'req-success'],
+        });
+
+        const attackSuccess = events.find((item) => item.event === 'attack_success');
+        expect(attackSuccess?.data[0]).toEqual(from);
+        expect(attackSuccess?.data[1]).toEqual(to);
+        expect(attackSuccess?.data[3]).toBe('req-success');
       }
     );
   });

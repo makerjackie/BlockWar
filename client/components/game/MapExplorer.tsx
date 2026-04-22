@@ -1,6 +1,11 @@
 import { useEffect, useCallback, useState, memo } from 'react';
 import { useRouter } from 'next/router';
 import { CustomMapInfo } from '@/lib/types';
+import {
+  buildMapExplorerRequestUrl,
+  normalizeMapExplorerResponse,
+  type MapExplorerEndpoint,
+} from '@/lib/map-explorer';
 import { useTranslation } from 'next-i18next';
 import {
   Eye,
@@ -94,7 +99,7 @@ interface MapExplorerProps {
   onSelect?: (mapId: string) => void;
 }
 
-const tabLabels = ['new', 'hot', 'best', 'search'] as const;
+const tabLabels: MapExplorerEndpoint[] = ['new', 'hot', 'best', 'search'];
 
 export default function MapExplorer({ userId, onSelect }: MapExplorerProps) {
   const [tabIndex, setTabIndex] = useState(1);
@@ -127,16 +132,57 @@ export default function MapExplorer({ userId, onSelect }: MapExplorerProps) {
   }, [userId]);
 
   useEffect(() => {
+    let cancelled = false;
+
     const fetchMaps = async () => {
       const endpoint = tabLabels[tabIndex];
-      const url = `${process.env.NEXT_PUBLIC_SERVER_API}/${endpoint}${
-        tabIndex === 3 ? `?q=${searchTerm}` : ''
-      }`;
-      const response = await fetch(url);
-      const data = (await response.json()) as CustomMapInfo[];
-      setMaps(data);
+      const requestUrl = buildMapExplorerRequestUrl(
+        process.env.NEXT_PUBLIC_SERVER_API ?? '/api',
+        endpoint,
+        searchTerm
+      );
+
+      if (!requestUrl) {
+        setMaps([]);
+        return;
+      }
+
+      setMaps(undefined);
+
+      try {
+        const response = await fetch(requestUrl);
+        const payload = (await response.json()) as unknown;
+
+        if (cancelled) {
+          return;
+        }
+
+        if (!response.ok) {
+          console.error('Failed to fetch maps for explorer', {
+            endpoint,
+            searchTerm,
+            status: response.status,
+            payload,
+          });
+          setMaps([]);
+          return;
+        }
+
+        setMaps(normalizeMapExplorerResponse(payload));
+      } catch (error) {
+        if (cancelled) {
+          return;
+        }
+        console.error('Failed to fetch maps for explorer', error);
+        setMaps([]);
+      }
     };
+
     fetchMaps();
+
+    return () => {
+      cancelled = true;
+    };
   }, [tabIndex, searchTerm]);
 
   const handleStarClick = useCallback(

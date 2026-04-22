@@ -5,11 +5,13 @@ import MapCreatorPage from '@/pages/mapcreator';
 import MapPage from '@/pages/maps/[mapId]';
 import ReplayPage from '@/pages/replays/[replayId]';
 import TutorialPage from '@/pages/tutorial';
+import ChangelogPage from '@/pages/changelog';
 
 export default function App() {
   return (
     <Routes>
       <Route path='/' element={<HomePage />} />
+      <Route path='/changelog' element={<ChangelogPage />} />
       <Route path='/tutorial' element={<TutorialPage />} />
       <Route path='/rooms/:roomId' element={<RoomPage />} />
       <Route path='/mapcreator' element={<MapCreatorPage />} />

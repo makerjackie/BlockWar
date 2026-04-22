@@ -78,10 +78,7 @@ api.get('/best', async (c) =>
 );
 
 api.get('/search', async (c) => {
-  const term = c.req.query('q');
-  if (!term) {
-    return c.json({ error: 'Invalid query parameter' }, 400);
-  }
+  const term = c.req.query('q')?.trim() ?? '';
   return c.json(await c.env.APP.getByName('global').searchMaps(term));
 });
 

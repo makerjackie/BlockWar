@@ -167,6 +167,49 @@ describe('BlockWar API', () => {
     expect(starredMaps).toContain(mapId);
   });
 
+  it('returns empty search results for blank queries and finds maps by name', async () => {
+    const mapId = `search-${crypto.randomUUID().slice(0, 8)}`;
+    const mapPayload = {
+      id: mapId,
+      name: 'Searchable Test Map',
+      width: 4,
+      height: 4,
+      creator: 'tester',
+      description: 'Search coverage map',
+      mapTilesData: Array.from({ length: 4 }, () =>
+        Array.from({ length: 4 }, () => [4, null, 0, false, 0])
+      ),
+    };
+
+    const createResponse = await SELF.fetch('http://example.com/api/maps', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify(mapPayload),
+    });
+    expect(createResponse.ok).toBe(true);
+
+    const emptySearchResponse = await SELF.fetch('http://example.com/api/search?q=');
+    expect(emptySearchResponse.ok).toBe(true);
+    expect(await emptySearchResponse.json()).toEqual([]);
+
+    const searchResponse = await SELF.fetch(
+      'http://example.com/api/search?q=Searchable%20Test'
+    );
+    expect(searchResponse.ok).toBe(true);
+
+    const results = (await searchResponse.json()) as Array<{ id: string; name: string }>;
+    expect(results).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: mapId,
+          name: 'Searchable Test Map',
+        }),
+      ])
+    );
+  });
+
   it('rejects invalid star actions and missing maps', async () => {
     const missingMapId = `missing-${crypto.randomUUID().slice(0, 8)}`;
 

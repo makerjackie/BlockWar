@@ -438,6 +438,11 @@ export class AppDurableObject extends DurableObject<Env> {
 
   async searchMaps(term: string) {
     await this.ensureInitialized();
+    const normalizedTerm = term.trim();
+    if (!normalizedTerm) {
+      return [];
+    }
+
     return (
       await this.queryAll<MapRow>(
         `
@@ -446,8 +451,8 @@ export class AppDurableObject extends DurableObject<Env> {
           ORDER BY created_at DESC
           LIMIT 25
         `,
-        term,
-        term
+        normalizedTerm,
+        normalizedTerm
       )
     ).map(mapRowToInfo);
   }

@@ -6,6 +6,7 @@ import {
   Languages,
   MessageSquareWarning,
   Moon,
+  ScrollText,
   Sun,
 } from 'lucide-react';
 
@@ -74,6 +75,11 @@ type NavItem = {
 };
 
 const primaryNavItems: NavItem[] = [
+  {
+    href: '/changelog#updates',
+    label: 'changelog',
+    icon: <ScrollText size={18} strokeWidth={2.35} />,
+  },
   {
     href: 'https://github.com/makerjackie/BlockWar#readme',
     label: 'wiki',
@@ -350,6 +356,12 @@ function Navbar() {
         </div>
 
         <div className='flex shrink-0 items-center md:hidden'>
+          <Link
+            href='/changelog#updates'
+            className='navbar-tool-button mr-1 h-11 min-h-11 px-3 text-xs'
+          >
+            {t('changelog')}
+          </Link>
           {renderLanguageSwitcher(
             'navbar-tool-button h-11 min-h-11 min-w-[5rem] justify-between px-2.5 text-xs',
             'shrink-0'

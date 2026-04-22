@@ -29,6 +29,7 @@
 
 - Real-time multiplayer rooms with native WebSocket transport.
 - Lobby, room creation, host transfer, teams, spectators, ready/force-start flow, on-demand bots, and room chat.
+- Built-in changelog page at `/changelog` for concise product updates.
 - Standalone beginner tutorial at `/tutorial` with a fixed seven-step practice board, plus onboarding completion tracking.
 - Classic generals.io-style gameplay with fog of war, generals/kings, cities, mountains, swamps, queued moves, surrender, and leaderboard updates.
 - Optional Warring States mode, reveal-king mode, death spectator mode, map size/terrain controls, and variable game speed.
@@ -67,6 +68,7 @@
 | Route | Purpose |
 | --- | --- |
 | `/` | Login, lobby, ping status, active room list, and room creation. |
+| `/changelog` | Concise release notes and important gameplay/product updates. |
 | `/tutorial` | Standalone beginner tutorial with guided movement/capture steps. |
 | `/rooms/:roomId` | Real-time game room. |
 | `/mapcreator` | Custom map editor and publishing flow. |

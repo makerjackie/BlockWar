@@ -18,6 +18,7 @@ import {
 import SliderBox from './SliderBox';
 import PlayerTable from './PlayerTable';
 import MapExplorer from './game/MapExplorer';
+import GameLoading from './GameLoading';
 
 import { forceStartOK, MaxTeamNum, SpeedOptions } from '@/lib/constants';
 import { useGame, useGameDispatch } from '@/context/GameContext';
@@ -645,8 +646,12 @@ const GameSetting: React.FC<GameSettingProps> = () => {
                 {`${t('ready')}(${room.forceStartNum}/${forceStartTarget})`}
               </button>
             </div>
+
+            <GameLoading variant='embedded' showStatusLabel={false} />
           </aside>
         )}
+
+        {isTutorialRoom && <GameLoading variant='embedded' showStatusLabel={false} />}
       </div>
     </div>
   );

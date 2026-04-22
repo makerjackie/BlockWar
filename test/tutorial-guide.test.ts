@@ -142,4 +142,30 @@ describe('loading tips copy', () => {
       }
     );
   });
+
+  it('includes core shortcut reminders in both locales', () => {
+    const localizedTips = [
+      {
+        language: 'en',
+        tips: enCommon.loadingTips.items,
+      },
+      {
+        language: 'zh',
+        tips: zhCommon.loadingTips.items,
+      },
+    ];
+
+    localizedTips.forEach(({ language, tips }) => {
+      const joinedTips = tips.join(' ');
+
+      expect(joinedTips, `${language}:shortcut:g`).toMatch(/\bG\b/);
+      expect(joinedTips, `${language}:shortcut:h`).toMatch(/\bH\b/);
+      expect(joinedTips, `${language}:shortcut:c`).toMatch(/\bC\b/);
+      expect(joinedTips, `${language}:shortcut:e`).toMatch(/\bE\b/);
+      expect(joinedTips, `${language}:shortcut:q`).toMatch(/\bQ\b/);
+      expect(joinedTips, `${language}:shortcut:zoom`).toMatch(
+        /1\s*\/\s*2\s*\/\s*3/
+      );
+    });
+  });
 });

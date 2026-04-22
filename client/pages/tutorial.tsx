@@ -56,6 +56,9 @@ const MOUNTAIN: Coord = { row: 2, col: 4 };
 const BYPASS: Coord = { row: 3, col: 3 };
 const ENEMY_FRONT: Coord = { row: 3, col: 4 };
 const ENEMY_CAPITAL: Coord = { row: 3, col: 5 };
+const ENEMY_BACK_1: Coord = { row: 2, col: 5 };
+const ENEMY_BACK_2: Coord = { row: 3, col: 6 };
+const ENEMY_BACK_3: Coord = { row: 2, col: 6 };
 
 const steps: Step[] = [
   {
@@ -191,6 +194,7 @@ const uiCopy = {
     wrongSelection: '先选中高亮的主城。',
     invalidTile: '只能从自己的格子出兵。',
     moveSuccess: '做得好，继续下一步。',
+    capitalCaptured: '占领主城！敌方所有领地归你所有，兵力减半。',
     completedTitle: '完成',
     playAgain: '再练一次',
     finishBadge: '完成',
@@ -213,6 +217,7 @@ const uiCopy = {
     wrongSelection: 'Select the highlighted capital first.',
     invalidTile: 'You can only move out from your own tiles.',
     moveSuccess: 'Good. Move on to the next step.',
+    capitalCaptured: 'Capital captured! All enemy territory is now yours with halved army.',
     completedTitle: 'Done',
     playAgain: 'Run it again',
     finishBadge: 'Done',
@@ -240,7 +245,7 @@ function createInitialBoard(): TutorialTile[][] {
   board[CAPITAL.row][CAPITAL.col] = {
     terrain: 'capital',
     owner: 'player',
-    army: 12,
+    army: 20,
   };
   board[CITY.row][CITY.col] = {
     terrain: 'city',
@@ -261,6 +266,21 @@ function createInitialBoard(): TutorialTile[][] {
     terrain: 'capital',
     owner: 'enemy',
     army: 2,
+  };
+  board[ENEMY_BACK_1.row][ENEMY_BACK_1.col] = {
+    terrain: 'plain',
+    owner: 'enemy',
+    army: 3,
+  };
+  board[ENEMY_BACK_2.row][ENEMY_BACK_2.col] = {
+    terrain: 'plain',
+    owner: 'enemy',
+    army: 2,
+  };
+  board[ENEMY_BACK_3.row][ENEMY_BACK_3.col] = {
+    terrain: 'plain',
+    owner: 'enemy',
+    army: 4,
   };
 
   return board;
@@ -304,6 +324,7 @@ function applyMove(
       ok: true;
       board: TutorialTile[][];
       selected: Coord;
+      capturedCapital?: boolean;
     } {
   const source = board[from.row]?.[from.col];
   const target = board[to.row]?.[to.col];
@@ -338,12 +359,27 @@ function applyMove(
   }
 
   if (movingArmy > target.army) {
+    const capturedCapital = target.terrain === 'capital' && target.owner === 'enemy';
+
     nextBoard[to.row][to.col] = {
       ...nextBoard[to.row][to.col],
       owner: 'player',
       army: movingArmy - target.army,
     };
-    return { ok: true, board: nextBoard, selected: to };
+
+    // If captured enemy capital, convert all enemy tiles to player with halved army
+    if (capturedCapital) {
+      for (let r = 0; r < nextBoard.length; r++) {
+        for (let c = 0; c < nextBoard[r].length; c++) {
+          if (nextBoard[r][c].owner === 'enemy') {
+            nextBoard[r][c].owner = 'player';
+            nextBoard[r][c].army = Math.floor(nextBoard[r][c].army / 2);
+          }
+        }
+      }
+    }
+
+    return { ok: true, board: nextBoard, selected: to, capturedCapital };
   }
 
   nextBoard[to.row][to.col].army = target.army - movingArmy;
@@ -511,7 +547,7 @@ export default function TutorialPage() {
   );
 
   const advanceToNextStep = useCallback(
-    (nextBoard: TutorialTile[][], nextSelection: Coord) => {
+    (nextBoard: TutorialTile[][], nextSelection: Coord, capturedCapital?: boolean) => {
       if (stepIndex === totalSteps - 1) {
         finishTutorial(nextBoard, nextSelection);
         return;
@@ -524,15 +560,16 @@ export default function TutorialPage() {
       setBoard(nextBoard);
       setSelected(nextSelection);
       setIsTransitioning(true);
-      setFeedback(copy.moveSuccess);
+      setFeedback(capturedCapital ? copy.capitalCaptured : copy.moveSuccess);
       transitionTimeoutRef.current = window.setTimeout(() => {
         setStepIndex((current) => current + 1);
         setIsTransitioning(false);
-      }, 260);
+      }, capturedCapital ? 1200 : 260);
     },
     [
       clearPendingTransition,
       copy.moveSuccess,
+      copy.capitalCaptured,
       finishTutorial,
       stepIndex,
       totalSteps,
@@ -603,7 +640,7 @@ export default function TutorialPage() {
         return;
       }
 
-      advanceToNextStep(result.board, result.selected);
+      advanceToNextStep(result.board, result.selected, result.capturedCapital);
     },
     [
       advanceToNextStep,

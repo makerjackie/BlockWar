@@ -188,8 +188,9 @@ function GameMap() {
         case 'c':
           setPosition({ x: 0, y: 0 });
           break;
-        case 'h': // home
-          centerGeneral();
+        case 'h':
+          event.preventDefault();
+          selectGeneral();
           break;
         case 'a':
         case 'ArrowLeft': // 37 Left

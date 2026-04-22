@@ -36,6 +36,12 @@
 - 中英文 UI，以及深色/浅色主题。
 - 单个 Cloudflare Worker 同时承载 React SPA、HTTP API、Durable Objects、WebSocket、静态资源和 D1 持久化。
 
+## 键位说明
+
+- `G`：选中自己的主城并将镜头居中到主城。
+- `H`：选中自己的主城，但不移动当前镜头。
+- `C`：将地图视图重新居中。
+
 ## 当前架构
 
 - **前端：** React 18、Vite、React Router、Tailwind CSS 4、i18next，以及用于迁移旧页面/组件的轻量 Next.js 兼容层。

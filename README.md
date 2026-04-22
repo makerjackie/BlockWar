@@ -37,6 +37,12 @@
 - English and Chinese UI, plus dark/light theme support.
 - Single Cloudflare Worker deployment for the React SPA, HTTP API, Durable Objects, WebSockets, static assets, and D1 persistence.
 
+## Controls
+
+- `G`: select your capital and center it in view.
+- `H`: select your capital without moving the camera.
+- `C`: recenter the map view.
+
 ## Architecture
 
 - **Frontend:** React 18, Vite, React Router, Tailwind CSS 4, i18next, and a small Next.js compatibility layer for migrated pages/components.

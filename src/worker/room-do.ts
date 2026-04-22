@@ -1399,7 +1399,11 @@ export class RoomDurableObject extends DurableObject<Env> {
           return;
         }
 
-        if (player.operatedTurn < room.map.turn && room.map.commendable(player, from, to)) {
+        const canAttack =
+          player.operatedTurn < room.map.turn &&
+          room.map.commendable(player, from, to);
+
+        if (canAttack) {
           if (isHalf) {
             room.map.moveHalfMovableUnit(player, from, to);
           } else {
@@ -1413,7 +1417,7 @@ export class RoomDurableObject extends DurableObject<Env> {
             'attack_failure',
             from,
             to,
-            `Invalid operation: ${player.operatedTurn} ${room.map.turn} ${room.map.commendable(player, from, to)}`,
+            `Invalid operation: ${player.operatedTurn} ${room.map.turn} ${canAttack}`,
             requestId
           );
         }

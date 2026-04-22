@@ -21,7 +21,6 @@ class MapDiff {
   data: MapDiffData = [];
   prevMap: TilesProp | null = null;
   curSameCnt: number = 0;
-  curDiffArr: TilesProp = [];
 
   constructor() { }
 

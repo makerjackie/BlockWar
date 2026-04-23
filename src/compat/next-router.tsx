@@ -44,10 +44,11 @@ export function useRouter() {
   const navigate = useNavigate();
   const location = useLocation();
   const params = useParams();
+  const paramsKey = JSON.stringify(params);
 
   const query = useMemo(
     () => buildQuery(params, location.search),
-    [location.search, params]
+    [location.search, paramsKey]
   );
 
   const push = useCallback(
@@ -80,14 +81,17 @@ export function useRouter() {
     resolveSupportedLanguage(i18n.language) ??
     fallbackLanguage;
 
-  return {
-    query,
-    push,
-    asPath: `${location.pathname}${location.search}`,
-    pathname: location.pathname,
-    locale,
-    locales: [...supportedLanguages],
-  };
+  return useMemo(
+    () => ({
+      query,
+      push,
+      asPath: `${location.pathname}${location.search}`,
+      pathname: location.pathname,
+      locale,
+      locales: [...supportedLanguages],
+    }),
+    [locale, location.pathname, location.search, push, query]
+  );
 }
 
 export const Router = {

@@ -37,6 +37,8 @@ const debugLog = (...args: unknown[]) => {
   }
 };
 
+const JOINING_GATE_DELAY_MS = 350;
+
 type RoomSessionPhase =
   | 'joining'
   | 'joined'
@@ -57,6 +59,7 @@ function GamingRoom() {
   const [reconnectAttempt, setReconnectAttempt] = useState(0);
   const [reconnectDelayMs, setReconnectDelayMs] = useState<number | null>(null);
   const [joinRejectionMessage, setJoinRejectionMessage] = useState('');
+  const [showJoiningGate, setShowJoiningGate] = useState(false);
   const myPlayerIdRef = useRef<string>('');
   const wasRoomHostRef = useRef(false);
   const hasResolvedRoomHostRef = useRef(false);
@@ -163,9 +166,9 @@ function GamingRoom() {
 
     window.setTimeout(() => {
       socketRef.current?.disconnect();
-      void router.push('/');
+      void push('/');
     }, 120);
-  }, [roomId, router, socketRef]);
+  }, [push, roomId, socketRef]);
 
   useEffect(() => {
     if (!roomId) {
@@ -193,6 +196,7 @@ function GamingRoom() {
     setReconnectAttempt(0);
     setReconnectDelayMs(null);
     setJoinRejectionMessage('');
+    setShowJoiningGate(false);
     setMessages([]);
     setLatencyMs(null);
     setConnectionState('connecting');
@@ -500,7 +504,7 @@ function GamingRoom() {
         message: t('kicked-message'),
         duration: 4000,
       });
-      void router.push('/');
+      void push('/');
     });
 
     socket.on('connect_error', (error: Error) => {
@@ -543,7 +547,6 @@ function GamingRoom() {
     myUserName,
     roomDispatch,
     roomId,
-    router,
     sessionToken,
     setDialogContent,
     setInitGameInfo,
@@ -557,6 +560,7 @@ function GamingRoom() {
     snackStateDispatch,
     socketRef,
     t,
+    push,
   ]);
 
   useEffect(() => {
@@ -564,6 +568,22 @@ function GamingRoom() {
       setRoomUiStatus(RoomUiStatus.loading);
     }
   }, [room.gameStarted, roomUiStatus, setRoomUiStatus]);
+
+  useEffect(() => {
+    if (roomSessionPhase !== 'joining') {
+      setShowJoiningGate(roomSessionPhase !== 'joined');
+      return;
+    }
+
+    setShowJoiningGate(false);
+    const timer = window.setTimeout(() => {
+      setShowJoiningGate(true);
+    }, JOINING_GATE_DELAY_MS);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [roomSessionPhase]);
 
   const gateDetail = useMemo(() => {
     if (roomSessionPhase !== 'reconnecting') {
@@ -595,6 +615,7 @@ function GamingRoom() {
           label: t('roomSession.leavingLabel'),
           title: t('roomSession.leavingTitle'),
           description: t('roomSession.leavingCopy'),
+          roomId: undefined,
           detail: undefined,
           action: undefined,
         };
@@ -604,6 +625,7 @@ function GamingRoom() {
           label: t('roomSession.reconnectingLabel'),
           title: t('roomSession.reconnectingTitle'),
           description: t('roomSession.reconnectingCopy'),
+          roomId: undefined,
           detail: gateDetail,
           action: (
             <button
@@ -627,6 +649,7 @@ function GamingRoom() {
           description: roomIsFull
             ? t('roomSession.roomFullCopy')
             : t('roomSession.joinRejectedCopy'),
+          roomId,
           detail: joinRejectionMessage || undefined,
           action: (
             <button
@@ -646,8 +669,9 @@ function GamingRoom() {
         return {
           tone: 'ember' as const,
           label: t('roomSession.joiningLabel'),
-          title: t('roomSession.joiningTitle', { roomId }),
+          title: t('roomSession.joiningTitle'),
           description: t('roomSession.joiningCopy'),
+          roomId: undefined,
           detail: undefined,
           action: undefined,
         };
@@ -655,7 +679,9 @@ function GamingRoom() {
   }, [gateDetail, joinRejectionMessage, returnToLobby, roomId, roomSessionPhase, t]);
 
   const showRoomShell = hasJoinedRoom && roomSessionPhase !== 'rejected';
-  const showGate = gateConfig !== null;
+  const showGate =
+    gateConfig !== null &&
+    (roomSessionPhase !== 'joining' || showJoiningGate);
 
   return (
     <div className='app-container'>
@@ -705,7 +731,7 @@ function GamingRoom() {
           label={gateConfig.label}
           title={gateConfig.title}
           description={gateConfig.description}
-          roomId={roomId}
+          roomId={gateConfig.roomId}
           detail={gateConfig.detail}
           action={gateConfig.action}
         />

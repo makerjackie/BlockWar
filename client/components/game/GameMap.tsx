@@ -4,6 +4,7 @@ import { Position, SelectedMapTileInfo, TileProp, TileType } from '@/lib/types';
 import usePossibleNextMapPositions from '@/lib/use-possible-next-map-positions';
 import { getPlayerIndex } from '@/lib/utils';
 import useMediaQuery from '@/hooks/useMediaQuery';
+import { resolveTouchRouteOrigin } from '@/lib/touch-route';
 import { useTranslation } from 'next-i18next';
 import {
   MutableRefObject,
@@ -357,9 +358,13 @@ function GameMap() {
           const rect = mapRef.current.getBoundingClientRect();
           const y = Math.floor((touch.clientX - rect.left) / (tileSize * zoom));
           const x = Math.floor((touch.clientY - rect.top) / (tileSize * zoom));
+          const touchRouteOrigin = resolveTouchRouteOrigin(
+            selectedMapTileInfo,
+            lastTouchPosition.current
+          );
 
-          const dx = x - selectedMapTileInfo.x;
-          const dy = y - selectedMapTileInfo.y;
+          const dx = x - touchRouteOrigin.x;
+          const dy = y - touchRouteOrigin.y;
           // check if newPosition is valid
           if (
             (dx === 0 && dy === 0) ||
@@ -405,7 +410,7 @@ function GameMap() {
             lastBlockedTouchPosition.current = { x: -1, y: -1 };
           }
 
-          handlePositionChange(selectedMapTileInfo, newPoint, `queue_${direction}`);
+          handlePositionChange(touchRouteOrigin, newPoint, `queue_${direction}`);
           if (!isBlockedTile) {
             lastTouchPosition.current = newPoint;
           }

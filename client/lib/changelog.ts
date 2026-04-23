@@ -8,6 +8,23 @@ export type ChangelogEntry = {
 
 export const changelogEntries: ChangelogEntry[] = [
   {
+    date: '2026-04-23',
+    title: {
+      en: 'Connection And Control Fixes',
+      zh: '连接与操作修复',
+    },
+    items: {
+      en: [
+        'Improved room join and reconnect flow so players can recover from network interruptions more reliably.',
+        'Added live network latency in matches and fixed touch route planning so mobile path drawing stays responsive while dragging.',
+      ],
+      zh: [
+        '强化房间加入和重连流程，玩家在网络波动后能更稳定地恢复对局。',
+        '对局内新增实时网络延迟显示，并修复移动端连续拖拽规划路线时容易断掉的问题。',
+      ],
+    },
+  },
+  {
     date: '2026-04-22',
     title: {
       en: 'Tutorial Upgrade',

@@ -30,6 +30,7 @@ import {
 } from './GameReducer';
 import usePossibleNextMapPositions from '@/lib/use-possible-next-map-positions';
 import { useTranslation } from 'next-i18next';
+import { projectQueuedMoves } from '@/lib/projected-moves';
 
 // userData, game_status, replay_link
 type DialogContentData = [[UserData | null], string, string | null];
@@ -110,6 +111,7 @@ const GameProvider: React.FC<GameProviderProp> = ({ children }) => {
     tileType: null,
     timestamp: 0,
   });
+  const insufficientRouteUnitsFeedbackAtRef = useRef(0);
   const [roomUiStatus, setRoomUiStatus] = useState(RoomUiStatus.gameSetting);
   const [snackState, snackStateDispatch] = useReducer(snackStateReducer, {
     open: false,
@@ -148,7 +150,7 @@ const GameProvider: React.FC<GameProviderProp> = ({ children }) => {
         x: selectPos.x,
         y: selectPos.y,
         half: touchHalf.current,
-        unitsCount: 0,
+        unitsCount: selectPos.unitsCount,
       });
       mapQueueDataDispatch({
         type: 'change',
@@ -163,36 +165,57 @@ const GameProvider: React.FC<GameProviderProp> = ({ children }) => {
   const selectGeneral = useCallback(() => {
     if (initGameInfo && selectedMapTileInfo) {
       const { king } = initGameInfo;
-      setSelectedMapTileInfo({ ...selectedMapTileInfo, x: king.x, y: king.y });
+      setSelectedMapTileInfo({
+        ...selectedMapTileInfo,
+        x: king.x,
+        y: king.y,
+        unitsCount: mapData[king.x]?.[king.y]?.[2] ?? 0,
+      });
     }
-  }, [initGameInfo, selectedMapTileInfo, setSelectedMapTileInfo]);
+  }, [initGameInfo, mapData, selectedMapTileInfo, setSelectedMapTileInfo]);
+
+  const resolveProjectedSelection = useCallback(
+    (plannedRoutes: { from: Position; to: Position; half: boolean }[], fallbackPosition: Position) => {
+      const projection = projectQueuedMoves({
+        mapData,
+        players: room.players,
+        plannedRoutes,
+        fallbackPosition,
+      });
+      const position = projection.end?.position ?? fallbackPosition;
+
+      return {
+        x: position.x,
+        y: position.y,
+        half: false,
+        unitsCount: projection.end?.unitsCount ?? mapData[position.x]?.[position.y]?.[2] ?? 0,
+      } satisfies SelectedMapTileInfo;
+    },
+    [mapData, room.players]
+  );
 
   const popQueue = useCallback(() => {
     if (selectedMapTileInfo) {
       let route = attackQueueRef.current.pop_back();
       if (route) {
-        setSelectedMapTileInfo({
-          ...selectedMapTileInfo,
-          x: route.from.x,
-          y: route.from.y,
-          //  todo: fix half/unitsCount logic
-        });
+        setSelectedMapTileInfo(
+          resolveProjectedSelection(
+            attackQueueRef.current.getPlannedRoutes(),
+            route.from
+          )
+        );
       }
     }
-  }, [attackQueueRef, selectedMapTileInfo, setSelectedMapTileInfo]);
+  }, [attackQueueRef, resolveProjectedSelection, selectedMapTileInfo, setSelectedMapTileInfo]);
   const clearQueue = useCallback(() => {
     if (selectedMapTileInfo) {
       let route = attackQueueRef.current.front();
       if (route) {
         attackQueueRef.current.clear();
-        setSelectedMapTileInfo({
-          ...selectedMapTileInfo,
-          x: route.from.x,
-          y: route.from.y,
-        });
+        setSelectedMapTileInfo(resolveProjectedSelection([], route.from));
       }
     }
-  }, [attackQueueRef, selectedMapTileInfo, setSelectedMapTileInfo]);
+  }, [attackQueueRef, resolveProjectedSelection, selectedMapTileInfo, setSelectedMapTileInfo]);
 
   const possibleNextMapPositions = usePossibleNextMapPositions({
     width: initGameInfo ? initGameInfo.mapHeight : room.map ? room.map.width : 0,
@@ -246,6 +269,22 @@ const GameProvider: React.FC<GameProviderProp> = ({ children }) => {
     [snackStateDispatch, t]
   );
 
+  const showInsufficientRouteUnitsFeedback = useCallback(() => {
+    const now = Date.now();
+    if (now - insufficientRouteUnitsFeedbackAtRef.current < 900) {
+      return;
+    }
+
+    insufficientRouteUnitsFeedbackAtRef.current = now;
+    snackStateDispatch({
+      type: 'update',
+      title: '',
+      status: 'info',
+      message: t('movement-units-exhausted'),
+      duration: 1200,
+    });
+  }, [snackStateDispatch, t]);
+
   const testIfNextPossibleMove = useCallback(
     (tileType: TileType, x: number, y: number) => {
       return (
@@ -295,16 +334,30 @@ const GameProvider: React.FC<GameProviderProp> = ({ children }) => {
         return;
       }
 
-      attackQueueRef.current.insert({
-        from: selectPos,
+      const plannedRoutes = attackQueueRef.current.getPlannedRoutes();
+      const nextRoute = {
+        from: { x: selectPos.x, y: selectPos.y },
         to: newPoint,
         half: selectPos.half,
+      };
+      const nextProjection = projectQueuedMoves({
+        mapData,
+        players: room.players,
+        plannedRoutes: [...plannedRoutes, nextRoute],
+        fallbackPosition: { x: selectPos.x, y: selectPos.y },
       });
+
+      if (!nextProjection.ok) {
+        showInsufficientRouteUnitsFeedback();
+        return;
+      }
+
+      attackQueueRef.current.insert(nextRoute);
       setSelectedMapTileInfo({
         x: newPoint.x,
         y: newPoint.y,
         half: false,
-        unitsCount: 0,
+        unitsCount: nextProjection.end?.unitsCount ?? 0,
       });
       mapQueueDataDispatch({
         type: 'change',
@@ -337,6 +390,8 @@ const GameProvider: React.FC<GameProviderProp> = ({ children }) => {
       setSelectedMapTileInfo,
       isBlockedTileType,
       showBlockedMoveFeedback,
+      room.players,
+      showInsufficientRouteUnitsFeedback,
     ]
   );
 

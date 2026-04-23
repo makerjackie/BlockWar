@@ -119,6 +119,8 @@
 
     let currentIndex = 0;
     let indicatorTimeout;
+    let activeIframeWindow = null;
+    let activeIframeDocument = null;
 
     function updateSlide() {
       const frame = document.getElementById('slideFrame');
@@ -150,8 +152,47 @@
       }
     }
 
-    // 键盘控制
-    document.addEventListener('keydown', (e) => {
+    function detachIframeKeyboardHandlers() {
+      if (activeIframeWindow) {
+        activeIframeWindow.removeEventListener('keydown', handleKeydown);
+      }
+
+      if (activeIframeDocument) {
+        activeIframeDocument.removeEventListener('keydown', handleKeydown);
+      }
+
+      activeIframeWindow = null;
+      activeIframeDocument = null;
+    }
+
+    function attachIframeKeyboardHandlers() {
+      const frame = document.getElementById('slideFrame');
+
+      detachIframeKeyboardHandlers();
+
+      try {
+        activeIframeWindow = frame.contentWindow;
+        activeIframeDocument = frame.contentDocument;
+        activeIframeWindow?.addEventListener('keydown', handleKeydown);
+        activeIframeDocument?.addEventListener('keydown', handleKeydown);
+      } catch (error) {
+        console.warn('Unable to attach slide keyboard shortcuts.', error);
+      }
+    }
+
+    function handleKeydown(e) {
+      const target = e.target;
+      const tagName = target?.tagName;
+      const isEditable =
+        target?.isContentEditable ||
+        tagName === 'INPUT' ||
+        tagName === 'TEXTAREA' ||
+        tagName === 'SELECT';
+
+      if (isEditable) {
+        return;
+      }
+
       if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') {
         e.preventDefault();
         nextSlide();
@@ -174,7 +215,11 @@
           document.exitFullscreen();
         }
       }
-    });
+    }
+
+    // 键盘控制
+    window.addEventListener('keydown', handleKeydown);
+    document.getElementById('slideFrame').addEventListener('load', attachIframeKeyboardHandlers);
 
     // 5秒后隐藏帮助文本
     setTimeout(() => {

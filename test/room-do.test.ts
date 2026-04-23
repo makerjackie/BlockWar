@@ -353,6 +353,53 @@ describe('RoomDurableObject', () => {
     );
   });
 
+  it('rejects attacks when the source tile has no movable units left', async () => {
+    const roomId = `room-${crypto.randomUUID().slice(0, 8)}`;
+    const stub = env.ROOMS.getByName(roomId);
+
+    await runInDurableObject(
+      stub,
+      async (instance: RoomDurableObject) => {
+        const { events, room } = await createStartedRoom(instance, roomId);
+        const player = room.players[0];
+        const map = room.map!;
+        map.turn = 1;
+
+        const from = { x: player.king!.x, y: player.king!.y };
+        const to = [
+          { x: from.x - 1, y: from.y },
+          { x: from.x + 1, y: from.y },
+          { x: from.x, y: from.y - 1 },
+          { x: from.x, y: from.y + 1 },
+        ].find((point) => {
+          return (
+            point.x >= 0 &&
+            point.x < map.width &&
+            point.y >= 0 &&
+            point.y < map.height &&
+            map.getBlock(point).type !== TileType.Mountain
+          );
+        });
+
+        expect(to).toBeTruthy();
+
+        await (instance as any).handlePacket('socket-a', {
+          type: 'attack',
+          data: [from, to, false, 'req-no-movable-unit'],
+        });
+
+        const attackFailure = events.find((item) => item.event === 'attack_failure');
+        expect(attackFailure?.data[0]).toEqual(from);
+        expect(attackFailure?.data[1]).toEqual(to);
+        expect(String(attackFailure?.data[2])).toContain('Invalid operation');
+        expect(attackFailure?.data[3]).toBe('req-no-movable-unit');
+        expect(events.some((item) => item.event === 'attack_success')).toBe(false);
+        expect(player.operatedTurn).toBe(0);
+        expect(map.getBlock(from).unit).toBe(1);
+      }
+    );
+  });
+
   it('echoes the client request id for successful attacks', async () => {
     const roomId = `room-${crypto.randomUUID().slice(0, 8)}`;
     const stub = env.ROOMS.getByName(roomId);
@@ -366,6 +413,7 @@ describe('RoomDurableObject', () => {
         map.turn = 1;
 
         const from = { x: player.king!.x, y: player.king!.y };
+        map.getBlock(from).setUnit(2);
         const candidateTargets = [
           { x: from.x - 1, y: from.y },
           { x: from.x + 1, y: from.y },

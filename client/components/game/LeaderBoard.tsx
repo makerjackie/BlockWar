@@ -24,6 +24,8 @@ type PlayerSummary = {
   username: string | null;
   armyCount: number;
   landsCount: number;
+  latencyMs: number | null;
+  isBot: boolean;
 };
 
 export default function LeaderBoard(props: LeaderBoardProps) {
@@ -44,13 +46,89 @@ export default function LeaderBoard(props: LeaderBoardProps) {
 
   if (!leaderBoardTable) return null;
 
-  const fetchUsernameByColor = (color: number) => {
-    const result = players.find((player) => player.color === color);
-    return result ? result.username : null;
+  const fetchPlayerByColor = (color: number) => {
+    return players.find((player) => player.color === color) ?? null;
+  };
+
+  const getLatencyTone = (latencyMs: number | null, isBot: boolean) => {
+    if (isBot) {
+      return {
+        backgroundColor: 'color-mix(in srgb, var(--bw-blue) 16%, transparent)',
+        borderColor: 'color-mix(in srgb, var(--bw-blue) 44%, var(--bw-line))',
+        color: 'var(--bw-blue)',
+      };
+    }
+
+    if (latencyMs === null) {
+      return {
+        backgroundColor: 'color-mix(in srgb, var(--bw-muted-soft) 12%, transparent)',
+        borderColor: 'var(--bw-line)',
+        color: 'var(--bw-muted)',
+      };
+    }
+
+    if (latencyMs <= 120) {
+      return {
+        backgroundColor: 'color-mix(in srgb, var(--bw-green) 18%, transparent)',
+        borderColor: 'color-mix(in srgb, var(--bw-green) 48%, var(--bw-line))',
+        color: 'var(--bw-green)',
+      };
+    }
+
+    if (latencyMs <= 220) {
+      return {
+        backgroundColor: 'color-mix(in srgb, var(--bw-ember) 18%, transparent)',
+        borderColor: 'color-mix(in srgb, var(--bw-ember) 48%, var(--bw-line))',
+        color: 'var(--bw-ember)',
+      };
+    }
+
+    return {
+      backgroundColor: 'color-mix(in srgb, var(--bw-red) 18%, transparent)',
+      borderColor: 'color-mix(in srgb, var(--bw-red) 48%, var(--bw-line))',
+      color: 'var(--bw-red)',
+    };
+  };
+
+  const renderLatencyBadge = (player: PlayerSummary) => {
+    if (isCompact) {
+      return null;
+    }
+
+    const tone = getLatencyTone(player.latencyMs, player.isBot);
+    const badgeLabel = player.isBot
+      ? t('bot')
+      : player.latencyMs === null
+        ? t('latency-unknown')
+        : `${player.latencyMs}ms`;
+
+    return (
+      <span
+        className='inline-flex min-h-6 shrink-0 items-center border px-1.5 py-px text-[10px] font-black uppercase tracking-[0.16em]'
+        style={tone}
+        title={`${t('latency')}: ${badgeLabel}`}
+      >
+        {badgeLabel}
+      </span>
+    );
+  };
+
+  const renderPlayerIdentity = (player: PlayerSummary, compact = false) => {
+    if (compact) {
+      return renderPlayerBadge(player, true);
+    }
+
+    return (
+      <div className='flex min-w-0 items-center gap-2'>
+        {renderPlayerBadge(player)}
+        {renderLatencyBadge(player)}
+      </div>
+    );
   };
 
   const teamsMap = new Map<number, TeamSummary>();
   leaderBoardTable.forEach((row) => {
+    const sourcePlayer = fetchPlayerByColor(row[0]);
     const existing = teamsMap.get(row[1]) ?? {
       id: row[1],
       armyCount: 0,
@@ -61,9 +139,11 @@ export default function LeaderBoard(props: LeaderBoardProps) {
     existing.landsCount += row[3];
     existing.players.push({
       color: row[0],
-      username: fetchUsernameByColor(row[0]),
+      username: sourcePlayer?.username ?? null,
       armyCount: row[2],
       landsCount: row[3],
+      latencyMs: sourcePlayer?.latencyMs ?? null,
+      isBot: sourcePlayer?.isBot ?? false,
     });
     teamsMap.set(row[1], existing);
   });
@@ -81,8 +161,8 @@ export default function LeaderBoard(props: LeaderBoardProps) {
   const isCompact = !gameDockExpand;
   const dockWidthClass = gameDockExpand
     ? isMobileDock
-      ? 'min-w-[188px]'
-      : 'min-w-[220px]'
+      ? 'min-w-[224px]'
+      : 'min-w-[272px]'
     : isMobileDock
       ? 'min-w-[116px]'
       : 'min-w-[132px]';
@@ -202,7 +282,7 @@ export default function LeaderBoard(props: LeaderBoardProps) {
                 <span />
               )}
               {allTeamsHaveSinglePlayer && team.players[0] ? (
-                renderPlayerBadge(team.players[0], !gameDockExpand)
+                renderPlayerIdentity(team.players[0], !gameDockExpand)
               ) : (
                 <span>
                   {warringStatesMode ? WarringStates[team.players[0]?.color] + ' · ' : ''}
@@ -222,7 +302,7 @@ export default function LeaderBoard(props: LeaderBoardProps) {
                   }`}
                 >
                   {checkedPlayers && setCheckedPlayers ? <span /> : <span />}
-                  {renderPlayerBadge(player)}
+                  {renderPlayerIdentity(player)}
                   <span className='text-center font-black text-zinc-100'>{player.armyCount}</span>
                   <span className='text-center text-zinc-300'>{player.landsCount}</span>
                 </div>

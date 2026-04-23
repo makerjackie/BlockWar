@@ -116,7 +116,7 @@ describe('mobile game ui', () => {
   it('keeps the leaderboard expanded on desktop screens', () => {
     const html = renderLeaderBoard(1280);
 
-    expect(html).toContain('min-w-[220px]');
+    expect(html).toContain('min-w-[272px]');
     expect(html).toContain('Leaderboard');
     expect(html).toContain('Alice');
   });

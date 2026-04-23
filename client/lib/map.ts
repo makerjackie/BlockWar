@@ -392,7 +392,8 @@ class GameMap {
     const isOwner = this.ownBlock(player, focus);
     const possibleMove = this.withinMap(focus) && this.withinMap(newFocus);
     const notMountain = this.getBlock(newFocus).type !== TileType.Mountain;
-    return isOwner && possibleMove && notMountain;
+    const hasMovableUnit = this.getBlock(focus).getMovableUnit() > 0;
+    return isOwner && possibleMove && notMountain && hasMovableUnit;
   }
 
   moveAllMovableUnit(player: any, focus: Point, newFocus: Point): void {

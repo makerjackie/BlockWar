@@ -1,3 +1,5 @@
+import { useTranslation } from 'next-i18next';
+
 type ConnectionState = 'connecting' | 'connected' | 'reconnecting';
 
 interface PingTestProps {
@@ -29,19 +31,27 @@ function getIndicatorColor(connectionState: ConnectionState, ping: number | null
   return 'var(--bw-red)';
 }
 
-function getStatusLabel(connectionState: ConnectionState, ping: number | null) {
+function getStatusLabel(
+  connectionState: ConnectionState,
+  ping: number | null,
+  t: (key: string, options?: Record<string, unknown>) => string
+) {
   if (connectionState === 'reconnecting') {
-    return 'Reconnecting';
+    return t('network-reconnecting');
   }
 
   if (connectionState === 'connecting') {
-    return 'Connecting';
+    return t('network-connecting');
   }
 
-  return ping === null ? 'Ping --' : `Ping ${ping}ms`;
+  return ping === null
+    ? `${t('latency')} ${t('latency-unknown')}`
+    : `${t('latency')} ${ping}ms`;
 }
 
 const PingTest = ({ ping, connectionState }: PingTestProps) => {
+  const { t } = useTranslation();
+
   return (
     <div
       className='menu-container flex items-center gap-2 rounded-none border-l-0 px-3 py-2 text-[11px] font-black uppercase tracking-[0.18em]'
@@ -51,7 +61,8 @@ const PingTest = ({ ping, connectionState }: PingTestProps) => {
         className='inline-block size-2 shrink-0 rounded-full'
         style={{ backgroundColor: getIndicatorColor(connectionState, ping) }}
       />
-      <span>{getStatusLabel(connectionState, ping)}</span>
+      <span className='text-[10px] tracking-[0.24em]'>{t('network')}</span>
+      <span>{getStatusLabel(connectionState, ping, t)}</span>
     </div>
   );
 };

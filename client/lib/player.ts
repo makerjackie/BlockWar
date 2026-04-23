@@ -21,6 +21,7 @@ class Player {
     // clear disconnect player when game ended
     public disconnected: boolean = false,
     public isBot: boolean = false,
+    public latencyMs: number | null = null,
   ) { }
 
   setSpectate(): void { this.team = MaxTeamNum + 1; }

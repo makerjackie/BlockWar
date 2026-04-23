@@ -95,6 +95,18 @@ function isCardinalNeighbor(from: Point, to: Point) {
   return Math.abs(from.x - to.x) + Math.abs(from.y - to.y) === 1;
 }
 
+function normalizeLatencyMs(value: unknown) {
+  if (value === null || value === undefined) {
+    return null;
+  }
+
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return null;
+  }
+
+  return Math.min(9999, Math.max(0, Math.round(value)));
+}
+
 function hasHumanPlayers(room: { players: Array<{ isBot?: boolean }> }) {
   return room.players.some((player) => !player.isBot);
 }
@@ -252,6 +264,10 @@ export class RoomDurableObject extends DurableObject<Env> {
         socket.send(payload);
       }
     }
+  }
+
+  private broadcastPlayerLatency(player: Player) {
+    this.broadcast('player_latency', player.id, player.latencyMs);
   }
 
   private async ensureRoom(roomId: string) {
@@ -576,6 +592,7 @@ export class RoomDurableObject extends DurableObject<Env> {
         player.disconnected = false;
         player.socket_id = connectionId;
         player.patchView = new MapDiff();
+        player.latencyMs = null;
       }
     }
 
@@ -606,6 +623,7 @@ export class RoomDurableObject extends DurableObject<Env> {
         player.patchView = new MapDiff();
         joinMessage = 'joined as spectator.';
       }
+      player.latencyMs = null;
       room.players.push(player);
     } else {
       joinMessage = room.gameStarted ? 'reconnected.' : 're-joined the lobby.';
@@ -648,6 +666,7 @@ export class RoomDurableObject extends DurableObject<Env> {
     const leavingActiveGame = this.room.gameStarted && !player.spectating();
     const shouldGraceReconnect = leavingActiveGame && reason === 'disconnect';
     this.clearDisconnectTimer(player.id);
+    player.latencyMs = null;
     this.broadcast(
       'room_message',
       player.minify(),
@@ -686,6 +705,7 @@ export class RoomDurableObject extends DurableObject<Env> {
       this.ensureConnectedHumanHost(player.isRoomHost ? player : null, player.isRoomHost);
     }
 
+    this.broadcastPlayerLatency(player);
     this.broadcast('update_room', this.room);
     if (!shouldGraceReconnect) {
       await this.syncRoomSummary();
@@ -942,6 +962,11 @@ export class RoomDurableObject extends DurableObject<Env> {
     switch (packet.type) {
       case 'ping':
         this.send(connectionId, 'pong', arg1 ?? null);
+        break;
+      case 'report_latency':
+        if (!player) return;
+        player.latencyMs = normalizeLatencyMs(arg1);
+        this.broadcastPlayerLatency(player);
         break;
       case 'get_room_info':
       case 'reconnect':

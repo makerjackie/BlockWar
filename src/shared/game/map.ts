@@ -404,7 +404,8 @@ class GameMap {
 
     const isOwner = this.ownBlock(player, focus);
     const notMountain = this.getBlock(newFocus).type !== TileType.Mountain;
-    return isOwner && notMountain;
+    const hasMovableUnit = this.getBlock(focus).getMovableUnit() > 0;
+    return isOwner && notMountain && hasMovableUnit;
   }
 
   moveAllMovableUnit(player: any, focus: Point, newFocus: Point): void {

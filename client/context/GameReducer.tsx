@@ -14,6 +14,20 @@ export const roomReducer = (state: Room, action: any) => {
       return action.payload;
     case 'update_players':
       return { ...state, players: action.payload };
+    case 'update_player_latency':
+      return {
+        ...state,
+        players: state.players.map((player) => {
+          if (player.id !== action.payload.playerId) {
+            return player;
+          }
+
+          return {
+            ...player,
+            latencyMs: action.payload.latencyMs,
+          };
+        }),
+      };
     case 'update_property':
       return { ...state, [action.payload.property]: action.payload.value };
     default:

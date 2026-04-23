@@ -284,6 +284,19 @@ function GamingRoom() {
 
     socket.on('latency', (nextLatency: number | null) => {
       setLatencyMs(nextLatency);
+      if (nextLatency !== null) {
+        socket.emit('report_latency', nextLatency);
+      }
+    });
+
+    socket.on('player_latency', (playerId: string, nextLatency: number | null) => {
+      roomDispatch({
+        type: 'update_player_latency',
+        payload: {
+          playerId,
+          latencyMs: nextLatency,
+        },
+      });
     });
 
     socket.on(

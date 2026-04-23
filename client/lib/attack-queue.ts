@@ -93,6 +93,23 @@ export class AttackQueue {
     return this.isEmpty() ? undefined : this.queued[this.queued.length - 1];
   }
 
+  getPlannedRoutes(): AttackRoute[] {
+    const plannedRoutes = this.inFlightOrder
+      .map((requestId) => this.inFlight.get(requestId))
+      .filter((route): route is SentAttackRoute => !!route)
+      .map((route) => ({
+        from: route.from,
+        to: route.to,
+        half: route.half,
+      }));
+
+    for (let index = this.queueHead; index < this.queued.length; index += 1) {
+      plannedRoutes.push(this.queued[index]);
+    }
+
+    return plannedRoutes;
+  }
+
   isEmpty(): boolean {
     return this.size() === 0;
   }

@@ -465,12 +465,22 @@ describe('RoomDurableObject', () => {
         map.turn = 1;
 
         const from = new Point(player.king!.x, player.king!.y);
+        map.getBlock(from).setUnit(5);
+
+        const isOccupiedByKing = (point: Point) => {
+          return room.players.some((roomPlayer: Player) => {
+            return roomPlayer.king?.x === point.x && roomPlayer.king?.y === point.y;
+          });
+        };
+
         const mid = [
           new Point(from.x - 1, from.y),
           new Point(from.x + 1, from.y),
           new Point(from.x, from.y - 1),
           new Point(from.x, from.y + 1),
-        ].find((point) => map.commendable(player, from, point));
+        ].find((point) => {
+          return map.withinMap(point) && !isOccupiedByKing(point);
+        });
 
         expect(mid).toBeTruthy();
 
@@ -483,11 +493,24 @@ describe('RoomDurableObject', () => {
           return (
             map.withinMap(point) &&
             !(point.x === from.x && point.y === from.y) &&
-            map.getBlock(point).type !== TileType.Mountain
+            !isOccupiedByKing(point)
           );
         });
 
         expect(end).toBeTruthy();
+
+        const makeNeutralPlain = (point: Point) => {
+          const block = map.getBlock(point);
+          if (block.player) {
+            block.player.loseLand(block);
+          }
+          block.beNeutralized();
+          block.setType(TileType.Plain);
+          block.setUnit(0);
+        };
+
+        makeNeutralPlain(mid!);
+        makeNeutralPlain(end!);
 
         await (instance as any).handlePacket('socket-a', {
           type: 'attack',

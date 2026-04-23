@@ -101,6 +101,7 @@
   "captured-by": "被击败，胜者为",
   "you-win": "你赢了！",
   "you-surrender": "你投降了！",
+  "auto-surrendered-inactive": "挂机过久，已自动投降",
   "game-over": "游戏结束！",
   "watch-replay": "查看回放",
   "cancel": "取消",
@@ -208,6 +209,8 @@
   },
   "strategist": {
     "title": "参谋",
+    "show": "显示参谋",
+    "hide": "关闭参谋",
     "idle": {
       "greeting": "嗨，{{player}}，我是你的参谋，我会告诉你战场上的关键信息。"
     },

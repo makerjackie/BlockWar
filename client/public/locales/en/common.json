@@ -100,6 +100,7 @@
   "captured-by": "Captured by",
   "you-win": "You won!",
   "you-surrender": "You Surrendered!",
+  "auto-surrendered-inactive": "Auto-surrendered for inactivity.",
   "game-over": "Game Over!",
   "watch-replay": "Watch Replay",
   "cancel": "Cancel",
@@ -207,6 +208,8 @@
   },
   "strategist": {
     "title": "Strategist",
+    "show": "Show strategist",
+    "hide": "Hide strategist",
     "idle": {
       "greeting": "Hi {{player}}, I'm your strategist, and I'll keep you posted on the battlefield."
     },

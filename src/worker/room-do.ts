@@ -863,6 +863,7 @@ export class RoomDurableObject extends DurableObject<Env> {
             player.operatedTurn + 160 <= this.room.map.turn
           ) {
             this.handleNeutralized(this.room, player);
+            this.send(player.socket_id, 'auto_surrendered');
             this.broadcast('room_message', player.minify(), 'surrendered');
           }
         }

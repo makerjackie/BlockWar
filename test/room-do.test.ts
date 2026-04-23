@@ -103,6 +103,61 @@ describe('RoomDurableObject', () => {
     );
   });
 
+  it('auto-surrenders inactive players and notifies their socket', async () => {
+    const roomId = `room-${crypto.randomUUID().slice(0, 8)}`;
+    const stub = env.ROOMS.getByName(roomId);
+
+    await runInDurableObject(
+      stub,
+      async (instance: RoomDurableObject) => {
+        const events = captureEvents(instance);
+        const room = await (instance as any).ensureRoom(roomId);
+        room.players.push(
+          new Player('player-a', 'socket-a', 'Alice', 1, 1),
+          new Player('player-b', 'socket-b', 'Bob', 2, 2),
+          new Player('player-c', 'socket-c', 'Carol', 3, 3)
+        );
+
+        await (instance as any).syncRoomSummary();
+        await (instance as any).startGame();
+        (instance as any).clearGameLoop();
+        events.length = 0;
+
+        const inactivePlayer = room.players[0];
+        room.players[1].operatedTurn = 1;
+        room.players[2].operatedTurn = 1;
+        inactivePlayer.operatedTurn = 0;
+        inactivePlayer.disconnected = false;
+        inactivePlayer.isDead = false;
+
+        expect(inactivePlayer.king).toBeTruthy();
+        expect(room.map!.getBlock(inactivePlayer.king!).player).toBe(inactivePlayer);
+
+        room.map!.turn = 161;
+
+        await (instance as any).runGameTick();
+
+        expect(inactivePlayer.isDead).toBe(true);
+        expect(
+          events.some(
+            (item) =>
+              item.connectionId === 'socket-a' &&
+              item.event === 'auto_surrendered'
+          )
+        ).toBe(true);
+        expect(
+          events.some(
+            (item) =>
+              item.event === 'room_message' &&
+              item.data[0] &&
+              (item.data[0] as { username?: string }).username === 'Alice' &&
+              item.data[1] === 'surrendered'
+          )
+        ).toBe(true);
+      }
+    );
+  });
+
   it('lets a room host add a bot and start a bot match', async () => {
     const roomId = `room-${crypto.randomUUID().slice(0, 8)}`;
     const stub = env.ROOMS.getByName(roomId);

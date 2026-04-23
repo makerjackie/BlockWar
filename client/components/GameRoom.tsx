@@ -373,6 +373,17 @@ function GamingRoom() {
       ]);
     });
 
+    socket.on('auto_surrendered', () => {
+      setIsSurrendered(true);
+      snackStateDispatch({
+        type: 'update',
+        title: '',
+        status: 'warning',
+        message: t('auto-surrendered-inactive'),
+        duration: 3500,
+      });
+    });
+
     socket.on('captured', (player1: UserData, player2: UserData) => {
       if (player2.id !== myPlayerIdRef.current) {
         soundEffects.play('capture');

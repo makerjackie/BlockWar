@@ -8,7 +8,7 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'next-i18next';
-import { GripHorizontal, Radar } from 'lucide-react';
+import { GripHorizontal, Radar, X } from 'lucide-react';
 import { useGame } from '@/context/GameContext';
 import useMediaQuery from '@/hooks/useMediaQuery';
 import { getStrategistHints } from '@/lib/strategist-hints';
@@ -40,6 +40,7 @@ export default function StrategistHint() {
   const [activeIndex, setActiveIndex] = useState(0);
   const [position, setPosition] = useState<StrategistPanelPosition | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [isDismissed, setIsDismissed] = useState(false);
   const isStrategistVisible = room.gameStarted && room.preset !== 'tutorial';
 
   const hints = useMemo(() => {
@@ -215,12 +216,12 @@ export default function StrategistHint() {
   }, [isStrategistVisible, syncPosition]);
 
   useSafeLayoutEffect(() => {
-    if (!isStrategistVisible) {
+    if (!isStrategistVisible || isDismissed) {
       return;
     }
 
     syncPosition(readStrategistPanelPosition());
-  }, [isStrategistVisible, isMobileHint, syncPosition]);
+  }, [isDismissed, isStrategistVisible, isMobileHint, syncPosition]);
 
   useEffect(() => {
     return () => {
@@ -294,6 +295,14 @@ export default function StrategistHint() {
     [commitPosition, measurePanel, schedulePosition]
   );
 
+  const handleDismiss = useCallback(() => {
+    setIsDismissed(true);
+  }, []);
+
+  const handleRestore = useCallback(() => {
+    setIsDismissed(false);
+  }, []);
+
   if (!isStrategistVisible) {
     return null;
   }
@@ -301,22 +310,50 @@ export default function StrategistHint() {
   const activeMessage =
     messages[activeIndex % messages.length]?.text ??
     t('strategist.idle.greeting', { player: myPlayerName });
+  const panelStyle = {
+    visibility: position ? 'visible' : 'hidden',
+    transform: position
+      ? `translate3d(${position.x}px, ${position.y}px, 0)`
+      : 'translate3d(-9999px, -9999px, 0)',
+    borderColor: 'color-mix(in srgb, var(--bw-line-strong) 42%, transparent)',
+    backgroundColor:
+      'color-mix(in srgb, var(--bw-panel-strong) 88%, transparent)',
+    boxShadow: 'var(--bw-shadow-soft)',
+    willChange: isDragging ? 'transform' : undefined,
+  } as const;
+
+  if (isDismissed) {
+    return (
+      <button
+        type='button'
+        className='pointer-events-auto fixed left-0 top-0 z-[109] inline-flex items-center gap-2 border px-2 py-2 text-[10px] font-black uppercase tracking-[0.18em]'
+        style={panelStyle}
+        onClick={handleRestore}
+        aria-label={t('strategist.show')}
+        title={t('strategist.show')}
+      >
+        <span
+          aria-hidden
+          className='grid size-5 place-items-center border'
+          style={{
+            color: 'var(--bw-ember)',
+            borderColor: 'color-mix(in srgb, var(--bw-ember) 32%, transparent)',
+            backgroundColor:
+              'color-mix(in srgb, var(--bw-panel-strong) 78%, transparent)',
+          }}
+        >
+          <Radar size={12} className='bw-strategist-icon' />
+        </span>
+        <span style={{ color: 'var(--bw-ember)' }}>{t('strategist.title')}</span>
+      </button>
+    );
+  }
 
   return (
     <section
       ref={panelRef}
       className='pointer-events-none fixed left-0 top-0 z-[109] flex w-[min(44rem,calc(100vw-0.75rem))] items-center gap-2 border px-2 py-2 backdrop-blur-xl sm:w-[min(46rem,calc(100vw-2rem))]'
-      style={{
-        visibility: position ? 'visible' : 'hidden',
-        transform: position
-          ? `translate3d(${position.x}px, ${position.y}px, 0)`
-          : 'translate3d(-9999px, -9999px, 0)',
-        borderColor: 'color-mix(in srgb, var(--bw-line-strong) 42%, transparent)',
-        backgroundColor:
-          'color-mix(in srgb, var(--bw-panel-strong) 88%, transparent)',
-        boxShadow: 'var(--bw-shadow-soft)',
-        willChange: isDragging ? 'transform' : undefined,
-      }}
+      style={panelStyle}
     >
       <button
         type='button'
@@ -352,6 +389,21 @@ export default function StrategistHint() {
       >
         {activeMessage}
       </p>
+      <button
+        type='button'
+        className='pointer-events-auto grid size-8 shrink-0 place-items-center border transition'
+        style={{
+          color: 'var(--bw-ink-soft)',
+          borderColor: 'color-mix(in srgb, var(--bw-line) 72%, transparent)',
+          backgroundColor:
+            'color-mix(in srgb, var(--bw-panel-strong) 78%, transparent)',
+        }}
+        onClick={handleDismiss}
+        aria-label={t('strategist.hide')}
+        title={t('strategist.hide')}
+      >
+        <X size={14} strokeWidth={2.5} />
+      </button>
     </section>
   );
 }

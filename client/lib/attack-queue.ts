@@ -44,7 +44,15 @@ export class AttackQueue {
     this.queued.push(item);
   }
 
+  hasInFlight(): boolean {
+    return this.inFlightOrder.length > 0;
+  }
+
   pop(): SentAttackRoute | undefined {
+    if (this.hasInFlight()) {
+      return undefined;
+    }
+
     const item = this.front();
     if (!item) {
       return undefined;

@@ -444,8 +444,14 @@ function GamingRoom() {
         setTurnsCount(turnsCount);
         setLeaderBoardData(leaderBoardData);
 
-        if (!attackQueueRef.current.isEmpty()) {
+        if (
+          !attackQueueRef.current.hasInFlight() &&
+          !attackQueueRef.current.isEmpty()
+        ) {
           const item = attackQueueRef.current.pop();
+          if (!item) {
+            return;
+          }
           socket.emit('attack', item.from, item.to, item.half, item.requestId);
           attackQueueRef.current.allowAttackThisTurn = false;
           debugLog(
@@ -456,7 +462,10 @@ function GamingRoom() {
             item.requestId,
             turnsCount
           );
-        } else if (attackQueueRef.current.lastItem) {
+        } else if (
+          !attackQueueRef.current.hasInFlight() &&
+          attackQueueRef.current.lastItem
+        ) {
           attackQueueRef.current.clearLastItem();
         }
       }

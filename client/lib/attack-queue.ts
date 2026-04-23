@@ -16,8 +16,6 @@ function samePosition(a?: Position | null, b?: Position | null) {
 }
 
 export class AttackQueue {
-  public allowAttackThisTurn: boolean;
-
   private queued: AttackRoute[];
   private queueHead: number;
   private inFlight: Map<string, SentAttackRoute>;
@@ -28,7 +26,6 @@ export class AttackQueue {
     private clearFromMap: (route: AttackRoute) => void,
     private createRequestId: () => string = () => createRandomId()
   ) {
-    this.allowAttackThisTurn = false;
     this.queued = [];
     this.queueHead = 0;
     this.inFlight = new Map();
@@ -44,15 +41,7 @@ export class AttackQueue {
     this.queued.push(item);
   }
 
-  hasInFlight(): boolean {
-    return this.inFlightOrder.length > 0;
-  }
-
   pop(): SentAttackRoute | undefined {
-    if (this.hasInFlight()) {
-      return undefined;
-    }
-
     const item = this.front();
     if (!item) {
       return undefined;

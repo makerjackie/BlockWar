@@ -37,6 +37,13 @@ type SocketAttachment = {
   playerId?: string;
 };
 
+type PendingAttack = {
+  from: Point;
+  to: Point;
+  isHalf: boolean;
+  requestId: string | null;
+};
+
 const configurableRoomSettings = new Set([
   'roomName',
   'mapId',
@@ -93,6 +100,10 @@ function pointFromPayload(value: unknown): Point | null {
 
 function isCardinalNeighbor(from: Point, to: Point) {
   return Math.abs(from.x - to.x) + Math.abs(from.y - to.y) === 1;
+}
+
+function samePoint(left?: Point | null, right?: Point | null) {
+  return !!left && !!right && left.x === right.x && left.y === right.y;
 }
 
 function normalizeLatencyMs(value: unknown) {
@@ -156,6 +167,7 @@ export class RoomDurableObject extends DurableObject<Env> {
   private sockets = new Map<string, WebSocket>();
   private gameLoopTimer: number | null = null;
   private disconnectTimers = new Map<string, number>();
+  private pendingAttacks = new Map<string, PendingAttack[]>();
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
@@ -556,6 +568,7 @@ export class RoomDurableObject extends DurableObject<Env> {
   }
 
   private handleNeutralized(room: Room, player: Player) {
+    this.pendingAttacks.delete(player.id);
     if (player.king && room.map) {
       room.map.getBlock(player.king).kingBeDominated();
     }
@@ -666,6 +679,7 @@ export class RoomDurableObject extends DurableObject<Env> {
     const leavingActiveGame = this.room.gameStarted && !player.spectating();
     const shouldGraceReconnect = leavingActiveGame && reason === 'disconnect';
     this.clearDisconnectTimer(player.id);
+    this.pendingAttacks.delete(player.id);
     player.latencyMs = null;
     this.broadcast(
       'room_message',
@@ -759,12 +773,112 @@ export class RoomDurableObject extends DurableObject<Env> {
     }
   }
 
+  private queueAttack(player: Player, attack: PendingAttack) {
+    const queued = this.pendingAttacks.get(player.id) ?? [];
+    queued.push(attack);
+    this.pendingAttacks.set(player.id, queued);
+  }
+
+  private dropQueuedAttackChain(playerId: string, failedTo: Point) {
+    const queued = this.pendingAttacks.get(playerId);
+    if (!queued || queued.length === 0) {
+      return;
+    }
+
+    let cursor: Point | null = failedTo;
+    while (queued.length > 0 && samePoint(queued[0].from, cursor)) {
+      cursor = queued.shift()!.to;
+    }
+
+    if (queued.length === 0) {
+      this.pendingAttacks.delete(playerId);
+    }
+  }
+
+  private executeAttack(player: Player, attack: PendingAttack): boolean {
+    if (!this.room?.map) {
+      return false;
+    }
+
+    const canAttack =
+      player.operatedTurn < this.room.map.turn &&
+      this.room.map.commendable(player, attack.from, attack.to);
+
+    if (!canAttack) {
+      this.send(
+        player.socket_id,
+        'attack_failure',
+        attack.from,
+        attack.to,
+        `Invalid operation: ${player.operatedTurn} ${this.room.map.turn} ${canAttack}`,
+        attack.requestId
+      );
+      return false;
+    }
+
+    if (attack.isHalf) {
+      this.room.map.moveHalfMovableUnit(player, attack.from, attack.to);
+    } else {
+      this.room.map.moveAllMovableUnit(player, attack.from, attack.to);
+    }
+    player.operatedTurn = this.room.map.turn;
+    this.send(
+      player.socket_id,
+      'attack_success',
+      attack.from,
+      attack.to,
+      this.room.map.turn,
+      attack.requestId
+    );
+    return true;
+  }
+
+  private flushQueuedAttack(player: Player) {
+    if (
+      !this.room?.map ||
+      !this.room.gameStarted ||
+      player.disconnected ||
+      player.isDead ||
+      player.spectating() ||
+      player.operatedTurn >= this.room.map.turn
+    ) {
+      return;
+    }
+
+    const queued = this.pendingAttacks.get(player.id);
+    if (!queued || queued.length === 0) {
+      return;
+    }
+
+    const attack = queued.shift()!;
+    const executed = this.executeAttack(player, attack);
+
+    if (!executed) {
+      this.dropQueuedAttackChain(player.id, attack.to);
+    }
+
+    if (queued.length === 0) {
+      this.pendingAttacks.delete(player.id);
+    }
+  }
+
+  private flushQueuedAttacksForCurrentTurn() {
+    if (!this.room?.map || !this.room.gameStarted) {
+      return;
+    }
+
+    for (const player of this.room.players) {
+      this.flushQueuedAttack(player);
+    }
+  }
+
   private async startGame() {
     if (!this.room || this.room.gameStarted) {
       return;
     }
 
     this.clearAllDisconnectTimers();
+    this.pendingAttacks.clear();
     this.room.players.forEach((player) => {
       player.reset();
       player.disconnected = false;
@@ -904,6 +1018,7 @@ export class RoomDurableObject extends DurableObject<Env> {
     );
     this.room.map.updateTurn();
     this.room.map.updateUnit();
+    this.flushQueuedAttacksForCurrentTurn();
 
     const aliveTeams = this.room.players.reduce<number[]>((teams, player) => {
       if (!player.isDead && !player.spectating() && !teams.includes(player.team)) {
@@ -937,6 +1052,7 @@ export class RoomDurableObject extends DurableObject<Env> {
 
     this.room.gameStarted = false;
     this.room.forceStartNum = 0;
+    this.pendingAttacks.clear();
     this.room.players.forEach((player) => {
       player.reset();
     });
@@ -1573,28 +1689,24 @@ export class RoomDurableObject extends DurableObject<Env> {
           return;
         }
 
-        const canAttack =
-          player.operatedTurn < room.map.turn &&
-          room.map.commendable(player, from, to);
+        const attack: PendingAttack = {
+          from,
+          to,
+          isHalf,
+          requestId,
+        };
 
-        if (canAttack) {
-          if (isHalf) {
-            room.map.moveHalfMovableUnit(player, from, to);
-          } else {
-            room.map.moveAllMovableUnit(player, from, to);
-          }
-          player.operatedTurn = room.map.turn;
-          this.send(connectionId, 'attack_success', from, to, room.map.turn, requestId);
-        } else {
-          this.send(
-            connectionId,
-            'attack_failure',
-            from,
-            to,
-            `Invalid operation: ${player.operatedTurn} ${room.map.turn} ${canAttack}`,
-            requestId
-          );
+        this.flushQueuedAttack(player);
+
+        if (
+          (this.pendingAttacks.get(player.id)?.length ?? 0) > 0 ||
+          player.operatedTurn >= room.map.turn
+        ) {
+          this.queueAttack(player, attack);
+          return;
         }
+
+        this.executeAttack(player, attack);
         break;
       }
       default:

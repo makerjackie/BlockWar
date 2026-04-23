@@ -15,38 +15,10 @@ function createRoute(
 }
 
 describe('AttackQueue', () => {
-  it('waits for the current attack to resolve before dispatching the next route', () => {
+  it('drops only the failed chain when an older failure arrives after a newer send', () => {
     const clearFromMap = vi.fn();
     let requestCounter = 0;
     const queue = new AttackQueue(clearFromMap, () => `req-${++requestCounter}`);
-
-    const first = createRoute(0, 0, 0, 1);
-    const second = createRoute(0, 1, 0, 2);
-
-    queue.insert(first);
-    queue.insert(second);
-
-    const sentFirst = queue.pop();
-
-    expect(sentFirst?.requestId).toBe('req-1');
-    expect(queue.hasInFlight()).toBe(true);
-    expect(queue.pop()).toBeUndefined();
-    expect(queue.front()).toEqual(second);
-    expect(clearFromMap).not.toHaveBeenCalled();
-
-    queue.resolveSuccess(sentFirst?.requestId, sentFirst?.from, sentFirst?.to);
-
-    const sentSecond = queue.pop();
-
-    expect(queue.hasInFlight()).toBe(true);
-    expect(sentSecond?.requestId).toBe('req-2');
-    expect(clearFromMap).toHaveBeenCalledTimes(1);
-    expect(clearFromMap).toHaveBeenCalledWith(sentFirst);
-  });
-
-  it('drops the remaining queued chain after a failed route', () => {
-    const clearFromMap = vi.fn();
-    const queue = new AttackQueue(clearFromMap, () => 'req-1');
 
     const first = createRoute(0, 0, 0, 1);
     const second = createRoute(0, 1, 0, 2);
@@ -57,15 +29,25 @@ describe('AttackQueue', () => {
     queue.insert(third);
 
     const sentFirst = queue.pop();
+    const sentSecond = queue.pop();
+
+    expect(sentFirst?.requestId).toBe('req-1');
+    expect(sentSecond?.requestId).toBe('req-2');
+    expect(clearFromMap).toHaveBeenCalledTimes(1);
+    expect(clearFromMap).toHaveBeenNthCalledWith(1, sentFirst);
 
     queue.resolveFailure(sentFirst?.requestId, sentFirst?.from, sentFirst?.to);
 
     expect(queue.isEmpty()).toBe(true);
     expect(queue.lastItem).toBeUndefined();
     expect(clearFromMap).toHaveBeenCalledTimes(3);
-    expect(clearFromMap).toHaveBeenNthCalledWith(1, sentFirst);
-    expect(clearFromMap).toHaveBeenNthCalledWith(2, second);
+    expect(clearFromMap).toHaveBeenNthCalledWith(2, sentSecond);
     expect(clearFromMap).toHaveBeenNthCalledWith(3, third);
+
+    queue.resolveFailure(sentSecond?.requestId, sentSecond?.from, sentSecond?.to);
+
+    expect(clearFromMap).toHaveBeenCalledTimes(3);
+    expect(queue.pop()).toBeUndefined();
   });
 
   it('can still reconcile legacy responses that do not include a request id', () => {

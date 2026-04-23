@@ -449,22 +449,14 @@ function GamingRoom() {
       ) => {
         debugLog(`game_update: ${turnsCount}`);
 
-        attackQueueRef.current.allowAttackThisTurn = true;
         setRoomUiStatus(RoomUiStatus.gameRealStarted);
         mapDataDispatch({ type: 'update', mapDiff });
         setTurnsCount(turnsCount);
         setLeaderBoardData(leaderBoardData);
 
-        if (
-          !attackQueueRef.current.hasInFlight() &&
-          !attackQueueRef.current.isEmpty()
-        ) {
+        if (!attackQueueRef.current.isEmpty()) {
           const item = attackQueueRef.current.pop();
-          if (!item) {
-            return;
-          }
           socket.emit('attack', item.from, item.to, item.half, item.requestId);
-          attackQueueRef.current.allowAttackThisTurn = false;
           debugLog(
             'emit attack: ',
             item.from,
@@ -473,10 +465,7 @@ function GamingRoom() {
             item.requestId,
             turnsCount
           );
-        } else if (
-          !attackQueueRef.current.hasInFlight() &&
-          attackQueueRef.current.lastItem
-        ) {
+        } else if (attackQueueRef.current.lastItem) {
           attackQueueRef.current.clearLastItem();
         }
       }

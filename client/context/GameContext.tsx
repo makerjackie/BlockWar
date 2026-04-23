@@ -316,21 +316,6 @@ const GameProvider: React.FC<GameProviderProp> = ({ children }) => {
         y: selectPos.y,
         className: className,
       });
-      // todo: Higher latency can result in attacks from one turn not being responded to by the server until the next turn,
-      // resulting in two attack requests in one turn, causing the 2nd attack to fail
-      //
-      // if (attackQueueRef.current.allowAttackThisTurn) {
-      //   let item = attackQueueRef.current.pop();
-      //   socketRef.current.emit('attack', item.from, item.to, item.half);
-      //   attackQueueRef.current.allowAttackThisTurn = false;
-      //   console.log(
-      //     `emit attack: `,
-      //     item.from,
-      //     item.to,
-      //     item.half,
-      //     turnsCount
-      //   );
-      // }
     },
     [
       withinMap,

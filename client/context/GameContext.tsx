@@ -222,8 +222,12 @@ const GameProvider: React.FC<GameProviderProp> = ({ children }) => {
       const now = Date.now();
       const { tileType: previousTileType, timestamp } =
         blockedMoveFeedbackRef.current;
+      const feedbackDuration =
+        tileType === TileType.Mountain ? 1000 : 900;
+      const feedbackCooldown =
+        tileType === TileType.Mountain ? feedbackDuration : 4000;
 
-      if (previousTileType === tileType && now - timestamp < 4000) {
+      if (previousTileType === tileType && now - timestamp < feedbackCooldown) {
         return;
       }
 
@@ -240,7 +244,7 @@ const GameProvider: React.FC<GameProviderProp> = ({ children }) => {
           tileType === TileType.Mountain
             ? t('mountain-blocked')
             : t('movement-blocked'),
-        duration: tileType === TileType.Mountain ? 2000 : 900,
+        duration: feedbackDuration,
       });
     },
     [snackStateDispatch, t]

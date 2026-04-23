@@ -62,4 +62,24 @@ describe('AttackQueue', () => {
     expect(clearFromMap).toHaveBeenCalledTimes(1);
     expect(clearFromMap).toHaveBeenCalledWith(sent);
   });
+
+  it('clears in-flight routes when the queue is cancelled', () => {
+    const clearFromMap = vi.fn();
+    let requestCounter = 0;
+    const queue = new AttackQueue(clearFromMap, () => `req-${++requestCounter}`);
+    const first = createRoute(2, 2, 2, 3);
+
+    queue.insert(first);
+    const sent = queue.pop();
+
+    expect(queue.hasPending()).toBe(true);
+    expect(queue.firstPendingRoute()).toEqual(sent);
+
+    queue.clear();
+
+    expect(queue.hasPending()).toBe(false);
+    expect(queue.firstPendingRoute()).toBeUndefined();
+    expect(clearFromMap).toHaveBeenCalledTimes(1);
+    expect(clearFromMap).toHaveBeenCalledWith(sent);
+  });
 });

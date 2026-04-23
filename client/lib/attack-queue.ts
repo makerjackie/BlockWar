@@ -35,6 +35,19 @@ export class AttackQueue {
     this.queued.push(item);
   }
 
+  hasPending(): boolean {
+    return this.inFlightOrder.length > 0 || !this.isEmpty();
+  }
+
+  firstPendingRoute(): AttackRoute | undefined {
+    const inFlightId = this.inFlightOrder[0];
+    if (inFlightId) {
+      return this.inFlight.get(inFlightId);
+    }
+
+    return this.front();
+  }
+
   pop(): SentAttackRoute | undefined {
     const item = this.front();
     if (!item) {

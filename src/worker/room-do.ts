@@ -1665,6 +1665,14 @@ export class RoomDurableObject extends DurableObject<Env> {
         await this.checkForcedStart();
         break;
       }
+      case 'clear_attack_queue': {
+        if (!player || !room.gameStarted) {
+          return;
+        }
+
+        this.pendingAttacks.delete(player.id);
+        break;
+      }
       case 'attack': {
         if (!player || !room.map || !room.gameStarted) return;
         const from = pointFromPayload(arg1);

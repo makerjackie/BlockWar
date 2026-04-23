@@ -182,17 +182,20 @@ const GameProvider: React.FC<GameProviderProp> = ({ children }) => {
   }, [attackQueueRef, selectedMapTileInfo, setSelectedMapTileInfo]);
   const clearQueue = useCallback(() => {
     if (selectedMapTileInfo) {
-      let route = attackQueueRef.current.front();
-      if (route) {
-        attackQueueRef.current.clear();
-        setSelectedMapTileInfo({
-          ...selectedMapTileInfo,
-          x: route.from.x,
-          y: route.from.y,
-        });
+      const route = attackQueueRef.current.firstPendingRoute();
+      if (!route || !attackQueueRef.current.hasPending()) {
+        return;
       }
+
+      attackQueueRef.current.clear();
+      socketRef.current?.emit('clear_attack_queue');
+      setSelectedMapTileInfo({
+        ...selectedMapTileInfo,
+        x: route.from.x,
+        y: route.from.y,
+      });
     }
-  }, [attackQueueRef, selectedMapTileInfo, setSelectedMapTileInfo]);
+  }, [attackQueueRef, selectedMapTileInfo, setSelectedMapTileInfo, socketRef]);
 
   const possibleNextMapPositions = usePossibleNextMapPositions({
     width: initGameInfo ? initGameInfo.mapHeight : room.map ? room.map.width : 0,

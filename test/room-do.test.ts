@@ -541,6 +541,93 @@ describe('RoomDurableObject', () => {
     );
   });
 
+  it('clears queued follow-up attacks when the player cancels the route', async () => {
+    const roomId = `room-${crypto.randomUUID().slice(0, 8)}`;
+    const stub = env.ROOMS.getByName(roomId);
+
+    await runInDurableObject(
+      stub,
+      async (instance: RoomDurableObject) => {
+        const { events, room } = await createStartedRoom(instance, roomId);
+        const player = room.players[0];
+        const map = room.map!;
+        map.turn = 1;
+
+        const from = new Point(player.king!.x, player.king!.y);
+        map.getBlock(from).setUnit(5);
+
+        const isOccupiedByKing = (point: Point) => {
+          return room.players.some((roomPlayer: Player) => {
+            return roomPlayer.king?.x === point.x && roomPlayer.king?.y === point.y;
+          });
+        };
+
+        const mid = [
+          new Point(from.x - 1, from.y),
+          new Point(from.x + 1, from.y),
+          new Point(from.x, from.y - 1),
+          new Point(from.x, from.y + 1),
+        ].find((point) => {
+          return map.withinMap(point) && !isOccupiedByKing(point);
+        });
+
+        expect(mid).toBeTruthy();
+
+        const end = [
+          new Point(mid!.x - 1, mid!.y),
+          new Point(mid!.x + 1, mid!.y),
+          new Point(mid!.x, mid!.y - 1),
+          new Point(mid!.x, mid!.y + 1),
+        ].find((point) => {
+          return (
+            map.withinMap(point) &&
+            !(point.x === from.x && point.y === from.y) &&
+            !isOccupiedByKing(point)
+          );
+        });
+
+        expect(end).toBeTruthy();
+
+        const makeNeutralPlain = (point: Point) => {
+          const block = map.getBlock(point);
+          if (block.player) {
+            block.player.loseLand(block);
+          }
+          block.beNeutralized();
+          block.setType(TileType.Plain);
+          block.setUnit(0);
+        };
+
+        makeNeutralPlain(mid!);
+        makeNeutralPlain(end!);
+
+        await (instance as any).handlePacket('socket-a', {
+          type: 'attack',
+          data: [from, mid, false, 'req-1'],
+        });
+        await (instance as any).handlePacket('socket-a', {
+          type: 'attack',
+          data: [mid, end, false, 'req-2'],
+        });
+        await (instance as any).handlePacket('socket-a', {
+          type: 'clear_attack_queue',
+          data: [],
+        });
+
+        const firstTurnSuccesses = events.filter((item) => item.event === 'attack_success');
+        expect(firstTurnSuccesses).toHaveLength(1);
+        expect(firstTurnSuccesses[0].data[3]).toBe('req-1');
+
+        await (instance as any).runGameTick();
+
+        const attackSuccesses = events.filter((item) => item.event === 'attack_success');
+        expect(attackSuccesses).toHaveLength(1);
+        expect(events.some((item) => item.event === 'attack_failure')).toBe(false);
+        expect(player.operatedTurn).toBe(1);
+      }
+    );
+  });
+
   it('ends and cleans up games with no remaining alive teams', async () => {
     const roomId = `room-${crypto.randomUUID().slice(0, 8)}`;
     const stub = env.ROOMS.getByName(roomId);

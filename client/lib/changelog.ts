@@ -17,10 +17,12 @@ export const changelogEntries: ChangelogEntry[] = [
       en: [
         'Improved room join and reconnect flow so players can recover from network interruptions more reliably.',
         'Added live network latency in matches and fixed touch route planning so mobile path drawing stays responsive while dragging.',
+        'Fixed queued movement under latency and higher game speeds so planned routes keep advancing at full speed, and made queue cancel clear both local and server-side pending moves.',
       ],
       zh: [
         '强化房间加入和重连流程，玩家在网络波动后能更稳定地恢复对局。',
         '对局内新增实时网络延迟显示，并修复移动端连续拖拽规划路线时容易断掉的问题。',
+        '修复高延迟和高倍速下预规划路线推进过慢的问题，并让清空队列同时取消本地与服务端尚未执行的后续移动。',
       ],
     },
   },

@@ -281,6 +281,22 @@ const GameProvider: React.FC<GameProviderProp> = ({ children }) => {
     [initGameInfo]
   );
 
+  const flushAttackQueueToServer = useCallback(() => {
+    const socket = socketRef.current;
+    const queue = attackQueueRef.current;
+    if (!socket?.connected || !queue) {
+      return;
+    }
+
+    while (!queue.isEmpty()) {
+      const item = queue.pop();
+      if (!item) {
+        break;
+      }
+      socket.emit('attack', item.from, item.to, item.half, item.requestId);
+    }
+  }, [attackQueueRef, socketRef]);
+
   const handlePositionChange = useCallback(
     (selectPos: SelectedMapTileInfo, newPoint: Position, className: string) => {
       if (!withinMap(newPoint)) {
@@ -316,6 +332,7 @@ const GameProvider: React.FC<GameProviderProp> = ({ children }) => {
         y: selectPos.y,
         className: className,
       });
+      flushAttackQueueToServer();
     },
     [
       withinMap,
@@ -326,6 +343,7 @@ const GameProvider: React.FC<GameProviderProp> = ({ children }) => {
       setSelectedMapTileInfo,
       isBlockedTileType,
       showBlockedMoveFeedback,
+      flushAttackQueueToServer,
     ]
   );
 

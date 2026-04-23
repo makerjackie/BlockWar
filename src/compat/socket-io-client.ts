@@ -42,6 +42,10 @@ export class Socket {
     this.connect();
   }
 
+  get connected() {
+    return this.ws?.readyState === WebSocket.OPEN;
+  }
+
   private connect() {
     this.clearReconnectTimer();
 

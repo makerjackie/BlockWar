@@ -20,7 +20,6 @@ export class AttackQueue {
   private queueHead: number;
   private inFlight: Map<string, SentAttackRoute>;
   private inFlightOrder: string[];
-  private displayedRoute: SentAttackRoute | null;
 
   constructor(
     private clearFromMap: (route: AttackRoute) => void,
@@ -30,11 +29,6 @@ export class AttackQueue {
     this.queueHead = 0;
     this.inFlight = new Map();
     this.inFlightOrder = [];
-    this.displayedRoute = null;
-  }
-
-  get lastItem(): SentAttackRoute | undefined {
-    return this.displayedRoute ?? undefined;
   }
 
   insert(item: AttackRoute): void {
@@ -50,11 +44,6 @@ export class AttackQueue {
     this.queueHead += 1;
     this.compactQueue();
 
-    if (this.displayedRoute) {
-      this.clearFromMap(this.displayedRoute);
-      this.displayedRoute = null;
-    }
-
     const sentItem: SentAttackRoute = {
       ...item,
       requestId: this.createRequestId(),
@@ -62,7 +51,6 @@ export class AttackQueue {
 
     this.inFlight.set(sentItem.requestId, sentItem);
     this.inFlightOrder.push(sentItem.requestId);
-    this.displayedRoute = sentItem;
 
     return sentItem;
   }
@@ -105,18 +93,14 @@ export class AttackQueue {
 
     this.queued = [];
     this.queueHead = 0;
+    for (const requestId of this.inFlightOrder) {
+      const route = this.inFlight.get(requestId);
+      if (route) {
+        this.clearFromMap(route);
+      }
+    }
     this.inFlight.clear();
     this.inFlightOrder.length = 0;
-    this.clearLastItem();
-  }
-
-  clearLastItem(): void {
-    if (!this.displayedRoute) {
-      return;
-    }
-
-    this.clearFromMap(this.displayedRoute);
-    this.displayedRoute = null;
   }
 
   resolveSuccess(
@@ -129,6 +113,10 @@ export class AttackQueue {
       return;
     }
 
+    const route = this.inFlight.get(matchedId);
+    if (route) {
+      this.clearFromMap(route);
+    }
     this.removeInFlight(matchedId);
   }
 
@@ -151,10 +139,8 @@ export class AttackQueue {
     const laterInFlightIds =
       failedIndex >= 0 ? this.inFlightOrder.slice(failedIndex + 1) : [];
 
+    this.clearFromMap(failedRoute);
     this.removeInFlight(matchedId);
-    if (this.displayedRoute?.requestId === matchedId) {
-      this.clearLastItem();
-    }
 
     let cursor: Position | null = failedRoute.to;
 
@@ -164,10 +150,8 @@ export class AttackQueue {
         break;
       }
 
+      this.clearFromMap(route);
       this.removeInFlight(laterId);
-      if (this.displayedRoute?.requestId === laterId) {
-        this.clearLastItem();
-      }
       cursor = route.to;
     }
 

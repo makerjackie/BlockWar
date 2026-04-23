@@ -454,8 +454,11 @@ function GamingRoom() {
         setTurnsCount(turnsCount);
         setLeaderBoardData(leaderBoardData);
 
-        if (!attackQueueRef.current.isEmpty()) {
+        while (!attackQueueRef.current.isEmpty()) {
           const item = attackQueueRef.current.pop();
+          if (!item) {
+            break;
+          }
           socket.emit('attack', item.from, item.to, item.half, item.requestId);
           debugLog(
             'emit attack: ',
@@ -465,8 +468,6 @@ function GamingRoom() {
             item.requestId,
             turnsCount
           );
-        } else if (attackQueueRef.current.lastItem) {
-          attackQueueRef.current.clearLastItem();
         }
       }
     );

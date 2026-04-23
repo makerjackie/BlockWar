@@ -33,14 +33,13 @@ describe('AttackQueue', () => {
 
     expect(sentFirst?.requestId).toBe('req-1');
     expect(sentSecond?.requestId).toBe('req-2');
-    expect(clearFromMap).toHaveBeenCalledTimes(1);
-    expect(clearFromMap).toHaveBeenNthCalledWith(1, sentFirst);
+    expect(clearFromMap).not.toHaveBeenCalled();
 
     queue.resolveFailure(sentFirst?.requestId, sentFirst?.from, sentFirst?.to);
 
     expect(queue.isEmpty()).toBe(true);
-    expect(queue.lastItem).toBeUndefined();
     expect(clearFromMap).toHaveBeenCalledTimes(3);
+    expect(clearFromMap).toHaveBeenNthCalledWith(1, sentFirst);
     expect(clearFromMap).toHaveBeenNthCalledWith(2, sentSecond);
     expect(clearFromMap).toHaveBeenNthCalledWith(3, third);
 
@@ -59,7 +58,6 @@ describe('AttackQueue', () => {
     const sent = queue.pop();
 
     queue.resolveSuccess(undefined, sent?.from, sent?.to);
-    queue.clearLastItem();
 
     expect(clearFromMap).toHaveBeenCalledTimes(1);
     expect(clearFromMap).toHaveBeenCalledWith(sent);
